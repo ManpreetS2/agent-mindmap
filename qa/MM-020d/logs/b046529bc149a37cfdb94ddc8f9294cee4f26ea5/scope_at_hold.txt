@@ -1,0 +1,8 @@
+Held before behavioral harness / full suite completion.
+Observed at hold time:
+- Head confirmed: b046529bc149a37cfdb94ddc8f9294cee4f26ea5
+- PR #21 → base feat/MM-020-unified-network
+- CI pytest: success (run 39398290981) on head; web CI not observed in pr checks at hold
+- Fresh worktree: /tmp/qa-mm020d/checkout
+- Code paths identified: ingest/live.py host_header_allowed / origin_header_allowed / SSE /events
+- Prior MM-011 QA noted singleton lock as LOW finding (no flock); MM-020d flock SHA pending
