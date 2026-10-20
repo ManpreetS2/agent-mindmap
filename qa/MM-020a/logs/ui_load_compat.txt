@@ -1,0 +1,2 @@
+{"name":"legacy-clean","ok":true,"schema":"1.0.0","errors":[],"textPreview":"Skip to main content\nMINDMAPProject: Fencepost\nList view\nHandoffs 1\nUpdated Oct 20, 4:58 AM PDT(stale · 4 hours ago — refresh)\nSource: ledger + GitHub (ok)\nHand"}
+{"name":"v11-message-clean","ok":true,"schema":"1.1.0","errors":[],"textPreview":"Skip to main content\nMINDMAPProject: Fencepost\nList view\nHandoffs 1\nUpdated Oct 20, 4:58 AM PDT(stale · 4 hours ago — refresh)\nSource: ledger + GitHub (ok)\nHand"}

@@ -1,0 +1,230 @@
+[
+  {
+    "check": "membership.happy",
+    "ok": true,
+    "detail": "director=['build', 'qr', 'radar'] radar=['architect', 'director', 'nomen', 'scout', 'skeptic']"
+  },
+  {
+    "check": "membership.unknown_member",
+    "ok": true,
+    "detail": "unknown bot indexed without validation: ghost-bot in index=True; no raise. AC asks 'handled' \u2014 silent accept observed.",
+    "severity_hint": "medium",
+    "actual": {
+      "index": {
+        "director": [
+          "build",
+          "build"
+        ],
+        "ghost-bot": [
+          "build"
+        ],
+        "architect": [
+          "qr"
+        ]
+      },
+      "unknown_present": true
+    }
+  },
+  {
+    "check": "membership.duplicate_member",
+    "ok": false,
+    "detail": "duplicate 'director' in build members \u2192 groups list count=2 (expect 1 after dedupe)",
+    "severity_hint": "medium",
+    "actual": {
+      "director_groups": [
+        "build",
+        "build"
+      ],
+      "dup_count": 2
+    }
+  },
+  {
+    "check": "membership.missing_member",
+    "ok": true,
+    "detail": "bot not listed anywhere \u2192 groups_for_bot=[]"
+  },
+  {
+    "check": "membership.malformed_json",
+    "ok": true,
+    "detail": "JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+  },
+  {
+    "check": "membership.malformed_missing_members",
+    "ok": true,
+    "detail": "missing members key \u2192 empty index entry ok, idx={}"
+  },
+  {
+    "check": "membership.malformed_no_groups_key",
+    "ok": true,
+    "detail": "no groups key \u2192 empty index={} (no clear failure)",
+    "severity_hint": "low"
+  },
+  {
+    "check": "message.untargeted_sender_to_group",
+    "ok": true,
+    "detail": "{'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 1, 'event_ids': ['e1']}"
+  },
+  {
+    "check": "message.explicit_recipients",
+    "ok": true,
+    "detail": "{('architect', 'dev-2', 'message'), ('architect', 'dev-1', 'message')}"
+  },
+  {
+    "check": "message.no_self_loop",
+    "ok": true,
+    "detail": "self recipient \u2192 edges=[]"
+  },
+  {
+    "check": "message.dedup_bucket",
+    "ok": true,
+    "detail": "{'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 2, 'event_ids': ['m4', 'm5']}"
+  },
+  {
+    "check": "message.idempotent_same_event_id",
+    "ok": false,
+    "detail": "same event id twice \u2192 count=2 event_ids=['m4', 'm4'] (expect event_id listed once for true idempotency)",
+    "severity_hint": "medium",
+    "actual": {
+      "id": "44c10b2a64bcae21a53628f8ef18c5322286f87e",
+      "source": "director",
+      "target": "group:build",
+      "type": "message",
+      "count": 2,
+      "event_ids": [
+        "m4",
+        "m4"
+      ]
+    }
+  },
+  {
+    "check": "message.never_invent",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "check": "message.empty_recipients_falls_to_group",
+    "ok": true,
+    "detail": "[{'id': '10f9f5ea6fba62f569e3f8516ab84365cc777dd8', 'source': 'director', 'target': 'group:qr', 'type': 'message', 'count': 1, 'event_ids': ['m7']}]"
+  },
+  {
+    "check": "edges.merge_no_self_loop",
+    "ok": true,
+    "detail": "merge edges=[]"
+  },
+  {
+    "check": "edges.repo_number_join",
+    "ok": true,
+    "detail": "[{'id': 'f909370a0fbd419fc78cc515cfca1ec827fcf284', 'source': 'architect', 'target': 'dev-2', 'type': 'merge', 'count': 1, 'event_ids': ['mg2']}]"
+  },
+  {
+    "check": "edges.merger_not_from_unknown",
+    "ok": true,
+    "detail": "unknown attr merge edges=[]"
+  },
+  {
+    "check": "provenance.schema_on_network_event",
+    "ok": true,
+    "detail": "networkEvent required=True; node has field=False; edge has field=False; event required=False",
+    "note": "AC 'every node and edge carries its source' \u2014 nodes/edges have no provenance field; events keep source_url (required) as source locator; provenance optional on events."
+  },
+  {
+    "check": "provenance.build_sets_on_events",
+    "ok": true,
+    "detail": "built events with provenance=0/45; schema_version=1.1.0; nodes have groups=True",
+    "severity_hint": "medium",
+    "actual": {
+      "schema_version": "1.1.0",
+      "events_with_provenance": 0,
+      "sample_event_keys": [
+        "actor",
+        "attribution",
+        "id",
+        "raw",
+        "source_time",
+        "source_url",
+        "target",
+        "task_id",
+        "type"
+      ],
+      "sample_edge_keys": [
+        "count",
+        "event_ids",
+        "id",
+        "source",
+        "target",
+        "type"
+      ],
+      "sample_node_keys": [
+        "agent_links",
+        "group",
+        "groups",
+        "id",
+        "label",
+        "layout",
+        "status"
+      ]
+    }
+  },
+  {
+    "check": "provenance.not_spoofed_via_ledger_text",
+    "ok": true,
+    "detail": "events_with_spoofed_provenance=0; message_edges_from_spoof=[]; sample_raw_events=['note']"
+  },
+  {
+    "check": "provenance.invalid_enum_rejected",
+    "ok": true,
+    "detail": "rejected: 'ledger-claimed' is not one of ['observed', 'agent-reported', 'github-verified']"
+  },
+  {
+    "check": "secrets.fixtures_clean",
+    "ok": true,
+    "detail": "fixture_leaks=[]; build_leak=False"
+  },
+  {
+    "check": "secrets.activity_schema_does_not_strip",
+    "ok": true,
+    "detail": "schema validates activity with Bearer token in event.raw (secret blocking is MM-010 mirror / future emitter \u2014 same class as QA-MM011 F3). Provenance field itself holds only enum, not secret text.",
+    "severity_hint": "info",
+    "note": "QA-MM011-3 cross-check: token-like strings must not appear in committed activity; daemon/build path still does not secret-scan writes (observed/documented)."
+  },
+  {
+    "check": "migration.lossless_1a3a0cc_sample",
+    "ok": true,
+    "detail": "keys=['edges', 'events', 'generated_at', 'meta', 'nodes', 'project', 'schema_version', 'tasks', 'unparsed']"
+  },
+  {
+    "check": "migration.idempotent",
+    "ok": true,
+    "detail": "migrate(migrate(doc)) == migrate(doc)"
+  },
+  {
+    "check": "migration.bump_validates_110",
+    "ok": true,
+    "detail": "version=1.1.0"
+  },
+  {
+    "check": "migration.unknown_version_fails",
+    "ok": true,
+    "detail": "unsupported schema_version: '0.9.0'"
+  },
+  {
+    "check": "migration.future_version_fails",
+    "ok": true,
+    "detail": "unsupported schema_version: '2.0.0'"
+  },
+  {
+    "check": "migration.all_fixtures_validate",
+    "ok": true,
+    "detail": "fails=[]"
+  },
+  {
+    "check": "migration.backcompat_story",
+    "ok": true,
+    "detail": "SUPPORTED=['1.0.0', '1.1.0'] CURRENT=1.1.0; schema enum accepts both; migrate is pure deepcopy + optional bump; fixtures left on disk as 1.0.0"
+  },
+  {
+    "check": "schema.110_message_edge",
+    "ok": true,
+    "detail": "validated"
+  }
+]

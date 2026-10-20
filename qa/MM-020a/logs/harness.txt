@@ -1,0 +1,37 @@
+ROOT=/tmp/qa-mm020a/checkout
+HEAD=
+[PASS] membership.happy: director=['build', 'qr', 'radar'] radar=['architect', 'director', 'nomen', 'scout', 'skeptic']
+[PASS] membership.unknown_member: unknown bot indexed without validation: ghost-bot in index=True; no raise. AC asks 'handled' — silent accept observed.
+[FAIL] membership.duplicate_member: duplicate 'director' in build members → groups list count=2 (expect 1 after dedupe)
+[PASS] membership.missing_member: bot not listed anywhere → groups_for_bot=[]
+[PASS] membership.malformed_json: JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+[PASS] membership.malformed_missing_members: missing members key → empty index entry ok, idx={}
+[PASS] membership.malformed_no_groups_key: no groups key → empty index={} (no clear failure)
+[PASS] message.untargeted_sender_to_group: {'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 1, 'event_ids': ['e1']}
+[PASS] message.explicit_recipients: {('architect', 'dev-2', 'message'), ('architect', 'dev-1', 'message')}
+[PASS] message.no_self_loop: self recipient → edges=[]
+[PASS] message.dedup_bucket: {'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 2, 'event_ids': ['m4', 'm5']}
+[FAIL] message.idempotent_same_event_id: same event id twice → count=2 event_ids=['m4', 'm4'] (expect event_id listed once for true idempotency)
+[PASS] message.never_invent: []
+[PASS] message.empty_recipients_falls_to_group: [{'id': '10f9f5ea6fba62f569e3f8516ab84365cc777dd8', 'source': 'director', 'target': 'group:qr', 'type': 'message', 'count': 1, 'event_ids': ['m7']}]
+[PASS] edges.merge_no_self_loop: merge edges=[]
+[PASS] edges.repo_number_join: [{'id': 'f909370a0fbd419fc78cc515cfca1ec827fcf284', 'source': 'architect', 'target': 'dev-2', 'type': 'merge', 'count': 1, 'event_ids': ['mg2']}]
+[PASS] edges.merger_not_from_unknown: unknown attr merge edges=[]
+[PASS] provenance.schema_on_network_event: networkEvent required=True; node has field=False; edge has field=False; event required=False
+[PASS] provenance.build_sets_on_events: built events with provenance=0/45; schema_version=1.1.0; nodes have groups=True
+[PASS] provenance.not_spoofed_via_ledger_text: events_with_spoofed_provenance=0; message_edges_from_spoof=[]; sample_raw_events=['note']
+[PASS] provenance.invalid_enum_rejected: rejected: 'ledger-claimed' is not one of ['observed', 'agent-reported', 'github-verified']
+[PASS] secrets.fixtures_clean: fixture_leaks=[]; build_leak=False
+[PASS] secrets.activity_schema_does_not_strip: schema validates activity with Bearer token in event.raw (secret blocking is MM-010 mirror / future emitter — same class as QA-MM011 F3). Provenance field itself holds only enum, not secret text.
+[PASS] migration.lossless_1a3a0cc_sample: keys=['edges', 'events', 'generated_at', 'meta', 'nodes', 'project', 'schema_version', 'tasks', 'unparsed']
+[PASS] migration.idempotent: migrate(migrate(doc)) == migrate(doc)
+[PASS] migration.bump_validates_110: version=1.1.0
+[PASS] migration.unknown_version_fails: unsupported schema_version: '0.9.0'
+[PASS] migration.future_version_fails: unsupported schema_version: '2.0.0'
+[PASS] migration.all_fixtures_validate: fails=[]
+[PASS] migration.backcompat_story: SUPPORTED=['1.0.0', '1.1.0'] CURRENT=1.1.0; schema enum accepts both; migrate is pure deepcopy + optional bump; fixtures left on disk as 1.0.0
+[PASS] schema.110_message_edge: validated
+
+Summary: 29/31 checks ok; 2 fail
+  FAIL membership.duplicate_member: duplicate 'director' in build members → groups list count=2 (expect 1 after dedupe)
+  FAIL message.idempotent_same_event_id: same event id twice → count=2 event_ids=['m4', 'm4'] (expect event_id listed once for true idempotency)

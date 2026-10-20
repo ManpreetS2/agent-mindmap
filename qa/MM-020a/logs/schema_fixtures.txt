@@ -1,0 +1,11 @@
+build_activity schema_version 1.1.0 nodes 14 events 45 edges 3
+director groups ['build', 'qr', 'radar']
+bug-fixer groups []
+OK sample-activity.json 1.0.0
+OK state-partial-github-skipped.json 1.0.0
+OK state-stale.json 1.0.0
+OK state-partial-github-error.json 1.0.0
+OK state-empty.json 1.0.0
+OK state-unparsed.json 1.0.0
+OK state-partial-github-rate-limited.json 1.0.0
+ALL_FIXTURES_OK

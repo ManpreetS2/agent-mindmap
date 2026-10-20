@@ -1,0 +1,4 @@
+director.groups ['build', 'build', 'qr', 'radar']
+ghost in nodes False
+bug-fixer.groups []
+handoff same id twice [{'id': 'df9585fc10b7fb8f9cdc7dae73e3a5b1540e4809', 'source': 'a', 'target': 'b', 'type': 'handoff', 'count': 2, 'event_ids': ['h1', 'h1']}]

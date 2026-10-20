@@ -1,0 +1,2 @@
+pytest	pass	18s	https://github.com/ManpreetS2/agent-mindmap/actions/runs/39393249586/job/118529610613	
+web	pass	53s	https://github.com/ManpreetS2/agent-mindmap/actions/runs/39393249493/job/118529609960	

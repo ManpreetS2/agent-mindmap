@@ -1,0 +1,3 @@
+merged_count 1 ids ['m4']
+edges_after_merge [{'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 1, 'event_ids': ['m4']}]
+edges_raw_dup [{'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 2, 'event_ids': ['m4', 'm4']}]
