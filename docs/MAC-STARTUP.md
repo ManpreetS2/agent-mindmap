@@ -53,7 +53,9 @@ Shows sample events, not real activity. In this mode the script:
 - passes `--demo` to `ingest.live`,
 - skips the `gh auth status` check.
 
-The header banner shows the current mode: DEMO, LIVE, loading, or unknown. DEMO reads only the bundled fixtures: it ignores `MINDMAP_LEDGER` and never calls `gh` or GitHub.
+The header banner shows the current mode: DEMO, LIVE, loading, or unknown. DEMO serves only the bundled fixtures and never calls `gh` or GitHub. The ledger is not used, but if `MINDMAP_LEDGER` is set it must still point to an existing file, or the script exits with `MINDMAP_LEDGER file not found`. Unset it to be safe.
+
+To regenerate the offline sample `activity.json` from the committed fixture ledger (no network, no `gh`), run `make refresh-demo`. It writes to `web/public/activity.json` by default; override with `ACTIVITY_OUT=/path`.
 
 ## Troubleshooting
 | Message | Fix |
