@@ -1,0 +1,67 @@
+
+> mindmap-web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /tmp/qa-mm020d-delta2/checkout/web
+
+ ✓ src/test/clusterLayout.test.ts (6 tests) 19ms
+ ✓ src/test/DetailPanel.test.tsx (4 tests) 188ms
+ ✓ src/test/edgeTypes.test.tsx (6 tests) 587ms
+   ✓ edge types (MM-020f) > renders group filter, anchors, and multi-group agents 478ms
+ ✓ src/test/mergeFlowNodes.test.ts (7 tests) 9ms
+ ✓ src/test/KeyboardNav.test.tsx (10 tests) 1817ms
+   ✓ Keyboard navigation (MM-007 §6) > skip link targets main content 501ms
+   ✓ Keyboard navigation (MM-007 §6) > slash focuses timeline filter chips 310ms
+ ✓ src/test/activityDiff.test.ts (4 tests) 5ms
+ ✓ src/test/States.test.tsx (10 tests) 1101ms
+ ✓ src/test/loadActivity.test.ts (6 tests) 7ms
+ ✓ src/test/eventTime.test.ts (4 tests) 7ms
+ ✓ src/test/GraphView.test.tsx (5 tests) 1308ms
+   ✓ Mindmap graph view > opens the detail panel on node click with sourced facts 356ms
+   ✓ Mindmap graph view > closes the detail panel on Escape 382ms
+ ✓ src/test/eventGlyph.test.ts (3 tests) 4ms
+ ✓ src/test/Timeline.test.tsx (4 tests) 1135ms
+   ✓ Timeline (MM-006) > renders one swim lane label per bot plus unknown 336ms
+   ✓ Timeline (MM-006) > toggles type filter chips with aria-pressed 413ms
+ ✓ src/test/activityTransport.test.ts (2 tests) 7ms
+ ✓ src/test/graphLayout.test.ts (2 tests) 6ms
+ ✓ src/test/UnparsedPanel.test.tsx (1 test) 102ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > list view has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/timelineBrush.test.ts (3 tests) 2ms
+ ✓ src/test/sourceUrl.test.ts (2 tests) 2ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > graph view shell has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm020d-delta2/checkout/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm020d-delta2/checkout/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/A11y.test.tsx (2 tests) 1027ms
+   ✓ Accessibility (axe) > list view has no serious or critical axe violations 576ms
+   ✓ Accessibility (axe) > graph view shell has no serious or critical axe violations 450ms
+
+ Test Files  18 passed (18)
+      Tests  81 passed (81)
+   Start at  09:42:01
+   Duration  8.59s (transform 1.15s, setup 2.71s, collect 4.06s, tests 7.33s, environment 6.51s, prepare 1.33s)
+
+EXIT:0

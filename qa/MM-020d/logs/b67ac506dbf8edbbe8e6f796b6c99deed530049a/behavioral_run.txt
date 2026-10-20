@@ -1,0 +1,184 @@
+wrote /tmp/qa-mm020d-delta2/checkout/web/public/activity.json (github=skipped, ledger=ok)
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+[PASS] Cap: 9th → 503 + Retry-After — {'status': 503, 'retry': '5'}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] QA-MM020d-1 graceful close → new stream ≤1s (heartbeat=15s) — {'wait_ok': True, 'elapsed_s': 0.001, 'status': 200, 'active': 8}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] QA-MM020d-1 abrupt close → new stream ≤1s — {'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[FAIL] QA-MM020d-1 100 rapid cycles: no spurious 503, no leak, threads bounded — {'unexpected_503_or_stuck': 100, 'active_end': 1, 'thr0': 3, 'thr1': 3}
+[FINDING:high] QA-MM020d-1-cycles: {'unexpected_503_or_stuck': 100, 'active_end': 1, 'thr0': 3, 'thr1': 3}
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+[PASS] QA-MM020d-2 Origin:null → 403 all routes — {'null_origin:/healthz': 403, 'null_origin:/activity.json': 403, 'null_origin:/index.html': 403, 'null_origin:/events': 403}
+[PASS] Missing Origin → 200
+[PASS] Local Origin → 200
+[PASS] Host/Origin evil/bad/missing-host → 403
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] SSE order+dedupe — ids=['a1', 'a2']
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] SSE Last-Event-ID — ids=['a2', 'a3']
+[PASS] flock mode 0o600 — 0o600
+[PASS] flock second refused
+[PASS] flock after kill -9
+[PASS] flock refuses symlink
+[PASS] bind 127.0.0.1 only — ['127.0.0.1:46399']
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] XSS SSE payload is JSON text — id: xss1
+data: {"id":"xss1","ts":"2026-10-20T12:00:00-07:00","sender":"director","group":"build","type":"message","summary":"<img src=x onerror=\"window.__xss=1\">","provenance":"agent-reported"}
+
+: h
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[FAIL] SEC-MM020d-2 no CPU spin on garbage-after-request — {'wall_s': 10.01, 'cpu_delta_s': 10.01, 'cpu_last_half_s': 4.52, 'approx_util_last_half': 0.903, 'active_during': 1, 'slot_held_during_garbage': True, 'freed_after_close': False}
+[FINDING:high] SEC-MM020d-2: After sending garbage with socket left open, process CPU util≈90% over ~5.0s (cpu_last_half=4.52s). Loop: select readable → _peer_closed False (peek≠EOF) → continue with no delay.
+[FAIL] SEC-MM020d-2 slot still held during garbage, frees on close — {'wall_s': 10.01, 'cpu_delta_s': 10.01, 'cpu_last_half_s': 4.52, 'approx_util_last_half': 0.903, 'active_during': 1, 'slot_held_during_garbage': True, 'freed_after_close': False}
+
+=== BEHAVIORAL SUMMARY ===
+PASS 15
+FAIL 3
+FINDINGS 2

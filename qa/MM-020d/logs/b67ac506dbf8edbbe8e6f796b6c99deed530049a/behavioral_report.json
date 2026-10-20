@@ -1,0 +1,119 @@
+{
+  "sha": "b67ac506dbf8edbbe8e6f796b6c99deed530049a",
+  "checks": [
+    {
+      "check": "Cap: 9th \u2192 503 + Retry-After",
+      "result": "PASS",
+      "detail": "{'status': 503, 'retry': '5'}"
+    },
+    {
+      "check": "QA-MM020d-1 graceful close \u2192 new stream \u22641s (heartbeat=15s)",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.001, 'status': 200, 'active': 8}"
+    },
+    {
+      "check": "QA-MM020d-1 abrupt close \u2192 new stream \u22641s",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}"
+    },
+    {
+      "check": "QA-MM020d-1 100 rapid cycles: no spurious 503, no leak, threads bounded",
+      "result": "FAIL",
+      "detail": "{'unexpected_503_or_stuck': 100, 'active_end': 1, 'thr0': 3, 'thr1': 3}"
+    },
+    {
+      "check": "QA-MM020d-2 Origin:null \u2192 403 all routes",
+      "result": "PASS",
+      "detail": "{'null_origin:/healthz': 403, 'null_origin:/activity.json': 403, 'null_origin:/index.html': 403, 'null_origin:/events': 403}"
+    },
+    {
+      "check": "Missing Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Local Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Host/Origin evil/bad/missing-host \u2192 403",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "SSE order+dedupe",
+      "result": "PASS",
+      "detail": "ids=['a1', 'a2']"
+    },
+    {
+      "check": "SSE Last-Event-ID",
+      "result": "PASS",
+      "detail": "ids=['a2', 'a3']"
+    },
+    {
+      "check": "flock mode 0o600",
+      "result": "PASS",
+      "detail": "0o600"
+    },
+    {
+      "check": "flock second refused",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock after kill -9",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock refuses symlink",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "bind 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "['127.0.0.1:46399']"
+    },
+    {
+      "check": "XSS SSE payload is JSON text",
+      "result": "PASS",
+      "detail": "id: xss1\ndata: {\"id\":\"xss1\",\"ts\":\"2026-10-20T12:00:00-07:00\",\"sender\":\"director\",\"group\":\"build\",\"type\":\"message\",\"summary\":\"<img src=x onerror=\\\"window.__xss=1\\\">\",\"provenance\":\"agent-reported\"}\n\n: h"
+    },
+    {
+      "check": "SEC-MM020d-2 no CPU spin on garbage-after-request",
+      "result": "FAIL",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 10.01, 'cpu_last_half_s': 4.52, 'approx_util_last_half': 0.903, 'active_during': 1, 'slot_held_during_garbage': True, 'freed_after_close': False}"
+    },
+    {
+      "check": "SEC-MM020d-2 slot still held during garbage, frees on close",
+      "result": "FAIL",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 10.01, 'cpu_last_half_s': 4.52, 'approx_util_last_half': 0.903, 'active_during': 1, 'slot_held_during_garbage': True, 'freed_after_close': False}"
+    }
+  ],
+  "findings": [
+    {
+      "id": "QA-MM020d-1-cycles",
+      "component": "SseConnectionLimiter",
+      "expected": "100 open/close with 0 unexpected 503 and active_end=0",
+      "actual": "{'unexpected_503_or_stuck': 100, 'active_end': 1, 'thr0': 3, 'thr1': 3}",
+      "repro": "100x open SSE then close",
+      "evidence": "prompt_release.json",
+      "environment": "@b67ac50",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "SEC-MM020d-2",
+      "component": "MindmapHandler._handle_sse select/MSG_PEEK loop",
+      "expected": "Readable non-EOF client data must not busy-spin; sleep/backoff or drain/close",
+      "actual": "After sending garbage with socket left open, process CPU util\u224890% over ~5.0s (cpu_last_half=4.52s). Loop: select readable \u2192 _peer_closed False (peek\u2260EOF) \u2192 continue with no delay.",
+      "repro": "GET /events; read headers; send non-empty bytes; keep TCP open; sample /proc/<pid>/task/*/stat over 10s",
+      "evidence": "cpu_spin.json",
+      "environment": "@b67ac50 heartbeat=15",
+      "severity": "high",
+      "confidence": "high"
+    }
+  ]
+}

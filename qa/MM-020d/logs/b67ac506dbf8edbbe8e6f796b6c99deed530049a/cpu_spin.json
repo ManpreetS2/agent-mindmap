@@ -1,0 +1,9 @@
+{
+  "wall_s": 10.01,
+  "cpu_delta_s": 10.01,
+  "cpu_last_half_s": 4.52,
+  "approx_util_last_half": 0.903,
+  "active_during": 1,
+  "slot_held_during_garbage": true,
+  "freed_after_close": false
+}

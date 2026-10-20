@@ -1,0 +1,24 @@
+{
+  "ninth": {
+    "status": 503,
+    "retry": "5"
+  },
+  "graceful": {
+    "wait_ok": true,
+    "elapsed_s": 0.001,
+    "status": 200,
+    "active": 8
+  },
+  "abrupt": {
+    "wait_ok": true,
+    "elapsed_s": 0.0,
+    "status": 200,
+    "active": 8
+  },
+  "cycles100": {
+    "unexpected_503_or_stuck": 100,
+    "active_end": 1,
+    "thr0": 3,
+    "thr1": 3
+  }
+}
