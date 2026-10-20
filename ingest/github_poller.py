@@ -6,10 +6,11 @@ and receives 304s. Allowed repos: ManpreetS2/fencepost, ManpreetS2/agent-mindmap
 
 MM-020e / MM-013 PR lanes
 -------------------------
-``build_pr_lane_events(gh_data, roster)`` is the pure hook for live rebuild
-(DEV 1 wires it after MM-020d). It projects polled GitHub activity events into
+``build_pr_lane_events(gh_data, roster)`` is the pure hook for live rebuild.
+``LiveDaemon.poll_github_once`` calls it and ingests NetworkEvents into the
+SSE ``/events`` log. It projects polled GitHub activity events into
 NetworkEvent rows (provenance ``github-verified``) plus edges via
-``ingest.edges.derive_edges``. Not called from ``ingest.live`` yet.
+``ingest.edges.derive_edges``.
 """
 
 from __future__ import annotations
@@ -930,7 +931,10 @@ def build_pr_lane_events(
     roster: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
-    Pure MM-020e / MM-013 hook for live rebuild (not wired into live.py yet).
+    Pure MM-020e / MM-013 hook for live rebuild / SSE.
+
+    Wired from ``LiveDaemon.poll_github_once`` so PR-lane NetworkEvents flow
+    through the in-memory event log and ``GET /events``.
 
     Parameters
     ----------

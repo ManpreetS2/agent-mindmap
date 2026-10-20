@@ -422,6 +422,39 @@ def test_network_events_dedupe_by_id(live_env: dict) -> None:
     assert daemon.health().network_event_count == 1
 
 
+def test_pr_lane_events_ingested_into_sse_log(live_env: dict) -> None:
+    """MM-020e: poll_github_once → build_pr_lane_events → NetworkEventLog / SSE."""
+    daemon = _daemon(live_env, events_source="off", github_runner=MockGh())
+    assert daemon.health().network_event_count == 0
+    assert daemon.poll_github_once() is True
+    count = daemon.health().network_event_count
+    assert count > 0
+    events = daemon.network_events_after(None)
+    assert len(events) == count
+    assert all(e.get("provenance") == "github-verified" for e in events)
+    assert all(isinstance(e.get("id"), str) and e["id"] for e in events)
+    # Second poll dedupes by id — count must not grow.
+    assert daemon.poll_github_once() is False
+    assert daemon.health().network_event_count == count
+
+
+def test_pr_lane_events_flow_through_sse_stream(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    """MM-020e wiring: GitHub PR-lane events appear on GET /events."""
+    daemon, host, port = live_http
+    before = daemon.health().network_event_count
+    # live_http already ran one poll cycle with MockGh — lanes may already be in.
+    if before == 0:
+        daemon.github_runner = MockGh()
+        assert daemon.poll_github_once() is True
+    count = daemon.health().network_event_count
+    assert count > 0
+    got = _read_sse_events(host, port, max_events=min(count, 3), timeout=5.0)
+    assert got
+    assert all(e.get("provenance") == "github-verified" for e in got)
+
+
 def test_poll_events_from_gh(live_env: dict) -> None:
     line = json.dumps(_sample_network_event("evt-gh-1"), separators=(",", ":"))
     body = events_contents_body(line + "\n")
@@ -587,11 +620,22 @@ def test_sse_replay_last_event_id_and_dedupe(
     live_http: tuple[LiveDaemon, str, int],
 ) -> None:
     daemon, host, port = live_http
+    # MM-020e may have already seeded PR-lane events via poll_github_once.
+    prior = daemon.network_events_after(None)
+    prior_tail = prior[-1]["id"] if prior else None
+    prior_count = len(prior)
+
     first = _sample_network_event("sse-evt-1")
     second = _sample_network_event("sse-evt-2")
     daemon.ingest_network_events([first])
 
-    got = _read_sse_events(host, port, max_events=1, timeout=3.0)
+    got = _read_sse_events(
+        host,
+        port,
+        last_event_id=prior_tail,
+        max_events=1,
+        timeout=3.0,
+    )
     assert len(got) == 1
     assert got[0]["id"] == "sse-evt-1"
 
@@ -606,4 +650,4 @@ def test_sse_replay_last_event_id_and_dedupe(
     )
     assert len(replay) == 1
     assert replay[0]["id"] == "sse-evt-2"
-    assert daemon.health().network_event_count == 2
+    assert daemon.health().network_event_count == prior_count + 2

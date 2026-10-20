@@ -37,7 +37,12 @@ from .build import (
     write_activity,
 )
 from .edges import derive_edges
-from .github_poller import GhRunner, GitHubPollResult, poll_github
+from .github_poller import (
+    GhRunner,
+    GitHubPollResult,
+    build_pr_lane_events,
+    poll_github,
+)
 from .events_fetch import EVENTS_REF, EVENTS_SOURCE_URL, EventsFetcher
 from .ledger_fetch import LEDGER_SOURCE_URL, fetch_ledger_from_gh
 from .ledger_parser import (
@@ -561,6 +566,10 @@ class LiveDaemon:
                 self._gh_fp = fp
                 self._gh = gh
                 self._last_good_gh = gh
+        # MM-020e: PR-lane NetworkEvents → SSE /events (dedupe by id in log).
+        network, _edges = build_pr_lane_events(gh, roster=self.bots)
+        if network:
+            self.ingest_network_events(network)
         return changed
 
     def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
