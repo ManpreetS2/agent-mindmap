@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Activity, Edge, Event, Node, Task } from "@shared/types";
+import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { UnsourcedTag } from "./UnsourcedTag";
 import { StatusPill } from "./StatusPill";
 import { formatSourceTime } from "../utils/format";
@@ -193,7 +194,7 @@ export function ListView({
                 <td>{t.owner}</td>
                 <td><StatusPill status={t.status} /></td>
                 <td>
-                  {t.source_url ? (
+                  {isHttpSourceUrl(t.source_url) ? (
                     <a href={t.source_url}>ledger</a>
                   ) : (
                     <UnsourcedTag />
@@ -238,12 +239,14 @@ export function ListView({
                 <td>
                   {edge.event_ids.map((id) => {
                     const ev = eventById.get(id);
-                    return ev?.source_url ? (
-                      <a key={id} href={ev.source_url} className="mono">
+                    return isHttpSourceUrl(ev?.source_url) ? (
+                      <a key={id} href={ev!.source_url} className="mono">
                         {id}
                       </a>
                     ) : (
-                      <span key={id} className="mono">{id} </span>
+                      <span key={id} className="mono">
+                        {id} {!ev?.source_url ? null : <UnsourcedTag />}
+                      </span>
                     );
                   })}
                 </td>
@@ -282,7 +285,7 @@ export function ListView({
                 <td>{e.type}</td>
                 <td className="mono">{e.task_id ?? "—"}</td>
                 <td>
-                  {e.source_url ? (
+                  {isHttpSourceUrl(e.source_url) ? (
                     <a href={e.source_url}>source</a>
                   ) : (
                     <UnsourcedTag />

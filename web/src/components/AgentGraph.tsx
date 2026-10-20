@@ -21,7 +21,8 @@ const nodeTypes = { agent: AgentFlowNode };
 export interface AgentGraphProps {
   activity: Activity;
   selectedNodeId: string | null;
-  onSelectNode: (id: string | null) => void;
+  onOpenNodeDetail: (id: string) => void;
+  onClearNodeDetail: () => void;
   lifecycleNodeIds: ReadonlySet<string> | null;
   lifecycleEdgeIds: ReadonlySet<string> | null;
 }
@@ -33,7 +34,8 @@ function isDeemphasized(node: Activity["nodes"][number]): boolean {
 export function AgentGraph({
   activity,
   selectedNodeId,
-  onSelectNode,
+  onOpenNodeDetail,
+  onClearNodeDetail,
   lifecycleNodeIds,
   lifecycleEdgeIds,
 }: AgentGraphProps) {
@@ -60,10 +62,16 @@ export function AgentGraph({
             lifecycleActive && !lifecycleNodeIds!.has(n.id),
           lifecycleHighlighted:
             lifecycleActive && lifecycleNodeIds!.has(n.id),
-          onSelect: (id: string) => onSelectNode(id),
+          onOpenDetail: (id: string) => onOpenNodeDetail(id),
         },
       })),
-    [activity.nodes, selectedNodeId, onSelectNode, lifecycleActive, lifecycleNodeIds],
+    [
+      activity.nodes,
+      selectedNodeId,
+      onOpenNodeDetail,
+      lifecycleActive,
+      lifecycleNodeIds,
+    ],
   );
 
   const flowEdges: FlowEdge[] = useMemo(
@@ -97,8 +105,8 @@ export function AgentGraph({
   );
 
   const onPaneClick = useCallback(() => {
-    onSelectNode(null);
-  }, [onSelectNode]);
+    onClearNodeDetail();
+  }, [onClearNodeDetail]);
 
   return (
     <div className="agent-graph">

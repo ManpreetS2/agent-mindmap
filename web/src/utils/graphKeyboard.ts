@@ -47,3 +47,9 @@ export function focusGraphNodeButton(nodeId: string): void {
     .querySelector<HTMLButtonElement>(`[data-testid="agent-node-${nodeId}"]`)
     ?.focus();
 }
+
+export function focusGraphNodeIdFromActiveElement(): string | null {
+  const testId = document.activeElement?.getAttribute("data-testid");
+  if (!testId?.startsWith("agent-node-")) return null;
+  return testId.slice("agent-node-".length);
+}

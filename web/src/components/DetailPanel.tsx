@@ -12,6 +12,7 @@ import {
   taskForNode,
 } from "../utils/detailPanelFacts";
 import { tasksOwnedByLabel } from "../utils/nodeFacts";
+import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { FactSourceLink } from "./FactSourceLink";
 import { StatusPill } from "./StatusPill";
 import { UnsourcedTag } from "./UnsourcedTag";
@@ -97,9 +98,15 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
           <span className="detail-muted">None assigned</span>
         ) : task ? (
           <>
-            <a href={task.source_url} className="mono">
-              {task.id}
-            </a>
+            {isHttpSourceUrl(task.source_url) ? (
+              <a href={task.source_url} className="mono">
+                {task.id}
+              </a>
+            ) : (
+              <span className="mono">
+                {task.id} <UnsourcedTag />
+              </span>
+            )}
             <div>{task.title}</div>
             <div className="detail-meta">
               from ledger table · status: {task.status_raw}
@@ -125,12 +132,22 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
       <FactRow label="Last activity">
         {lastActivity.mode === "event" ? (
           <>
-            <a href={lastActivity.event.source_url}>
-              {lastActivity.event.type.replace("_", " ")}
-              {lastActivity.event.task_id
-                ? ` · ${lastActivity.event.task_id}`
-                : ""}
-            </a>
+            {isHttpSourceUrl(lastActivity.event.source_url) ? (
+              <a href={lastActivity.event.source_url}>
+                {lastActivity.event.type.replace("_", " ")}
+                {lastActivity.event.task_id
+                  ? ` · ${lastActivity.event.task_id}`
+                  : ""}
+              </a>
+            ) : (
+              <span>
+                {lastActivity.event.type.replace("_", " ")}
+                {lastActivity.event.task_id
+                  ? ` · ${lastActivity.event.task_id}`
+                  : ""}{" "}
+                <UnsourcedTag />
+              </span>
+            )}
             <div className="detail-meta">
               from {sourceKindFromUrl(lastActivity.event.source_url)},{" "}
               {formatSourceTime(lastActivity.event.source_time)}
@@ -159,7 +176,13 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
           <ul className="detail-list">
             {ownedTasks.map((t) => (
               <li key={t.id}>
-                <a href={t.source_url} className="mono">{t.id}</a>
+                {isHttpSourceUrl(t.source_url) ? (
+                  <a href={t.source_url} className="mono">{t.id}</a>
+                ) : (
+                  <span className="mono">
+                    {t.id} <UnsourcedTag />
+                  </span>
+                )}
                 {t.prs.length > 0 && (
                   <span className="detail-meta">
                     {" "}

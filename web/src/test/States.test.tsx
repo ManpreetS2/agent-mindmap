@@ -29,6 +29,26 @@ describe("UI states (MM-007)", () => {
     expect(screen.getByTestId("agent-node-director")).toBeInTheDocument();
   });
 
+  it("empty fixture shows every bot as IDLE (QA-MM007-1)", () => {
+    const data = emptyFixture as Activity;
+    expect(data.nodes.length).toBeGreaterThan(0);
+    for (const node of data.nodes) {
+      expect(node.status).toBe("IDLE");
+      expect(node.current_task).toBeUndefined();
+    }
+    renderMindmap(<MindmapView activity={data} />);
+    const idlePills = screen.getAllByText("IDLE");
+    expect(idlePills.length).toBe(data.nodes.length);
+  });
+
+  it("partial GitHub fixtures carry no GitHub events (QA-MM007-2)", () => {
+    for (const partial of [partialError, partialSkipped, partialRate] as Activity[]) {
+      for (const event of partial.events) {
+        expect(event.source_url).not.toMatch(/github\.com/i);
+      }
+    }
+  });
+
   it("partial GitHub error names the source in banner", () => {
     renderMindmap(<MindmapView activity={partialError as Activity} />);
     expect(

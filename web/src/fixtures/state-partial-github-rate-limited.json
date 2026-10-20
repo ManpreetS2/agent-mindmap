@@ -215,65 +215,6 @@
       "source_url": "build/task-ledger.md",
       "source_time": "2026-10-19T21:20:00-07:00",
       "raw": "- 2026-10-19 9:20 PM PDT, Director: GO for Architect on RP-009 schema spec."
-    },
-    {
-      "id": "evt-pr5-opened",
-      "type": "pr_opened",
-      "actor": "dev-1",
-      "target": null,
-      "task_id": "RP-005",
-      "pr": 5,
-      "attribution": {
-        "method": "ledger_owner"
-      },
-      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
-      "source_time": "2026-10-19T21:35:00-07:00",
-      "raw": "Opened pull request #5: feat/RP-005-ingest-hardening"
-    },
-    {
-      "id": "evt-pr5-verdict-qa",
-      "type": "verdict",
-      "actor": "qa-verifier",
-      "target": "dev-1",
-      "task_id": "RP-005",
-      "pr": 5,
-      "verdict": "CHANGES",
-      "attribution": {
-        "method": "signature"
-      },
-      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5#issuecomment-1",
-      "source_time": "2026-10-19T21:37:00-07:00",
-      "raw": "~QA / Verifier 🧪 CHANGES on RP-005: tighten etag cache tests."
-    },
-    {
-      "id": "evt-pr5-merged",
-      "type": "merged",
-      "actor": "devops-release",
-      "target": "dev-1",
-      "task_id": "RP-005",
-      "pr": 5,
-      "sha": "693ebc7",
-      "attribution": {
-        "method": "signature"
-      },
-      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
-      "source_time": "2026-10-19T21:39:00-07:00",
-      "raw": "squash-merged as 693ebc7"
-    },
-    {
-      "id": "evt-pr6-security-review",
-      "type": "verdict",
-      "actor": "security-engineer",
-      "target": "dev-1",
-      "task_id": "RP-004",
-      "pr": 6,
-      "verdict": "PASS",
-      "attribution": {
-        "method": "signature"
-      },
-      "source_url": "https://github.com/ManpreetS2/fencepost/pull/6#issuecomment-2",
-      "source_time": "2026-10-19T21:15:00-07:00",
-      "raw": "~Security Engineer 🔐 PASS — no secrets in workload fixtures."
     }
   ],
   "edges": [
@@ -285,46 +226,6 @@
       "count": 1,
       "event_ids": [
         "evt-handoff-director-architect-rp009"
-      ]
-    },
-    {
-      "id": "edge-verdict-qa-dev1",
-      "source": "qa-verifier",
-      "target": "dev-1",
-      "type": "verdict",
-      "count": 1,
-      "event_ids": [
-        "evt-pr5-verdict-qa"
-      ]
-    },
-    {
-      "id": "edge-pr-dev1-qa",
-      "source": "dev-1",
-      "target": "qa-verifier",
-      "type": "pr",
-      "count": 1,
-      "event_ids": [
-        "evt-pr5-opened"
-      ]
-    },
-    {
-      "id": "edge-merge-devops-dev1",
-      "source": "devops-release",
-      "target": "dev-1",
-      "type": "merge",
-      "count": 1,
-      "event_ids": [
-        "evt-pr5-merged"
-      ]
-    },
-    {
-      "id": "edge-verdict-security-dev1",
-      "source": "security-engineer",
-      "target": "dev-1",
-      "type": "verdict",
-      "count": 1,
-      "event_ids": [
-        "evt-pr6-security-review"
       ]
     }
   ],

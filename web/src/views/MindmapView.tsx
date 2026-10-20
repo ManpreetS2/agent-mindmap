@@ -33,6 +33,7 @@ import {
 } from "../utils/taskLifecycle";
 import {
   focusGraphNodeButton,
+  focusGraphNodeIdFromActiveElement,
   hierarchyNodeOrder,
   nearestNodeInDirection,
   type GraphDirection,
@@ -67,6 +68,7 @@ export function MindmapView({
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   const [filters, setFilters] = useState<TimelineFilterState>(EMPTY_FILTERS);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(
     null,
@@ -127,8 +129,13 @@ export function MindmapView({
   );
   const empty = useMemo(() => isActivityEmpty(activity), [activity]);
 
-  const onSelectNode = useCallback((id: string | null) => {
+  const onOpenNodeDetail = useCallback((id: string) => {
     setSelectedNodeId(id);
+    setFocusedNodeId(id);
+  }, []);
+
+  const onClearNodeDetail = useCallback(() => {
+    setSelectedNodeId(null);
   }, []);
 
   const onTaskIdClick = useCallback((taskId: string) => {
@@ -148,20 +155,28 @@ export function MindmapView({
         e.preventDefault();
         const order = hierarchyNodeOrder(activity.nodes);
         const current =
-          selectedNodeId ?? order[0]?.id ?? null;
+          focusedNodeId ??
+          focusGraphNodeIdFromActiveElement() ??
+          order[0]?.id ??
+          null;
         if (!current) return;
         const next = nearestNodeInDirection(activity.nodes, current, dir);
         if (next) {
-          setSelectedNodeId(next);
+          setFocusedNodeId(next);
           focusGraphNodeButton(next);
         }
         return;
       }
-      if (e.key === "Enter" && selectedNodeId) {
-        e.preventDefault();
+      if (e.key === "Enter") {
+        const fromDom = focusGraphNodeIdFromActiveElement();
+        const id = fromDom ?? focusedNodeId;
+        if (id) {
+          e.preventDefault();
+          setSelectedNodeId(id);
+        }
       }
     },
-    [activity.nodes, selectedNodeId],
+    [activity.nodes, focusedNodeId],
   );
 
   const handleTimelineKeyDown = useCallback(
@@ -279,13 +294,16 @@ export function MindmapView({
             <ListView
               activity={activity}
               selectedNodeId={selectedNodeId}
-              onSelectNode={onSelectNode}
+              onSelectNode={(id) => {
+                if (id) onOpenNodeDetail(id);
+                else onClearNodeDetail();
+              }}
             />
             {selectedNode && (
               <DetailPanel
                 node={selectedNode}
                 activity={activity}
-                onClose={() => setSelectedNodeId(null)}
+                onClose={onClearNodeDetail}
               />
             )}
           </div>
@@ -300,7 +318,8 @@ export function MindmapView({
               <AgentGraph
                 activity={activity}
                 selectedNodeId={selectedNodeId}
-                onSelectNode={onSelectNode}
+                onOpenNodeDetail={onOpenNodeDetail}
+                onClearNodeDetail={onClearNodeDetail}
                 lifecycleNodeIds={lifecycleNodeIds}
                 lifecycleEdgeIds={lifecycleEdgeIds}
               />
@@ -311,7 +330,7 @@ export function MindmapView({
               <DetailPanel
                 node={selectedNode}
                 activity={activity}
-                onClose={() => setSelectedNodeId(null)}
+                onClose={onClearNodeDetail}
               />
             )}
           </div>

@@ -1,4 +1,5 @@
 import type { Event, Node, Task } from "@shared/types";
+import { factSourceFromUrl } from "./sourceUrl";
 
 function sortEventsNewestFirst(events: Event[]): Event[] {
   return [...events].sort(
@@ -71,11 +72,11 @@ export function resolveStatusSource(
 ): FactSource {
   const task = taskForNode(node, tasks);
   if (task?.source_url) {
-    return { kind: "linked", href: task.source_url };
+    return factSourceFromUrl(task.source_url);
   }
   const event = latestEventForNodeContext(node, events);
   if (event?.source_url) {
-    return { kind: "linked", href: event.source_url };
+    return factSourceFromUrl(event.source_url);
   }
   return { kind: "unsourced" };
 }
@@ -88,11 +89,11 @@ export function resolveCurrentTaskSource(
   if (!node.current_task) return null;
   const task = taskForNode(node, tasks);
   if (task?.source_url) {
-    return { kind: "linked", href: task.source_url };
+    return factSourceFromUrl(task.source_url);
   }
   const event = latestEventForTask(node.current_task, events, node.id);
   if (event?.source_url) {
-    return { kind: "linked", href: event.source_url };
+    return factSourceFromUrl(event.source_url);
   }
   return { kind: "unsourced" };
 }
@@ -120,7 +121,7 @@ export function resolveLastActivity(
       return {
         mode: "timestamp",
         ts: node.last_activity_ts,
-        source: { kind: "linked", href: byTaskOrTime.source_url },
+        source: factSourceFromUrl(byTaskOrTime.source_url),
       };
     }
     return {

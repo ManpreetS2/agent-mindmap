@@ -8,6 +8,7 @@ import {
   type TimelineLane,
 } from "../utils/timelineLanes";
 import { isLifecycleTaskId } from "../utils/taskLifecycle";
+import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { UnsourcedTag } from "./UnsourcedTag";
 
 const LABEL_WIDTH = 108;
@@ -41,7 +42,7 @@ function EventMarker({
   focused: boolean;
 }) {
   const glyph = glyphForEvent(event);
-  const hasSource = Boolean(event.source_url);
+  const hasSource = isHttpSourceUrl(event.source_url);
   const opacity = dimmed ? 0.25 : 1;
   const stroke = highlighted ? "var(--accent)" : "var(--border-subtle)";
 

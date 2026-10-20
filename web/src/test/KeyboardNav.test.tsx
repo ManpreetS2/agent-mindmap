@@ -37,6 +37,16 @@ describe("Keyboard navigation (MM-007 §6)", () => {
     expect(screen.getByTestId("agent-node-director")).toHaveFocus();
   });
 
+  it("arrow keys do not open the detail panel (QA-MM007-4)", () => {
+    renderMindmap(<MindmapView activity={activity} initialListView={false} />);
+    const graph = screen.getByRole("region", { name: /Agent graph/i });
+    graph.focus();
+    fireEvent.keyDown(graph, { key: "ArrowDown" });
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    fireEvent.keyDown(graph, { key: "ArrowRight" });
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
   it("arrow keys move between timeline event focus targets", () => {
     renderMindmap(<MindmapView activity={activity} initialListView={false} />);
     const timeline = screen.getByRole("region", { name: /Activity timeline/i });
@@ -74,6 +84,29 @@ describe("Keyboard navigation (MM-007 §6)", () => {
     expect(screen.getByRole("complementary")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
+  it("list view shows UnsourcedTag for non-http task source_url (QA-MM006-3)", () => {
+    const withLedger: Activity = {
+      ...activity,
+      tasks: [
+        {
+          id: "RP-888",
+          title: "ledger only",
+          project: "fencepost",
+          owner: "DEV 1",
+          status_raw: "PLANNED",
+          status: "IDLE",
+          prs: [],
+          source_url: "build/task-ledger.md#RP-888",
+        },
+      ],
+    };
+    renderMindmap(
+      <ListView activity={withLedger} selectedNodeId={null} onSelectNode={() => {}} />,
+    );
+    expect(screen.getAllByLabelText("Unsourced fact").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "ledger" })).not.toBeInTheDocument();
   });
 
   it("list view shows UnsourcedTag when task has no source_url", () => {

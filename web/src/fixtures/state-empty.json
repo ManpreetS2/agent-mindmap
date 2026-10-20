@@ -21,9 +21,7 @@
       "id": "director",
       "label": "Director",
       "group": "build",
-      "status": "IN_PROGRESS",
-      "current_task": "RP-009",
-      "last_activity_ts": "2026-10-19T21:20:00-07:00",
+      "status": "IDLE",
       "agent_links": [],
       "layout": {
         "x": 400,
@@ -34,9 +32,7 @@
       "id": "architect",
       "label": "Architect",
       "group": "build",
-      "status": "DONE",
-      "current_task": "MM-001",
-      "last_activity_ts": "2026-10-19T21:35:00-07:00",
+      "status": "IDLE",
       "agent_links": [
         "bc-9f84dbdb"
       ],
@@ -49,9 +45,7 @@
       "id": "dev-1",
       "label": "DEV 1",
       "group": "build",
-      "status": "IN_REVIEW",
-      "current_task": "RP-004",
-      "last_activity_ts": "2026-10-19T21:10:00-07:00",
+      "status": "IDLE",
       "agent_links": [
         "bc-1a2b3c4d"
       ],
@@ -75,9 +69,7 @@
       "id": "ui-ux-maker",
       "label": "UI/UX Maker",
       "group": "build",
-      "status": "IN_PROGRESS",
-      "current_task": "MM-005",
-      "last_activity_ts": "2026-10-19T20:45:00-07:00",
+      "status": "IDLE",
       "agent_links": [],
       "layout": {
         "x": 400,
@@ -99,8 +91,7 @@
       "id": "qa-verifier",
       "label": "QA / Verifier",
       "group": "qr",
-      "status": "DONE",
-      "last_activity_ts": "2026-10-19T21:37:00-07:00",
+      "status": "IDLE",
       "agent_links": [],
       "layout": {
         "x": 800,
@@ -111,9 +102,7 @@
       "id": "security-engineer",
       "label": "Security Engineer",
       "group": "qr",
-      "status": "IN_REVIEW",
-      "current_task": "RP-004",
-      "last_activity_ts": "2026-10-19T21:15:00-07:00",
+      "status": "IDLE",
       "agent_links": [],
       "layout": {
         "x": 800,
