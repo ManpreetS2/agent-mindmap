@@ -131,6 +131,7 @@ export function createSseTransport(
 
       let cancelled = false;
       let source: EventSource | null = null;
+      let pendingReconnect: EventSource | null = null;
       let pollStop: (() => void) | null = null;
       let fellBack = false;
       let sseRetryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -153,6 +154,25 @@ export function createSseTransport(
           clearTimeout(sseRetryTimer);
           sseRetryTimer = undefined;
         }
+      };
+
+      const closePendingReconnect = () => {
+        if (pendingReconnect) {
+          pendingReconnect.close();
+          pendingReconnect = null;
+        }
+      };
+
+      const dispose = () => {
+        cancelled = true;
+        clearSseRetry();
+        closePendingReconnect();
+        if (source) {
+          source.close();
+          source = null;
+        }
+        pollStop?.();
+        pollStop = null;
       };
 
       const startPollFallback = () => {
@@ -186,6 +206,7 @@ export function createSseTransport(
           if (cancelled) return;
           es.close();
           if (source === es) source = null;
+          if (pendingReconnect === es) pendingReconnect = null;
           if (!fellBack) {
             startPollFallback();
           } else {
@@ -194,12 +215,18 @@ export function createSseTransport(
         };
         if ("onopen" in es) {
           (es as EventSource & { onopen: (() => void) | null }).onopen = () => {
-            if (cancelled || !fellBack) return;
+            if (cancelled) {
+              es.close();
+              if (pendingReconnect === es) pendingReconnect = null;
+              return;
+            }
+            if (!fellBack) return;
             pollStop?.();
             pollStop = null;
             clearSseRetry();
             fellBack = false;
             sseBackoffMs = sseRetryInitialMs;
+            if (pendingReconnect === es) pendingReconnect = null;
             source = es;
           };
         }
@@ -207,10 +234,13 @@ export function createSseTransport(
 
       const tryReconnectSse = () => {
         if (cancelled || !fellBack) return;
+        closePendingReconnect();
         try {
           const next = new EventSourceImpl(eventsUrl);
+          pendingReconnect = next;
           wireSource(next);
           if (!fellBack) {
+            pendingReconnect = null;
             source = next;
           }
         } catch {
@@ -223,22 +253,10 @@ export function createSseTransport(
         wireSource(source);
       } catch {
         startPollFallback();
-        return () => {
-          cancelled = true;
-          clearSseRetry();
-          pollStop?.();
-        };
+        return dispose;
       }
 
-      return () => {
-        cancelled = true;
-        clearSseRetry();
-        if (source) {
-          source.close();
-          source = null;
-        }
-        pollStop?.();
-      };
+      return dispose;
     },
   };
 }

@@ -217,3 +217,58 @@ describe("QA-MM020e-3 SSE recovery", () => {
     vi.useRealTimers();
   });
 });
+
+function openFakeEventSources(): FakeEventSource[] {
+  return FakeEventSource.instances.filter((i) => !i.closed);
+}
+
+describe("QA-MM020e-7 unsubscribe cleanup", () => {
+  it("closes initial EventSource on immediate unsubscribe", () => {
+    FakeEventSource.instances = [];
+    const transport = createSseTransport({
+      fetchImpl: mockFetch(),
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!(() => undefined);
+    expect(openFakeEventSources()).toHaveLength(1);
+    stop();
+    expect(openFakeEventSources()).toHaveLength(0);
+  });
+
+  it("closes pending reconnect EventSource before onopen", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const transport = createSseTransport({
+      intervalMs: 100,
+      sseRetryInitialMs: 200,
+      fetchImpl: mockFetch(),
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!(() => undefined);
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(openFakeEventSources().length).toBeGreaterThanOrEqual(1);
+    stop();
+    expect(openFakeEventSources()).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(openFakeEventSources()).toHaveLength(0);
+    vi.useRealTimers();
+  });
+
+  it("closes active source after poll fallback unsubscribe", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const transport = createSseTransport({
+      intervalMs: 100,
+      sseRetryInitialMs: 500,
+      fetchImpl: mockFetch(),
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!(() => undefined);
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(150);
+    stop();
+    expect(openFakeEventSources()).toHaveLength(0);
+    vi.useRealTimers();
+  });
+});

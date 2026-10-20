@@ -25,7 +25,6 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from .attribute import (
-    attribute_from_body,
     extract_task_id,
     extract_verdict,
     load_bots,
@@ -72,6 +71,17 @@ def _github_user_login(obj: dict[str, Any]) -> str | None:
         login = user.get("login")
         if isinstance(login, str) and login.strip():
             return login.strip()
+    return None
+
+
+def _merged_by_login(pr: dict[str, Any]) -> str | None:
+    """GitHub ``merged_by.login`` on a pull request (MM-020e2)."""
+    merged_by = pr.get("merged_by")
+    if not isinstance(merged_by, dict):
+        return None
+    login = merged_by.get("login")
+    if isinstance(login, str) and login.strip():
+        return login.strip()
     return None
 
 
@@ -643,17 +653,8 @@ class GitHubPoller:
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
             sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            merge_login: str | None = None
-            if sha_val:
-                for commit in commits:
-                    if not isinstance(commit, dict):
-                        continue
-                    csha = (commit.get("sha") or "")[:40].lower()
-                    if csha == sha_val:
-                        merge_login = _commit_author_login(commit)
-                        break
             merger_actor, merge_prov, merger_method = _actor_from_github_login(
-                merge_login,
+                _merged_by_login(pr),
                 self.bots,
             )
             _append_unique(
@@ -820,37 +821,6 @@ class GitHubPoller:
             ),
         )
         return out
-
-
-# Ledger-style merged note only (QA-MM004-10) — not a casual "merged" mention.
-_LEDGER_STYLE_MERGED_RE = re.compile(
-    r"(?:squash-)?merged\s+as\s+[0-9a-f]{7,40}",
-    re.IGNORECASE,
-)
-
-
-def _resolve_merger(
-    issue_comments: list[Any],
-    review_comments: list[Any],
-    bots: list[dict[str, Any]],
-) -> tuple[str | None, str]:
-    """
-    Resolve the merger bot for a GitHub merged PR.
-
-    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).
-    QA-MM004-10: only a ~Bot signature on a ledger-style "merged as <sha>" note
-    attributes the merger. A bare merge-hint comment does not.
-    """
-    for comment in [*issue_comments, *review_comments]:
-        if not isinstance(comment, dict):
-            continue
-        body = comment.get("body") or ""
-        if not _LEDGER_STYLE_MERGED_RE.search(body):
-            continue
-        sig_actor, sig_method = attribute_from_body(body, bots)
-        if sig_actor and sig_method == "signature":
-            return sig_actor, "signature"
-    return None, "unknown"
 
 
 def sanitize_pr_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str | None:
