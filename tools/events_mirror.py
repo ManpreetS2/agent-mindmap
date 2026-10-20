@@ -51,8 +51,8 @@ from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do
 FLUSH_MIN_INTERVAL_S = 180
 RETENTION_DAYS = 7
 PROVENANCE_VALUES = frozenset({"observed", "agent-reported", "github-verified"})
-# Director ruling: summary hard cap is 240 chars (not 280).
-SUMMARY_MAX_CHARS = 240
+# SEC-MM020b-2: drop lines whose summary exceeds 280 chars.
+SUMMARY_MAX_CHARS = 280
 
 # Match schema/$defs/taskId (same contract as MM-020b event_emit / activity.schema.json).
 _TASK_ID_RE = re.compile(
@@ -108,7 +108,7 @@ def validate_network_event(obj: Any) -> dict[str, Any] | None:
     Field + secret contract (aligned with MM-020b / schema $defs/networkEvent):
       required: id, ts, sender, group, type, summary, provenance
       provenance ∈ {observed, agent-reported, github-verified}
-      summary: non-empty string, max SUMMARY_MAX_CHARS (240) — Director ruling
+      summary: non-empty string, max SUMMARY_MAX_CHARS (280) — SEC-MM020b-2
       group: any non-empty string (unknown groups pass through)
       recipients: optional list of non-empty strings
       task_id: optional null or schema taskId pattern
@@ -137,7 +137,7 @@ def validate_network_event(obj: Any) -> dict[str, Any] | None:
         return None
     if not isinstance(etype, str) or not etype.strip():
         return None
-    # Emitter refuses empty summaries; Director: hard cap SUMMARY_MAX_CHARS (240).
+    # Emitter refuses empty summaries; SEC-MM020b-2: max SUMMARY_MAX_CHARS (280).
     if not isinstance(summary, str) or not summary.strip():
         return None
     if len(summary) > SUMMARY_MAX_CHARS:
@@ -241,6 +241,20 @@ def prepare_events_payload(
             obj = json.loads(line)
         except json.JSONDecodeError:
             msg = f"events_mirror: drop invalid JSON at line {lineno}"
+            warnings_out.append(msg)
+            if warn:
+                print(msg, file=sys.stderr)
+            continue
+        # SEC-MM020b-2: call out over-long summaries before generic invalid drop.
+        if (
+            isinstance(obj, dict)
+            and isinstance(obj.get("summary"), str)
+            and len(obj["summary"]) > SUMMARY_MAX_CHARS
+        ):
+            msg = (
+                f"events_mirror: drop summary over {SUMMARY_MAX_CHARS} chars "
+                f"at line {lineno} (SEC-MM020b-2)"
+            )
             warnings_out.append(msg)
             if warn:
                 print(msg, file=sys.stderr)

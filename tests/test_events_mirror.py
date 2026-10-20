@@ -84,15 +84,24 @@ def test_validate_drops_bad_provenance_and_missing_fields() -> None:
     assert validate_network_event("not-a-dict") is None
 
 
-def test_summary_max_chars_is_240() -> None:
-    """Director ruling: summary hard cap is 240 (not 280)."""
-    assert SUMMARY_MAX_CHARS == 240
+def test_summary_over_280_dropped_with_warning() -> None:
+    """SEC-MM020b-2: summary over 280 chars is dropped (with a warning)."""
+    assert SUMMARY_MAX_CHARS == 280
     at_cap = validate_network_event(_ev("ok", summary="x" * SUMMARY_MAX_CHARS))
     assert at_cap is not None
     over = validate_network_event(_ev("nope", summary="x" * (SUMMARY_MAX_CHARS + 1)))
     assert over is None
-    # Explicitly not the rejected 280 figure.
-    assert validate_network_event(_ev("nope280", summary="y" * 280)) is None
+
+    raw = (
+        json.dumps(_ev("keep", summary="short"), sort_keys=True)
+        + "\n"
+        + json.dumps(_ev("long", summary="y" * 281), sort_keys=True)
+        + "\n"
+    )
+    text, events, warns = prepare_events_payload(raw, now=NOW, warn=False)
+    assert [e["id"] for e in events] == ["keep"]
+    assert any("summary over 280" in w and "SEC-MM020b-2" in w for w in warns)
+    assert "long" not in text
 
 
 def test_invalid_line_drop_with_warning() -> None:
