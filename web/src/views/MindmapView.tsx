@@ -45,9 +45,10 @@ import {
 } from "../utils/timelineKeyboard";
 import {
   isActivityEmpty,
-  isStaleGeneratedAt,
+  isActivityStale,
   partialGithubBanner,
   staleAgeLabel,
+  staleReferenceTime,
 } from "../utils/viewState";
 
 export interface MindmapViewProps {
@@ -123,9 +124,10 @@ export function MindmapView({
     () => partialGithubBanner(activity.meta),
     [activity.meta],
   );
+  const staleRef = useMemo(() => staleReferenceTime(activity), [activity]);
   const stale = useMemo(
-    () => isStaleGeneratedAt(activity.generated_at, nowMs),
-    [activity.generated_at, nowMs],
+    () => isActivityStale(activity, nowMs),
+    [activity, nowMs],
   );
   const empty = useMemo(() => isActivityEmpty(activity), [activity]);
 
@@ -256,7 +258,7 @@ export function MindmapView({
             Updated {formatSourceTime(activity.generated_at)}
             {stale && (
               <span className="timestamp-stale__hint">
-                (stale · {staleAgeLabel(activity.generated_at, nowMs)} — refresh)
+                (stale · {staleAgeLabel(staleRef, nowMs)} — refresh)
               </span>
             )}
           </span>

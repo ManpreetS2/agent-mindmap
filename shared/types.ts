@@ -105,8 +105,14 @@ export interface Edge {
 
 export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
 
+export type LedgerMetaStatus = "ok" | "error" | "skipped";
+
 export interface ActivityMeta {
   github: GitHubMetaStatus;
+  /** Present when ingest reports ledger read status (MM-010). */
+  ledger?: LedgerMetaStatus;
+  /** Latest dated ledger entry; preferred for the stale banner (MM-010). */
+  ledger_last_entry_at?: string | null;
 }
 
 export interface Activity {

@@ -43,7 +43,7 @@ using whatever account is already logged in on the machine (`gh auth status`).
 
 `build.py` requires an explicit ledger path (QA-MM004-3): `--ledger PATH` or `MINDMAP_LEDGER`.
 
-### Live refresh (Fencepost data)
+### Live refresh (local ledger path)
 
 ```bash
 export MINDMAP_LEDGER=/absolute/path/to/build/task-ledger.md
@@ -51,7 +51,18 @@ make refresh
 # → writes web/public/activity.json (gitignored)
 ```
 
-If GitHub/`gh` fails, ingest still writes a **ledger-only** snapshot with `meta.github: "error"`.
+### Live refresh (mirrored ledger on `data/ledger`)
+
+```bash
+python3 -m ingest --ledger-source gh --out web/public/activity.json
+```
+
+Reads allowlisted  
+`repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger`  
+via `gh api` (ETag / 304, base64 decode). No tokens.
+
+If GitHub/`gh` fails for PRs, ingest still writes a **ledger-only** snapshot with `meta.github: "error"`.  
+If the ledger mirror fetch fails, `meta.ledger` is `"error"` (and `ledger_last_entry_at` may be null).
 
 ### Offline demo (fixtures, no network)
 
@@ -110,6 +121,47 @@ Body signatures (`~Architect 🛠️`, `~QA / Verifier 🧪`, …) are configure
 
 ---
 
+## Ledger mirror contract (MM-010)
+
+The canonical task ledger lives off the Mac. Bots push **one overwritten** file
+`ledger.md` to branch **`data/ledger`** of this repo (**never `main`**, no history
+kept), only when a **state-change** line appears
+(`assigned` / `done` / `blocked` / `verdict` / `merge` / `handoff`), batched at
+most every **3 minutes**.
+
+### Flush helper (`tools/ledger_mirror.py`, stdlib only)
+
+```bash
+# Decide (does not update state):
+python3 tools/ledger_mirror.py \
+  --ledger /path/to/task-ledger.md \
+  --state /path/to/mirror-state.json \
+  --payload /tmp/ledger.md
+
+# → JSON: {"flush": bool, "sha256": "...", "reason": "...", "payload": "...?"}
+#
+# flush is true only if content hash changed AND a new state-change line was
+# added since the last flush AND ≥180s elapsed — or --force.
+# Identical sha256 never flushes twice (idempotent), even with --force.
+
+# After a successful push to data/ledger:
+python3 tools/ledger_mirror.py \
+  --mark-flushed <sha256> \
+  --state /path/to/mirror-state.json \
+  --ledger /path/to/task-ledger.md
+```
+
+Reasons: `unchanged` | `no_state_change` | `under_180s` | `state_change` | `force` | `marked`.
+
+### Ingest side
+
+- `--ledger PATH` / `MINDMAP_LEDGER` — local file (default)
+- `--ledger-source gh` — mirrored `ledger.md` @ `data/ledger` via `gh api`
+- `activity.json` `meta.ledger`: `ok` | `error` | `skipped`
+- `meta.ledger_last_entry_at` — latest dated ledger entry (UI stale banner)
+
+---
+
 ## Tests
 
 ```bash
@@ -120,7 +172,8 @@ cd web && npm test
 npm run typecheck && cd web && npm run typecheck
 ```
 
-MM-008 integration coverage: `tests/test_integration.py` (fixture ledger + mocked `gh` → schema-valid `activity.json`).
+MM-008 integration: `tests/test_integration.py`.  
+MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.
 
 ---
 
