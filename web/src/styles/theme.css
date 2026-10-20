@@ -1,0 +1,55 @@
+:root {
+  color-scheme: dark;
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --bg-app: #0f1117;
+  --bg-panel: #161a22;
+  --bg-card: #1c212b;
+  --bg-elevated: #242b36;
+  --border-subtle: #2e3644;
+  --border-focus: #6b9fff;
+
+  --text-primary: #e8ecf1;
+  --text-secondary: #a8b0bd;
+  --text-muted: #7a8494;
+
+  --accent: #6b9fff;
+
+  --status-idle-bg: #3a404c;
+  --status-idle-fg: #f0f2f5;
+  --status-progress-bg: #1e4d8c;
+  --status-progress-fg: #e8f2ff;
+  --status-review-bg: #7a5a12;
+  --status-review-fg: #fff8e6;
+  --status-blocked-bg: #8b1e2a;
+  --status-blocked-fg: #ffe8eb;
+  --status-done-bg: #1f6b3f;
+  --status-done-fg: #e8fff0;
+  --status-unknown-bg: #2a2f38;
+  --status-unknown-fg: #c5cad3;
+
+  --edge-handoff: #8b9cb8;
+  --edge-verdict: #c9a227;
+  --edge-pr: #6b9fff;
+  --edge-merge: #5ecf8a;
+
+  --banner-bg: #2a2418;
+  --banner-border: #5c4a1f;
+  --banner-text: #f5e6c8;
+
+  --radius-card: 8px;
+  --radius-pill: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --motion-fast: 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
