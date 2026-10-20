@@ -15,7 +15,7 @@ from ingest.events_fetch import (
     fetch_events_from_gh,
     parse_events_jsonl,
 )
-from ingest.github_poller import GhResponse
+from ingest.github_poller import ETagCache, GhResponse
 
 NOW = datetime(2026, 10, 20, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -171,3 +171,31 @@ def test_empty_file_ok(tmp_path: Path) -> None:
         runner=runner,
     )
     assert events == []
+
+
+def test_qa_mm020c3_fetch_cache_crash_mid_write_leaves_old(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """QA-MM020c-3: ETagCache put crash before replace keeps prior body."""
+    from tools import atomic_write as aw
+
+    cache = ETagCache(tmp_path / "cache")
+    cache.put("k1", '"e1"', "old-body")
+    etag, body = cache.get("k1")
+    assert etag == '"e1"' and body == "old-body"
+
+    def boom(src, dst):  # noqa: ANN001, ARG001
+        raise OSError("simulated cache crash")
+
+    monkeypatch.setattr(aw.os, "replace", boom)
+    try:
+        cache.put("k1", '"e2"', "new-body")
+        raise AssertionError("expected OSError")
+    except OSError as exc:
+        assert "simulated cache crash" in str(exc)
+
+    # Re-open from disk — index/body should still reflect successful prior put.
+    cache2 = ETagCache(tmp_path / "cache")
+    etag2, body2 = cache2.get("k1")
+    assert body2 == "old-body"
+    assert etag2 == '"e1"'

@@ -47,6 +47,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from tools.atomic_write import atomic_write_text  # noqa: E402  — QA-MM020c-3
 from tools.secret_scan import looks_like_secret  # noqa: E402  — shared scanner (SEC-MM020c-2)
 
 FLUSH_MIN_INTERVAL_S = 180
@@ -223,11 +224,9 @@ def load_state(path: Path) -> dict[str, Any]:
 
 
 def save_state(path: Path, state: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    """Persist mirror state atomically (temp + fsync + os.replace; QA-MM020c-3)."""
     payload = json.dumps(state, indent=2, sort_keys=True) + "\n"
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(payload, encoding="utf-8")
-    tmp.replace(path)
+    atomic_write_text(path, payload)
 
 
 def prepare_events_payload(
@@ -562,8 +561,7 @@ def main(argv: list[str] | None = None) -> int:
         payload_path = args.payload
         if payload_path is None:
             payload_path = events_path.with_name("events.jsonl.payload")
-        payload_path.parent.mkdir(parents=True, exist_ok=True)
-        payload_path.write_text(content, encoding="utf-8")
+        atomic_write_text(payload_path, content)
         out["payload"] = str(payload_path)
 
     print(json.dumps(out, sort_keys=True))

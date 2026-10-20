@@ -188,20 +188,23 @@ def test_qa_mm020b2_all_probes_hit_shared_scanner() -> None:
 
 
 def test_sec_mm020c1_sk_benign_summaries_not_dropped() -> None:
-    """SEC-MM020c-1: benign sk- substrings in summaries must not be dropped."""
+    """SEC-MM020c-1 / QA-MM020c-2: benign sk- substrings must not be dropped."""
     keepers = [
         _ev("t1", summary="use the task-runner for builds"),
         _ev("t2", summary="risk-based prioritization"),
-        _ev("t3", summary="desk-lamp lighting notes"),
+        _ev("t3", summary="ask-me later"),
+        _ev("t4", summary="desk-top layout"),
+        _ev("t5", summary="Mask-RCNN notes"),
     ]
     raw = "".join(json.dumps(e, sort_keys=True) + "\n" for e in keepers)
     text, events, warns, secrets_seen = prepare_events_payload(
         raw, now=NOW, warn=False
     )
     assert secrets_seen is False
-    assert [e["id"] for e in events] == ["t1", "t2", "t3"]
+    assert [e["id"] for e in events] == ["t1", "t2", "t3", "t4", "t5"]
     assert not any("secret-like" in w for w in warns)
     assert "task-runner" in text
+    assert "Mask-RCNN" in text
 
     # Real-looking sk- key is dropped + refuse path.
     bad = _ev(
@@ -215,6 +218,32 @@ def test_sec_mm020c1_sk_benign_summaries_not_dropped() -> None:
     assert secrets_seen2 is True
     assert events2 == []
     assert any("secret-like content" in w for w in warns2)
+
+
+def test_qa_mm020c3_crash_mid_write_leaves_old_file(tmp_path: Path, monkeypatch) -> None:
+    """QA-MM020c-3: crash before os.replace leaves the previous file intact."""
+    from tools import atomic_write as aw
+    from tools.events_mirror import save_state
+
+    target = tmp_path / "mirror-state.json"
+    old = {"last_flushed_sha256": "oldsha", "last_flushed_at": 1.0, "state_change_fingerprints": []}
+    save_state(target, old)
+    assert json.loads(target.read_text(encoding="utf-8"))["last_flushed_sha256"] == "oldsha"
+
+    def boom(src: str | Path, dst: str | Path) -> None:  # noqa: ARG001
+        raise OSError("simulated crash before replace")
+
+    monkeypatch.setattr(aw.os, "replace", boom)
+    new = {"last_flushed_sha256": "newsha", "last_flushed_at": 2.0, "state_change_fingerprints": ["x"]}
+    try:
+        save_state(target, new)
+        raise AssertionError("expected OSError from simulated crash")
+    except OSError as exc:
+        assert "simulated crash" in str(exc)
+
+    saved = json.loads(target.read_text(encoding="utf-8"))
+    assert saved["last_flushed_sha256"] == "oldsha"
+    assert saved["last_flushed_at"] == 1.0
 
 
 def test_qa_mm020b2_secret_lines_dropped_with_warning_and_refuse_flush(

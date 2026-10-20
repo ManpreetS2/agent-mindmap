@@ -199,21 +199,22 @@ class ETagCache:
             return etag, json.load(f)
 
     def put(self, key: str, etag: str | None, body: Any) -> None:
+        # QA-MM020c-3: atomic temp + fsync + os.replace (events / ledger fetch caches).
+        from tools.atomic_write import atomic_write_text
+
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.bodies_dir.mkdir(parents=True, exist_ok=True)
         safe = hashlib.sha1(key.encode("utf-8")).hexdigest()
         body_file = f"{safe}.json"
         path = self.bodies_dir / body_file
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(body, f, indent=2, sort_keys=True)
-            f.write("\n")
+        body_text = json.dumps(body, indent=2, sort_keys=True) + "\n"
+        atomic_write_text(path, body_text)
         self._index.setdefault("entries", {})[key] = {
             "etag": etag,
             "body_file": body_file,
         }
-        with self.index_path.open("w", encoding="utf-8") as f:
-            json.dump(self._index, f, indent=2, sort_keys=True)
-            f.write("\n")
+        index_text = json.dumps(self._index, indent=2, sort_keys=True) + "\n"
+        atomic_write_text(self.index_path, index_text)
 
 
 def _parse_gh_include(raw: str) -> GhResponse:
@@ -271,7 +272,10 @@ def default_gh_runner(args: list[str], *, timeout: float = 60.0) -> GhResponse:
 
 
 def _looks_like_secret(text: str) -> bool:
-    """Delegate to tools.secret_scan (SEC-MM020c-2 — no local denylist regex)."""
+    """
+    Thin wrapper around tools.secret_scan.looks_like_secret (QA-MM020c-2 /
+    SEC-MM020c-2). No local denylist regex — single owner is tools/secret_scan.py.
+    """
     from tools.secret_scan import looks_like_secret
 
     return looks_like_secret(text)

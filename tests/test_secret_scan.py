@@ -15,8 +15,15 @@ def test_public_api_and_kinds() -> None:
 
 
 def test_sec_mm020c1_sk_case_sensitive_and_benign_passes() -> None:
-    """SEC-MM020c-1: \\bsk-[A-Za-z0-9_-]{20,} case-sensitive; benign phrases pass."""
-    for benign in ("task-runner", "risk-based", "desk-lamp"):
+    """SEC-MM020c-1 / QA-MM020c-2: case-sensitive sk-; false-positive phrases pass."""
+    for benign in (
+        "task-runner",
+        "risk-based",
+        "ask-me",
+        "desk-top",
+        "desk-lamp",
+        "Mask-RCNN",
+    ):
         assert looks_like_secret(benign) is False, benign
         assert find_secrets(benign) == []
         assert looks_like_secret(f"please use the {benign} approach") is False
