@@ -1,0 +1,4 @@
+mindmap live on http://127.0.0.1:8787 (ledger=/tmp/qa-mm022/checkout/tests/fixtures/ledger-sample.md, events=gh:data/events)
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -

@@ -1,0 +1,5 @@
+=== set -euo pipefail ===
+scripts/install-launchagent.sh:3:set -euo pipefail
+scripts/start-mac.sh:3:set -euo pipefail
+=== unquoted expansions (heuristic) ===
+done

@@ -1,0 +1,3 @@
+error: port 8787 is already in use:
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+python  55584 ubuntu    6u  IPv4 115666      0t0  TCP 127.0.0.1:8787 (LISTEN)

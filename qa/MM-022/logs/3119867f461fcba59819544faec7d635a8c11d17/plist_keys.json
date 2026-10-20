@@ -1,0 +1,20 @@
+{
+  "Label": "com.manpreet.mindmap",
+  "ProgramArguments": [
+    "/bin/bash",
+    "/tmp/qa-mm022/checkout/scripts/start-mac.sh"
+  ],
+  "WorkingDirectory": "/tmp/qa-mm022/checkout",
+  "EnvironmentVariables": {
+    "MINDMAP_LEDGER": "/tmp/qa-mm022/checkout/tests/fixtures/ledger-sample.md",
+    "MINDMAP_EVENTS_SOURCE": "gh",
+    "PYTHONPATH": "/tmp/qa-mm022/checkout"
+  },
+  "RunAtLoad": true,
+  "KeepAlive": {
+    "SuccessfulExit": false
+  },
+  "StandardOutPath": "/tmp/qa-mm022/fake-logs/live.stdout.log",
+  "StandardErrorPath": "/tmp/qa-mm022/fake-logs/live.stderr.log",
+  "placeholders_remaining": []
+}

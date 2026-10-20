@@ -1,0 +1,8 @@
+rc=124
+mindmap live on http://127.0.0.1:8787 (ledger=/tmp/qa-mm022/checkout/tests/fixtures/ledger-sample.md, events=gh:data/events)
+no-healthz
+
+=== Prior run with incomplete .venv (python present, no jsonschema) ===
+healthz errors included: "build failed: ModuleNotFoundError"
+GET /activity.json → 404 while GET / → 200
+ensure_venv_python skipped pip install because .venv/bin/python was executable.

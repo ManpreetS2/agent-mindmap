@@ -1,0 +1,2 @@
+scripts/start-mac.sh: line 76: /tmp/qa-mm022/checkout/.venv/bin/pip: No such file or directory
+error: MINDMAP_LEDGER file not found: /tmp/does-not-exist.md

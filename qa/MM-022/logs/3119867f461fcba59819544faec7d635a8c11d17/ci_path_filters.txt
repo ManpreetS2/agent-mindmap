@@ -1,0 +1,3 @@
+python.yml paths include: scripts/** YES; ops/** NO; README.md NO
+web.yml paths: web/** fixtures/** shared/** — this PR touches none → web not triggered (expected)
+PR body claimed ops/** filter — NOT present in diff

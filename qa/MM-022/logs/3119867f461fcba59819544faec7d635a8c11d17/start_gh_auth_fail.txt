@@ -1,0 +1,1 @@
+error: gh is not authenticated. Run 'gh auth login' yourself (this script will not).

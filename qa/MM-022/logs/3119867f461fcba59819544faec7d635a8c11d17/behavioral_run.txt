@@ -1,0 +1,16 @@
+[PASS] install-launchagent idempotent (run twice) — rc=0/0
+[PASS] install-launchagent missing MINDMAP_LEDGER → exit 1
+[PASS] start-mac missing ledger → exit 1 honest error
+[PASS] start-mac gh auth failure → exit 1 (never runs gh auth login)
+[FAIL] start-mac must not contain gh auth login
+[PASS] no secret material printed/hardcoded in scripts/plist
+[PASS] no hardcoded user-specific paths (placeholders / $HOME / REPO_ROOT only)
+[PASS] start-mac busy port → exit 1 with lsof detail
+[PASS] Linux start: /healthz responds on 127.0.0.1:8787 — {"last_ledger_poll": "2026-10-20T21:02:46.475605+00:00", "last_gh_poll": "2026-10-20T21:02:46.477953+00:00", "last_events_poll": "2026-10-20T21:02:46.323736+00:00", "last_build": null, "ledger_last_en
+[PASS] bind 127.0.0.1:8787 only — tcp        0      0 127.0.0.1:8787          0.0.0.0:*               LISTEN      55584/python        
+[PASS] UI loads at http://127.0.0.1:8787/ — status=200 bytes=411
+[FAIL] /activity.json — status=404
+[PASS] second start while running → exit 1 port busy (honest)
+[PASS] stop/cleanup: SIGTERM ends server (port free)
+[INFO] check_port_free skips silently if lsof absent (Mac has lsof; Linux CI uses tests with lsof or product bind error)
+DONE

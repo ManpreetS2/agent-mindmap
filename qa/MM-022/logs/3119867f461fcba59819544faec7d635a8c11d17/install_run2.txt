@@ -1,0 +1,8 @@
+/tmp/qa-mm022/fake-home/Library/LaunchAgents/com.manpreet.mindmap.plist: OK
+Wrote /tmp/qa-mm022/fake-home/Library/LaunchAgents/com.manpreet.mindmap.plist
+
+To load (not run automatically by this script):
+  launchctl bootstrap gui/$(id -u) "/tmp/qa-mm022/fake-home/Library/LaunchAgents/com.manpreet.mindmap.plist"
+
+To unload:
+  launchctl bootout gui/$(id -u)/com.manpreet.mindmap

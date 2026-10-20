@@ -1,0 +1,3 @@
+plist sets MINDMAP_EVENTS_SOURCE=gh
+live.py --events-source default=gh; does NOT read MINDMAP_EVENTS_SOURCE env
+MINDMAP_EVENTS_SOURCE not referenced in live.py

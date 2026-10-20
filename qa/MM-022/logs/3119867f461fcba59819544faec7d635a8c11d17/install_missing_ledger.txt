@@ -1,0 +1,2 @@
+error: set MINDMAP_LEDGER to the absolute path of task-ledger.md before installing.
+  (Or customize the plist to use gh ledger mirror: unset MINDMAP_LEDGER and edit ProgramArguments.)
