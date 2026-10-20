@@ -183,6 +183,8 @@ export interface NetworkEvent {
   sender: string;
   /** Only when explicit; never invented. */
   recipients?: string[];
+  /** Explicit ids not listed in config/bots.json (still emitted, not invented). */
+  unknown_recipients?: string[];
   group: GroupId;
   type: string;
   task_id?: string | null;
