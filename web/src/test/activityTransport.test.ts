@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  SSE_REFETCH_MIN_MS,
   createPollTransport,
   createSseTransport,
 } from "../data/activityTransport";
@@ -26,11 +27,12 @@ function mockFetch(): typeof fetch {
   ) as unknown as typeof fetch;
 }
 
-/** Minimal EventSource stand-in for QA-MM020d-3 tests. */
+/** Minimal EventSource stand-in for SSE transport tests. */
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
   onmessage: ((ev: MessageEvent) => void) | null = null;
   onerror: ((ev: Event) => void) | null = null;
+  onopen: (() => void) | null = null;
   readyState = 0;
   url: string;
   closed = false;
@@ -43,6 +45,10 @@ class FakeEventSource {
   close() {
     this.closed = true;
     this.readyState = 2;
+  }
+
+  emitOpen() {
+    this.onopen?.();
   }
 
   emitMessage() {
@@ -150,6 +156,64 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     await vi.advanceTimersByTimeAsync(250);
     stop();
     expect(seen.length).toBeGreaterThanOrEqual(2);
+    vi.useRealTimers();
+  });
+});
+
+describe("SEC-MM020e-4 debounce", () => {
+  it("coalesces burst SSE messages to ~1 refetch per second", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const fetchImpl = mockFetch();
+    const transport = createSseTransport({
+      fetchImpl,
+      refetchMinMs: SSE_REFETCH_MIN_MS,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!(() => undefined);
+    const es = FakeEventSource.instances[0];
+    for (let i = 0; i < 120; i++) {
+      es.emitMessage();
+    }
+    await vi.advanceTimersByTimeAsync(500);
+    const callsAfterHalfSec = (fetchImpl as ReturnType<typeof vi.fn>).mock.calls
+      .length;
+    expect(callsAfterHalfSec).toBeLessThanOrEqual(2);
+    await vi.advanceTimersByTimeAsync(2000);
+    const totalCalls = (fetchImpl as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(totalCalls).toBeGreaterThanOrEqual(2);
+    expect(totalCalls).toBeLessThan(20);
+    stop();
+    vi.useRealTimers();
+  });
+});
+
+describe("QA-MM020e-3 SSE recovery", () => {
+  it("retries EventSource after poll fallback and resumes SSE", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const fetchImpl = mockFetch();
+    const transport = createSseTransport({
+      intervalMs: 100,
+      sseRetryInitialMs: 200,
+      fetchImpl,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!(() => undefined);
+
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(FakeEventSource.instances.length).toBeGreaterThanOrEqual(2);
+
+    const retry = FakeEventSource.instances.at(-1)!;
+    retry.emitOpen();
+    retry.emitMessage();
+    await vi.waitFor(() =>
+      expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0),
+    );
+
+    await vi.advanceTimersByTimeAsync(500);
+    stop();
     vi.useRealTimers();
   });
 });

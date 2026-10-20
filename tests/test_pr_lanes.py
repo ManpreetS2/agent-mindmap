@@ -68,7 +68,10 @@ def test_github_verified_provenance_on_network_events(tmp_path: Path) -> None:
     result = poll_github(cache_dir=tmp_path / "c", runner=MockGh())
     network, edges = build_pr_lane_events(result, load_bots())
     assert network
-    assert all(e.get("provenance") == "github-verified" for e in network)
+    assert all(
+        e.get("provenance") in {"github-verified", "agent-reported"} for e in network
+    )
+    assert any(e.get("provenance") == "github-verified" for e in network)
     assert all(isinstance(e.get("summary"), str) and e["summary"] for e in network)
     # Edges are activity Edge shape
     assert isinstance(edges, list)
@@ -191,10 +194,11 @@ def test_activity_event_to_network_unknown_sender() -> None:
         raw="unsigned open",
         attribution="unknown",
     )
+    evt["provenance"] = "agent-reported"
     ne = activity_event_to_network_event(evt, load_bots())
     assert ne is not None
     assert ne["sender"] == "UNKNOWN"
-    assert ne["provenance"] == "github-verified"
+    assert ne["provenance"] == "agent-reported"
 
 
 def test_legacy_1_0_0_fixture_still_validates() -> None:
@@ -211,7 +215,10 @@ def test_legacy_1_0_0_fixture_still_validates() -> None:
 def test_poller_events_have_github_verified_and_stable_ids(tmp_path: Path) -> None:
     result = poll_github(cache_dir=tmp_path / "c", runner=MockGh())
     assert result.events
-    assert all(e.get("provenance") == "github-verified" for e in result.events)
+    assert all(
+        e.get("provenance") in {"github-verified", "agent-reported"}
+        for e in result.events
+    )
     sample = next(
         e
         for e in result.events
@@ -343,6 +350,7 @@ def test_qa_mm020e_secret_raw_dropped_on_all_paths() -> None:
         "MM-020",
         {
             "sha": "cccccc1234567890abcdef1234567890abcdef12",
+            "author": {"login": "ManpreetS2"},
             "commit": {
                 "message": "feat: wire PR lanes ~DEV 2\n\nmore",
                 "author": {"date": "2026-10-20T12:05:00Z"},
@@ -377,3 +385,48 @@ def test_derive_edges_idempotent_with_duplicate_lane_events() -> None:
     ids1 = {e["id"] for e in e1}
     ids2 = {e["id"] for e in e2}
     assert ids1 == ids2
+
+
+def test_sec_mm020e2_pr_updated_commit_login_not_body_signature() -> None:
+    """SEC-MM020e-2: pr_updated actor from commit author.login only."""
+    poller = GitHubPoller(bots=load_bots(), runner=MockGh(fail=True))
+    html = "https://github.com/ManpreetS2/fencepost/pull/99"
+    sha = "abcdef1234567890abcdef1234567890abcdef12"
+    mapped = poller._push_events(
+        "ManpreetS2/fencepost",
+        99,
+        html,
+        None,
+        {
+            "sha": sha,
+            "author": {"login": "ManpreetS2"},
+            "commit": {
+                "message": "~DEV 2 ⚙️ should not attribute from body",
+                "author": {"date": "2026-10-20T12:00:00Z"},
+            },
+        },
+        set(),
+    )
+    assert len(mapped) == 1
+    assert mapped[0]["actor"] == "manpreet"
+    assert mapped[0]["provenance"] == "github-verified"
+
+    unmapped = poller._push_events(
+        "ManpreetS2/fencepost",
+        100,
+        html,
+        None,
+        {
+            "sha": "bbbbbb1234567890abcdef1234567890abcdef12",
+            "author": {"login": "unknown-external-bot"},
+            "commit": {
+                "message": "~QA / Verifier 🧪 still ignored",
+                "author": {"date": "2026-10-20T12:01:00Z"},
+            },
+        },
+        set(),
+    )
+    assert len(unmapped) == 1
+    assert unmapped[0]["actor"] is None
+    assert unmapped[0]["provenance"] == "agent-reported"
+    assert unmapped[0]["attribution"]["method"] == "github_login_unmapped"

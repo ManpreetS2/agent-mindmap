@@ -157,7 +157,13 @@
       "properties": {
         "method": {
           "type": "string",
-          "enum": ["signature", "ledger_owner", "unknown"]
+          "enum": [
+            "signature",
+            "ledger_owner",
+            "unknown",
+            "github_login",
+            "github_login_unmapped"
+          ]
         }
       }
     },

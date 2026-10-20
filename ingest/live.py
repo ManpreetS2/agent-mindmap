@@ -42,6 +42,7 @@ from .github_poller import (
     GitHubPollResult,
     build_pr_lane_events,
     poll_github,
+    sanitize_pr_summary,
 )
 from .events_fetch import EVENTS_REF, EVENTS_SOURCE_URL, EventsFetcher
 from .ledger_fetch import LEDGER_SOURCE_URL, fetch_ledger_from_gh
@@ -184,8 +185,11 @@ class SseConnectionLimiter:
             return True
 
     def release(self) -> None:
+        """QA-MM020e-4: idempotent — safe to call once per successful acquire."""
         with self._lock:
-            self._active = max(0, self._active - 1)
+            if self._active <= 0:
+                return
+            self._active -= 1
             self._cond.notify_all()
 
     def active_count(self) -> int:
@@ -260,16 +264,39 @@ class NetworkEventLog:
         self._lock = threading.Lock()
         self._events: list[dict[str, Any]] = []
         self._ids: set[str] = set()
+        self._dropped: int = 0
+
+    def dropped_count(self) -> int:
+        with self._lock:
+            return self._dropped
+
+    def _normalize_event(self, evt: dict[str, Any]) -> dict[str, Any] | None:
+        """QA-MM020e-5 / SEC-MM020e-3: secret_scan + 240 cap on every append."""
+        eid = evt.get("id")
+        if not isinstance(eid, str) or not eid.strip():
+            return None
+        if "summary" not in evt:
+            return None
+        safe_summary = sanitize_pr_summary(str(evt.get("summary") or ""))
+        if safe_summary is None:
+            return None
+        out = dict(evt)
+        out["summary"] = safe_summary
+        return out
 
     def append_many(self, events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         added: list[dict[str, Any]] = []
         with self._lock:
             for evt in events:
-                eid = evt.get("id")
-                if not isinstance(eid, str) or not eid or eid in self._ids:
+                normalized = self._normalize_event(evt)
+                if normalized is None:
+                    self._dropped += 1
+                    continue
+                eid = normalized["id"]
+                if eid in self._ids:
                     continue
                 self._ids.add(eid)
-                self._events.append(dict(evt))
+                self._events.append(normalized)
                 added.append(self._events[-1])
         return added
 
@@ -295,6 +322,7 @@ class HealthState:
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
     network_event_count: int = 0
+    dropped_network_events: int = 0
     errors: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
@@ -305,6 +333,7 @@ class HealthState:
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
             "network_event_count": self.network_event_count,
+            "dropped_network_events": self.dropped_network_events,
             "errors": list(self.errors),
         }
 
@@ -406,6 +435,7 @@ class LiveDaemon:
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
                 network_event_count=self._event_log.count(),
+                dropped_network_events=self._event_log.dropped_count(),
                 errors=list(self._health.errors),
             )
 
@@ -864,6 +894,9 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 self.wfile.write(b"SSE connection limit reached\n")
             return
 
+        acquired = True
+        conn = self.connection
+
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
@@ -876,10 +909,12 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 last_id = last_id.strip() or None
 
             sent: set[str] = set()
-            last_id = self._push_sse_events(last_id=last_id, sent=sent)
+            try:
+                last_id = self._push_sse_events(last_id=last_id, sent=sent)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                return
 
             heartbeat = max(0.05, float(self.sse_heartbeat_sec))
-            conn = self.connection
             while conn is not None:
                 if self._client_read_should_end_sse(conn):
                     break
@@ -905,7 +940,8 @@ class MindmapHandler(BaseHTTPRequestHandler):
                     conn.shutdown(socket.SHUT_RDWR)
                 except OSError:
                     pass
-            self.daemon.sse_limiter.release()
+            if acquired:
+                self.daemon.sse_limiter.release()
 
     def _handle_get_head(self) -> None:
         if self._reject_unless_localhost():

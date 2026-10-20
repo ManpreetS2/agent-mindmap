@@ -24,9 +24,17 @@ export interface SseTransportOptions {
   fetchImpl?: typeof fetch;
   /** Injected for tests; defaults to global EventSource when present. */
   EventSourceImpl?: typeof EventSource;
+  /** SEC-MM020e-4: minimum ms between SSE-triggered activity refetches. */
+  refetchMinMs?: number;
+  /** QA-MM020e-3: initial backoff before retrying EventSource while polling. */
+  sseRetryInitialMs?: number;
+  sseRetryMaxMs?: number;
 }
 
 const DEFAULT_POLL_MS = 10_000;
+export const SSE_REFETCH_MIN_MS = 1000;
+const DEFAULT_SSE_RETRY_INITIAL_MS = 1000;
+const DEFAULT_SSE_RETRY_MAX_MS = 30_000;
 
 export function createPollTransport(
   options: PollTransportOptions = {},
@@ -61,9 +69,36 @@ export function createPollTransport(
   };
 }
 
+function createDebouncedRefetch(
+  refetch: () => void,
+  minIntervalMs: number,
+): () => void {
+  let lastRun = 0;
+  let pending = false;
+
+  return () => {
+    const now = Date.now();
+    const elapsed = now - lastRun;
+    if (elapsed >= minIntervalMs) {
+      lastRun = now;
+      refetch();
+      return;
+    }
+    if (pending) return;
+    pending = true;
+    const wait = minIntervalMs - elapsed;
+    setTimeout(() => {
+      pending = false;
+      lastRun = Date.now();
+      refetch();
+    }, wait);
+  };
+}
+
 /**
  * QA-MM020d-3: prefer SSE on `/events` (browser handles Last-Event-ID).
- * On EventSource error / missing support, fall back to poll transport.
+ * QA-MM020e-3: while on poll fallback, retry EventSource with backoff.
+ * SEC-MM020e-4: debounce SSE-triggered refetches (~1/s).
  */
 export function createSseTransport(
   options: SseTransportOptions = {},
@@ -72,6 +107,10 @@ export function createSseTransport(
   const eventsUrl = options.eventsUrl ?? "/events";
   const intervalMs = options.intervalMs ?? DEFAULT_POLL_MS;
   const fetchImpl = options.fetchImpl ?? fetch;
+  const refetchMinMs = options.refetchMinMs ?? SSE_REFETCH_MIN_MS;
+  const sseRetryInitialMs =
+    options.sseRetryInitialMs ?? DEFAULT_SSE_RETRY_INITIAL_MS;
+  const sseRetryMaxMs = options.sseRetryMaxMs ?? DEFAULT_SSE_RETRY_MAX_MS;
   const EventSourceImpl =
     options.EventSourceImpl ??
     (typeof EventSource !== "undefined" ? EventSource : undefined);
@@ -94,6 +133,8 @@ export function createSseTransport(
       let source: EventSource | null = null;
       let pollStop: (() => void) | null = null;
       let fellBack = false;
+      let sseRetryTimer: ReturnType<typeof setTimeout> | undefined;
+      let sseBackoffMs = sseRetryInitialMs;
 
       const refetch = () => {
         void loadActivity(activityUrl, fetchImpl)
@@ -105,6 +146,15 @@ export function createSseTransport(
           });
       };
 
+      const debouncedRefetch = createDebouncedRefetch(refetch, refetchMinMs);
+
+      const clearSseRetry = () => {
+        if (sseRetryTimer) {
+          clearTimeout(sseRetryTimer);
+          sseRetryTimer = undefined;
+        }
+      };
+
       const startPollFallback = () => {
         if (cancelled || fellBack) return;
         fellBack = true;
@@ -113,28 +163,76 @@ export function createSseTransport(
           source = null;
         }
         pollStop = poll.subscribe!(onData);
+        scheduleSseRetry();
+      };
+
+      const scheduleSseRetry = () => {
+        if (cancelled || !fellBack) return;
+        clearSseRetry();
+        const delay = sseBackoffMs;
+        sseRetryTimer = setTimeout(() => {
+          if (cancelled || !fellBack) return;
+          tryReconnectSse();
+          sseBackoffMs = Math.min(sseBackoffMs * 2, sseRetryMaxMs);
+        }, delay);
+      };
+
+      const wireSource = (es: EventSource) => {
+        es.onmessage = () => {
+          if (cancelled) return;
+          debouncedRefetch();
+        };
+        es.onerror = () => {
+          if (cancelled) return;
+          es.close();
+          if (source === es) source = null;
+          if (!fellBack) {
+            startPollFallback();
+          } else {
+            scheduleSseRetry();
+          }
+        };
+        if ("onopen" in es) {
+          (es as EventSource & { onopen: (() => void) | null }).onopen = () => {
+            if (cancelled || !fellBack) return;
+            pollStop?.();
+            pollStop = null;
+            clearSseRetry();
+            fellBack = false;
+            sseBackoffMs = sseRetryInitialMs;
+            source = es;
+          };
+        }
+      };
+
+      const tryReconnectSse = () => {
+        if (cancelled || !fellBack) return;
+        try {
+          const next = new EventSourceImpl(eventsUrl);
+          wireSource(next);
+          if (!fellBack) {
+            source = next;
+          }
+        } catch {
+          scheduleSseRetry();
+        }
       };
 
       try {
         source = new EventSourceImpl(eventsUrl);
+        wireSource(source);
       } catch {
         startPollFallback();
         return () => {
           cancelled = true;
+          clearSseRetry();
           pollStop?.();
         };
       }
 
-      source.onmessage = () => {
-        if (cancelled || fellBack) return;
-        refetch();
-      };
-      source.onerror = () => {
-        startPollFallback();
-      };
-
       return () => {
         cancelled = true;
+        clearSseRetry();
         if (source) {
           source.close();
           source = null;

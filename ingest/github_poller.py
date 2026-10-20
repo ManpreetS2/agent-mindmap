@@ -29,6 +29,7 @@ from .attribute import (
     extract_task_id,
     extract_verdict,
     load_bots,
+    map_github_login,
 )
 from .edges import derive_edges
 
@@ -49,6 +50,7 @@ LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
 SUMMARY_MAX_CHARS = 240
 PR_LANE_TYPES = frozenset({"pr_opened", "pr_updated", "verdict", "note", "merged"})
 GITHUB_PROVENANCE = "github-verified"
+AGENT_REPORTED_PROVENANCE = "agent-reported"
 UNKNOWN_SENDER = "UNKNOWN"
 
 
@@ -62,6 +64,41 @@ def _repo_root() -> Path:
 
 def event_id(source: str, locator: str) -> str:
     return hashlib.sha1(f"{source}{locator}".encode("utf-8")).hexdigest()
+
+
+def _github_user_login(obj: dict[str, Any]) -> str | None:
+    user = obj.get("user")
+    if isinstance(user, dict):
+        login = user.get("login")
+        if isinstance(login, str) and login.strip():
+            return login.strip()
+    return None
+
+
+def _commit_author_login(commit: dict[str, Any]) -> str | None:
+    author = commit.get("author")
+    if isinstance(author, dict):
+        login = author.get("login")
+        if isinstance(login, str) and login.strip():
+            return login.strip()
+    return None
+
+
+def _actor_from_github_login(
+    login: str | None,
+    bots: list[dict[str, Any]],
+) -> tuple[str | None, str, str]:
+    """
+    SEC-MM020e-2: actor from verified GitHub login only (never body text).
+
+    Returns (bot_id | None, provenance, attribution method).
+    """
+    if not login:
+        return None, AGENT_REPORTED_PROVENANCE, "unknown"
+    bot_id = map_github_login(login, bots)
+    if bot_id:
+        return bot_id, GITHUB_PROVENANCE, "github_login"
+    return None, AGENT_REPORTED_PROVENANCE, "github_login_unmapped"
 
 
 def repo_id_from_item(item: dict[str, Any]) -> int | None:
@@ -552,22 +589,30 @@ class GitHubPoller:
         task_id = extract_task_id(head_ref, title, body)
         created = pr.get("created_at") or pr.get("updated_at")
 
-        actor, method = attribute_from_body(body, self.bots)
+        open_actor, open_prov, open_method = _actor_from_github_login(
+            _github_user_login(pr),
+            self.bots,
+        )
         _append_unique(
             events,
             seen,
             _event(
                 locator=f"{repo}#pr{number}:opened",
                 etype="pr_opened",
-                actor=actor,
+                actor=open_actor,
                 task_id=task_id,
                 pr=number,
                 repo=repo,
                 source_url=html,
                 source_time=created,
-                attribution=method,
+                attribution=open_method,
+                provenance=open_prov,
                 raw=f"Opened pull request #{number}: {title}",
             ),
+        )
+
+        commits = self._get_json_list(
+            f"repos/{repo}/pulls/{number}/commits", repo=repo
         )
 
         reviews = self._get_json_list(
@@ -598,10 +643,18 @@ class GitHubPoller:
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
             sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a
-            # ~Bot signature on a ledger-style merged note (QA-MM004-10).
-            merger_actor, merger_method = _resolve_merger(
-                issue_comments, review_comments, self.bots
+            merge_login: str | None = None
+            if sha_val:
+                for commit in commits:
+                    if not isinstance(commit, dict):
+                        continue
+                    csha = (commit.get("sha") or "")[:40].lower()
+                    if csha == sha_val:
+                        merge_login = _commit_author_login(commit)
+                        break
+            merger_actor, merge_prov, merger_method = _actor_from_github_login(
+                merge_login,
+                self.bots,
             )
             _append_unique(
                 events,
@@ -617,6 +670,7 @@ class GitHubPoller:
                     source_url=html,
                     source_time=pr.get("merged_at"),
                     attribution=merger_method,
+                    provenance=merge_prov,
                     raw=(
                         f"squash-merged as {sha_val}"
                         if sha_val
@@ -625,9 +679,6 @@ class GitHubPoller:
                 ),
             )
 
-        commits = self._get_json_list(
-            f"repos/{repo}/pulls/{number}/commits", repo=repo
-        )
         for commit in commits:
             if isinstance(commit, dict):
                 events.extend(
@@ -660,7 +711,10 @@ class GitHubPoller:
         commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
         msg = str((commit_obj or {}).get("message") or "")
         subject = msg.split("\n", 1)[0].strip() or f"Push on PR #{number} ({sha[:7]})"
-        actor, method = attribute_from_body(msg, self.bots)
+        actor, prov, method = _actor_from_github_login(
+            _commit_author_login(commit),
+            self.bots,
+        )
         ts = ""
         author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
         if isinstance(author, dict):
@@ -680,6 +734,7 @@ class GitHubPoller:
                 source_url=html,
                 source_time=ts or None,
                 attribution=method,
+                provenance=prov,
                 raw=subject,
             ),
         )
@@ -695,7 +750,10 @@ class GitHubPoller:
         seen: set[str],
     ) -> list[dict[str, Any]]:
         body = rev.get("body") or ""
-        actor, method = attribute_from_body(body, self.bots)
+        actor, prov, method = _actor_from_github_login(
+            _github_user_login(rev),
+            self.bots,
+        )
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = rev.get("html_url") or html
@@ -715,6 +773,7 @@ class GitHubPoller:
                 source_url=url,
                 source_time=ts,
                 attribution=method,
+                provenance=prov,
                 raw=body or f"Review on PR #{number}",
                 **extra,
             ),
@@ -732,7 +791,10 @@ class GitHubPoller:
         kind: str,
     ) -> list[dict[str, Any]]:
         body = comment.get("body") or ""
-        actor, method = attribute_from_body(body, self.bots)
+        actor, prov, method = _actor_from_github_login(
+            _github_user_login(comment),
+            self.bots,
+        )
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = comment.get("html_url") or f"https://github.com/{repo}/pull/{number}"
@@ -752,6 +814,7 @@ class GitHubPoller:
                 source_url=url,
                 source_time=ts,
                 attribution=method,
+                provenance=prov,
                 raw=body or f"Comment on PR #{number}",
                 **extra,
             ),
@@ -819,6 +882,7 @@ def _event(
     source_time: str | None,
     attribution: str,
     raw: str,
+    provenance: str = GITHUB_PROVENANCE,
     sha: str | None = None,
     verdict: str | None = None,
     target: str | None = None,
@@ -845,8 +909,7 @@ def _event(
         "source_url": source_url,
         "source_time": source_time or "1970-01-01T00:00:00Z",
         "raw": safe_raw,
-        # MM-020e / schema 1.1.0: GitHub-derived facts are github-verified.
-        "provenance": GITHUB_PROVENANCE,
+        "provenance": provenance,
     }
     if pr is not None:
         evt["pr"] = pr
@@ -906,6 +969,9 @@ def activity_event_to_network_event(
     actor = evt.get("actor")
     sender = str(actor) if isinstance(actor, str) and actor.strip() else UNKNOWN_SENDER
     group = _bot_home_group(sender, roster) if sender != UNKNOWN_SENDER else "build"
+    prov = evt.get("provenance")
+    if prov not in {GITHUB_PROVENANCE, AGENT_REPORTED_PROVENANCE, "observed"}:
+        prov = AGENT_REPORTED_PROVENANCE
     ne: dict[str, Any] = {
         "id": str(evt["id"]),
         "ts": str(evt.get("source_time") or "1970-01-01T00:00:00Z"),
@@ -913,7 +979,7 @@ def activity_event_to_network_event(
         "group": group,
         "type": str(evt.get("type") or "note"),
         "summary": summary,
-        "provenance": GITHUB_PROVENANCE,
+        "provenance": prov,
     }
     if evt.get("task_id") is not None:
         ne["task_id"] = evt.get("task_id")
@@ -965,9 +1031,7 @@ def build_pr_lane_events(
     for evt in raw_events:
         if not _is_pr_lane_event(evt):
             continue
-        # Ensure github-verified even if caller passed legacy events.
         stamped = dict(evt)
-        stamped["provenance"] = GITHUB_PROVENANCE
         eid = str(stamped.get("id") or "")
         if not eid or eid in seen_ids:
             continue

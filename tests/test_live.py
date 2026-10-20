@@ -431,7 +431,10 @@ def test_pr_lane_events_ingested_into_sse_log(live_env: dict) -> None:
     assert count > 0
     events = daemon.network_events_after(None)
     assert len(events) == count
-    assert all(e.get("provenance") == "github-verified" for e in events)
+    assert all(
+        e.get("provenance") in {"github-verified", "agent-reported"} for e in events
+    )
+    assert any(e.get("provenance") == "github-verified" for e in events)
     assert all(isinstance(e.get("id"), str) and e["id"] for e in events)
     # Second poll dedupes by id — count must not grow.
     assert daemon.poll_github_once() is False
@@ -651,3 +654,115 @@ def test_sse_replay_last_event_id_and_dedupe(
     assert len(replay) == 1
     assert replay[0]["id"] == "sse-evt-2"
     assert daemon.health().network_event_count == prior_count + 2
+
+
+def test_sec_mm020e3_healthz_reports_dropped_network_events(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    daemon, host, port = live_http
+    before = daemon.health().dropped_network_events
+    daemon.ingest_network_events([_sample_network_event("healthz-ok")])
+    sk = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF"
+    daemon.ingest_network_events(
+        [
+            {
+                "id": "healthz-secret",
+                "ts": "2026-10-20T12:00:00+00:00",
+                "sender": "dev-1",
+                "group": "build",
+                "type": "message",
+                "summary": f"leak {sk}",
+                "provenance": "agent-reported",
+            }
+        ]
+    )
+    health = daemon.health()
+    assert health.dropped_network_events >= before + 1
+    headers = {"Host": f"{host}:{port}"}
+    status, _, body = _http_get(f"http://{host}:{port}/healthz", headers)
+    assert status == HTTPStatus.OK
+    payload = json.loads(body.decode())
+    assert payload["dropped_network_events"] >= before + 1
+    assert sk not in body.decode()
+
+
+def test_qa_mm020e5_network_event_log_enforces_cap_and_secret(
+    live_env: dict,
+) -> None:
+    from ingest.github_poller import SUMMARY_MAX_CHARS
+
+    daemon = _daemon(live_env, events_source="off")
+    dropped_before = daemon.health().dropped_network_events
+    oversize = {
+        "id": "oversize-summary",
+        "ts": "2026-10-20T12:00:00+00:00",
+        "sender": "dev-1",
+        "group": "build",
+        "type": "message",
+        "summary": "x" * 500,
+        "provenance": "agent-reported",
+    }
+    added_big = daemon.ingest_network_events([oversize])
+    assert len(added_big) == 1
+    assert len(added_big[0]["summary"]) == SUMMARY_MAX_CHARS
+    added = daemon.ingest_network_events(
+        [
+            {
+                "id": "capped-summary",
+                "ts": "2026-10-20T12:00:00+00:00",
+                "sender": "dev-1",
+                "group": "build",
+                "type": "message",
+                "summary": "y" * (SUMMARY_MAX_CHARS + 50),
+                "provenance": "agent-reported",
+            }
+        ]
+    )
+    assert len(added) == 1
+    assert len(added[0]["summary"]) == SUMMARY_MAX_CHARS
+    sk = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF"
+    assert (
+        daemon.ingest_network_events(
+            [
+                {
+                    "id": "secret-summary",
+                    "ts": "2026-10-20T12:00:00+00:00",
+                    "sender": "dev-1",
+                    "group": "build",
+                    "type": "message",
+                    "summary": sk,
+                    "provenance": "agent-reported",
+                }
+            ]
+        )
+        == []
+    )
+    assert daemon.health().dropped_network_events >= dropped_before + 1
+
+
+def test_qa_mm020e4_sse_slots_released_after_mid_push_abort(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    daemon, host, port = live_http
+    for i in range(30):
+        daemon.ingest_network_events([_sample_network_event(f"abort-seed-{i}")])
+    headers = {"Host": f"{host}:{port}"}
+    for _ in range(15):
+        conn = http.client.HTTPConnection(host, port, timeout=3)
+        conn.request("GET", "/events", headers=headers)
+        resp = conn.getresponse()
+        try:
+            resp.read(32)
+        except (ConnectionError, http.client.HTTPException, OSError):
+            pass
+        resp.close()
+        if conn.sock is not None:
+            try:
+                conn.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        conn.close()
+    deadline = time.monotonic() + 5.0
+    while daemon.sse_limiter.active_count() > 0 and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert daemon.sse_limiter.active_count() == 0

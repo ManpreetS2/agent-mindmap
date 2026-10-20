@@ -15,6 +15,7 @@ import { tasksOwnedByLabel } from "../utils/nodeFacts";
 import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { FactSourceLink } from "./FactSourceLink";
 import { StatusPill } from "./StatusPill";
+import { plainTextForDisplay } from "../utils/plainText";
 import { UnsourcedTag } from "./UnsourcedTag";
 
 interface DetailPanelProps {
@@ -156,7 +157,9 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
               attribution:{" "}
               {attributionLabel(lastActivity.event.attribution.method)}
             </div>
-            <p className="detail-raw">{lastActivity.event.raw}</p>
+            <p className="detail-raw">
+              {plainTextForDisplay(lastActivity.event.raw)}
+            </p>
           </>
         ) : lastActivity.mode === "timestamp" ? (
           <>

@@ -55,7 +55,12 @@ export type Verdict =
   | "BLOCKED"
   | "INCONCLUSIVE";
 
-export type AttributionMethod = "signature" | "ledger_owner" | "unknown";
+export type AttributionMethod =
+  | "signature"
+  | "ledger_owner"
+  | "unknown"
+  | "github_login"
+  | "github_login_unmapped";
 
 /** Provenance of a live / network fact (MM-020a). */
 export type Provenance = "observed" | "agent-reported" | "github-verified";
