@@ -432,6 +432,64 @@ def test_next_link_rejects_foreign_repo() -> None:
         )
 
 
+def test_next_link_rejects_dotdot_and_percent() -> None:
+    with pytest.raises(PaginationLinkError, match="unsafe"):
+        next_link_path(
+            '<https://api.github.com/repos/ManpreetS2/fencepost/../evil>; rel="next"'
+        )
+    with pytest.raises(PaginationLinkError, match="unsafe"):
+        next_link_path(
+            '<https://api.github.com/repos/ManpreetS2/fencepost/pulls?page=2%2F3>; '
+            'rel="next"'
+        )
+
+
+def test_next_link_rejects_mismatched_resource() -> None:
+    link = (
+        f'<https://api.github.com/repositories/{FENCEPOST_REPO_ID}/pulls/6/reviews?page=2>; '
+        'rel="next"'
+    )
+    with pytest.raises(PaginationLinkError, match="resource"):
+        next_link_path(
+            link,
+            allowed_repo_ids=frozenset({FENCEPOST_REPO_ID}),
+            expected_suffix="pulls/5/reviews",
+        )
+
+
+def test_failed_repo_id_lookup_sets_error(cache_dir: Path) -> None:
+    """Failed GET repos/{owner}/{repo} → meta.github=error; no head.repo fallback."""
+    mapping = {
+        # Missing repos/ManpreetS2/fencepost metadata on purpose.
+        "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100": [
+            {
+                "number": 5,
+                "title": "feat/RP-005",
+                "body": "~DEV 1 ⚙️",
+                "html_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+                "created_at": "2026-10-19T21:35:00-07:00",
+                "merged_at": None,
+                "merge_commit_sha": None,
+                # head.repo must NOT be used as a fallback
+                "head": {
+                    "ref": "feat/RP-005",
+                    "sha": "aaa",
+                    "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"},
+                },
+                "user": {"login": "ManpreetS2"},
+            }
+        ],
+    }
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=MockGh(mapping=mapping),
+        repos=("ManpreetS2/fencepost",),
+    )
+    assert result.meta_github == "error"
+    assert any("failed to resolve numeric id" in e for e in result.errors)
+    assert result.events == []
+
+
 def _single_pr_mapping() -> dict[str, Any]:
     return {
         "repos/ManpreetS2/fencepost": {

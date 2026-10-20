@@ -50,16 +50,32 @@ def event_id(source: str, locator: str) -> str:
 
 
 def repo_id_from_item(item: dict[str, Any]) -> int | None:
-    """Best-effort numeric repository id from a PR/issue-like JSON object."""
-    for key in ("repository", "base", "head"):
-        node = item.get(key)
-        if isinstance(node, dict):
-            repo = node.get("repo") if key in {"base", "head"} else node
-            if isinstance(repo, dict) and isinstance(repo.get("id"), int):
-                return int(repo["id"])
-            if key == "repository" and isinstance(node.get("id"), int):
-                return int(node["id"])
+    """
+    Numeric repository id from a PR/issue-like JSON object.
+
+    Uses `repository.id` or `base.repo.id` only — never `head.repo`
+    (fork/head ids must not be trusted for Link allowlisting).
+    """
+    repo_node = item.get("repository")
+    if isinstance(repo_node, dict) and isinstance(repo_node.get("id"), int):
+        return int(repo_node["id"])
+    base = item.get("base")
+    if isinstance(base, dict):
+        repo = base.get("repo")
+        if isinstance(repo, dict) and isinstance(repo.get("id"), int):
+            return int(repo["id"])
     return None
+
+
+def resource_suffix(api_path: str) -> str:
+    """Path after repos/<owner>/<repo>/ or repositories/<id>/ (no query)."""
+    path = api_path.split("?", 1)[0].lstrip("/")
+    parts = path.split("/")
+    if parts and parts[0] == "repos" and len(parts) >= 3:
+        return "/".join(parts[3:])
+    if parts and parts[0] == "repositories" and len(parts) >= 2:
+        return "/".join(parts[2:])
+    return path
 
 
 def next_link_path(
@@ -67,6 +83,7 @@ def next_link_path(
     *,
     allowed_repos: frozenset[str] = ALLOWED_REPOS,
     allowed_repo_ids: frozenset[int] | set[int] | None = None,
+    expected_suffix: str | None = None,
 ) -> str | None:
     """
     Extract the next page path from a GitHub Link header.
@@ -74,7 +91,9 @@ def next_link_path(
     SEC-MM003-1 / QA-MM003-9: netloc must be `api.github.com`, and the path must
     start with either `repos/<allowlisted owner/repo>/` or
     `repositories/<allowlisted numeric id>/`.
-    Raises PaginationLinkError on foreign host/repo (caller stops + meta=error).
+    Rejects URLs containing '..' or '%' and paths whose resource suffix does
+    not match the request being paginated.
+    Raises PaginationLinkError on foreign/unsafe links (caller stops + meta=error).
     """
     if not link_header:
         return None
@@ -82,10 +101,22 @@ def next_link_path(
     if not m:
         return None
 
-    parsed = urlparse(m.group(1))
+    raw_url = m.group(1)
+    if ".." in raw_url or "%" in raw_url:
+        raise PaginationLinkError(
+            f"refusing pagination link with unsafe characters: {raw_url!r}"
+        )
+
+    parsed = urlparse(raw_url)
     if parsed.netloc != "api.github.com":
         raise PaginationLinkError(
             f"refusing pagination link host {parsed.netloc!r} (want api.github.com)"
+        )
+    if ".." in parsed.path or "%" in parsed.path or (
+        parsed.query and (".." in parsed.query or "%" in parsed.query)
+    ):
+        raise PaginationLinkError(
+            f"refusing pagination link with unsafe characters: {raw_url!r}"
         )
 
     path = parsed.path.lstrip("/")
@@ -113,6 +144,13 @@ def next_link_path(
             raise PaginationLinkError(f"refusing pagination link path {path!r}")
     else:
         raise PaginationLinkError(f"refusing pagination link path {path!r}")
+
+    if expected_suffix is not None:
+        got = resource_suffix(path)
+        if got != expected_suffix:
+            raise PaginationLinkError(
+                f"refusing pagination link resource {got!r} (want {expected_suffix!r})"
+            )
 
     if parsed.query:
         return f"{path}?{parsed.query}"
@@ -423,6 +461,7 @@ class GitHubPoller:
                 path_next = next_link_path(
                     resp.headers.get("link"),
                     allowed_repo_ids=self._allowed_ids_for(repo),
+                    expected_suffix=resource_suffix(api_path),
                 )
             except PaginationLinkError as exc:
                 self._errors.append(str(exc))
@@ -462,7 +501,9 @@ class GitHubPoller:
 
     def _poll_repo(self, repo: str, seen: set[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        self._resolve_repo_id(repo)
+        if self._resolve_repo_id(repo) is None:
+            self._errors.append(f"failed to resolve numeric id for repo {repo}")
+            return out
         pulls = self._get_json_list(
             f"repos/{repo}/pulls?state=all",
             repo=repo,
@@ -472,8 +513,6 @@ class GitHubPoller:
         for pr in pulls:
             if not isinstance(pr, dict):
                 continue
-            if repo not in self._repo_ids:
-                self._remember_repo_id(repo, repo_id_from_item(pr))
             out.extend(self._events_for_pr(repo, pr, seen))
             if self._rate_limited:
                 break
