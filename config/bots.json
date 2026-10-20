@@ -109,9 +109,9 @@
       "id": "bug-fixer",
       "display_name": "Bug fixer",
       "aliases": ["Bug fixer", "Bug Fixer", "~Bug fixer"],
-      "group": "radar",
-      "layout": { "x": 560, "y": 384 },
-      "note": "Identity retained; not a Research member. Add id to config/groups.json radar.members to include by config alone."
+      "group": "build",
+      "layout": { "x": 720, "y": 256 },
+      "note": "Standalone identity; not in Research/Radar members (QA-MM020g-5). Home layout group is Build, not a Radar frame."
     }
   ]
 }

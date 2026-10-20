@@ -168,6 +168,17 @@
   text-decoration: underline;
 }
 
+.timeline-repo-tag {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding: 0 2px;
+  max-width: 116px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lifecycle-banner {
   padding: var(--space-2) var(--space-4);
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));

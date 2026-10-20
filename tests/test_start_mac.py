@@ -292,7 +292,12 @@ def test_broken_venv_triggers_reinstall(tmp_path: Path) -> None:
             shutil.rmtree(backup)
         shutil.move(venv, backup)
     try:
-        subprocess.run([sys.executable, "-m", "venv", str(venv)], cwd=ROOT, check=True)
+        # Intentionally incomplete venv (no project deps) → start-mac recreates.
+        subprocess.run(
+            [sys.executable, "-m", "venv", "--without-pip", str(venv)],
+            cwd=ROOT,
+            check=True,
+        )
         port = 38786
         env = {
             "PATH": f"{fake_gh}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -406,6 +411,34 @@ def test_install_launchagent_renders_plist_macos(tmp_path: Path, monkeypatch: py
     assert "launchctl bootstrap" in proc.stdout
 
 
+def _create_venv(path: Path) -> None:
+    """Create a venv; tolerate hosts without ensurepip."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "venv", str(path)],
+        cwd=ROOT,
+        capture_output=True,
+    )
+    if proc.returncode == 0:
+        return
+    if path.exists():
+        shutil.rmtree(path)
+    subprocess.run(
+        [sys.executable, "-m", "venv", "--without-pip", str(path)],
+        cwd=ROOT,
+        check=True,
+    )
+    get_pip = subprocess.run(
+        ["curl", "-fsSL", "https://bootstrap.pypa.io/get-pip.py"],
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        [str(path / "bin" / "python")],
+        input=get_pip.stdout,
+        check=True,
+    )
+
+
 def _ensure_project_venv() -> Path:
     vpy = ROOT / ".venv" / "bin" / "python"
     if not vpy.is_file() or subprocess.run(
@@ -414,7 +447,7 @@ def _ensure_project_venv() -> Path:
     ).returncode != 0:
         if (ROOT / ".venv").exists():
             shutil.rmtree(ROOT / ".venv")
-        subprocess.run([sys.executable, "-m", "venv", str(ROOT / ".venv")], cwd=ROOT, check=True)
+        _create_venv(ROOT / ".venv")
         subprocess.run(
             [str(vpy), "-m", "pip", "install", "-q", "--require-hashes", "-r", "requirements-dev.txt"],
             cwd=ROOT,

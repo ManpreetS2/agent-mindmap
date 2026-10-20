@@ -50,7 +50,8 @@ SUMMARY_MAX_CHARS = 240
 PR_LANE_TYPES = frozenset({"pr_opened", "pr_updated", "verdict", "note", "merged"})
 GITHUB_PROVENANCE = "github-verified"
 AGENT_REPORTED_PROVENANCE = "agent-reported"
-UNKNOWN_SENDER = "UNKNOWN"
+# QA-MM020g-8: missing attribution → unattributed (never invent a bot id).
+UNKNOWN_SENDER = "unattributed"
 
 
 class PaginationLinkError(ValueError):
@@ -930,8 +931,8 @@ def activity_event_to_network_event(
     """
     Map one activity Event (from the poller) → NetworkEvent, or None if refused.
 
-    Unknown actors become sender UNKNOWN (no false edge — derive_edges skips
-    null actors on the activity side).
+    Unknown actors become sender ``unattributed`` (no false edge —
+    derive_edges skips null actors on the activity side).
     """
     summary = sanitize_pr_summary(str(evt.get("raw") or ""))
     if summary is None:
@@ -959,6 +960,9 @@ def activity_event_to_network_event(
     rec = evt.get("recipients")
     if isinstance(rec, list) and rec:
         ne["recipients"] = [str(x) for x in rec if isinstance(x, str) and x.strip()]
+    repo = evt.get("repo")
+    if isinstance(repo, str) and "/" in repo:
+        ne["repo"] = repo
     return ne
 
 

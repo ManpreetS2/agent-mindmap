@@ -24,6 +24,7 @@ SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
 BOTS_PATH = ROOT / "config" / "bots.json"
 GROUPS_PATH = ROOT / "config" / "groups.json"
 SAMPLE = ROOT / "fixtures" / "sample-activity.json"
+SAMPLE_LEGACY = ROOT / "fixtures" / "sample-activity-1.0.0.json"
 WEB_FIXTURES = ROOT / "web" / "src" / "fixtures"
 PUBLIC_ACTIVITY = ROOT / "web" / "public" / "activity.json"
 
@@ -54,6 +55,9 @@ def schema() -> dict:
 def test_groups_json_membership() -> None:
     cfg = load_groups(GROUPS_PATH)
     by_id = {g["id"]: set(g["members"]) for g in cfg["groups"]}
+    # QA-MM020g-2: exactly 3 team groups; Owner is standalone (not a frame).
+    assert set(by_id) == {"build", "qr", "radar"}
+    assert "owner" not in by_id
     assert by_id["build"] == BUILD_MEMBERS
     assert by_id["qr"] == QR_MEMBERS
     assert by_id["radar"] == RESEARCH_MEMBERS
@@ -240,7 +244,7 @@ def test_message_event_validates_with_provenance(schema: dict) -> None:
 
 
 def _activity_fixture_paths() -> list[Path]:
-    paths = [SAMPLE]
+    paths = [SAMPLE_LEGACY]
     if PUBLIC_ACTIVITY.is_file():
         paths.append(PUBLIC_ACTIVITY)
     if WEB_FIXTURES.is_dir():
@@ -253,6 +257,8 @@ def test_legacy_activity_fixtures_load_unchanged(path: Path, schema: dict) -> No
     """Migration: every old activity.json fixture loads as-is (no rewrite)."""
     raw = path.read_text(encoding="utf-8")
     doc = json.loads(raw)
+    if doc.get("schema_version") != "1.0.0":
+        pytest.skip("current-schema fixture (not legacy 1.0.0)")
     assert doc["schema_version"] == "1.0.0"
     # 1.0.0 validates without provenance; compat preserved on disk.
     jsonschema.validate(instance=doc, schema=schema)
@@ -380,11 +386,17 @@ def test_schema_1_1_rejects_event_without_provenance(schema: dict) -> None:
 
 
 def test_migrate_can_bump_version_in_memory_only(schema: dict) -> None:
-    with SAMPLE.open(encoding="utf-8") as f:
+    with SAMPLE_LEGACY.open(encoding="utf-8") as f:
         doc = json.load(f)
     bumped = migrate_activity(doc, bump_version=True)
     assert bumped["schema_version"] == "1.1.0"
     assert all("provenance" in e for e in bumped["events"])
     jsonschema.validate(instance=bumped, schema=schema)
-    with SAMPLE.open(encoding="utf-8") as f:
+    with SAMPLE_LEGACY.open(encoding="utf-8") as f:
         assert json.load(f)["schema_version"] == "1.0.0"
+    # Current DEMO fixture is regenerated on schema 1.1.0 (QA-MM020g-1).
+    with SAMPLE.open(encoding="utf-8") as f:
+        current = json.load(f)
+    assert current["schema_version"] == "1.1.0"
+    director = next(n for n in current["nodes"] if n["id"] == "director")
+    assert set(director.get("groups") or []) == {"build", "qr", "radar"}

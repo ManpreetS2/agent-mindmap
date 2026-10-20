@@ -15,9 +15,14 @@ export const GROUP_LAYOUT_ORDER: string[] = [
   "radar",
 ];
 
-/** Membership list for a node (schema 1.1.0 `groups`, else primary `group`). */
+/**
+ * Membership list for a node.
+ * - Explicit `groups` array (even empty) is authoritative — empty means
+ *   standalone (QA-MM020g-1/2: Owner/Manpreet is not a team group frame).
+ * - Legacy 1.0.0 nodes omit `groups` → fall back to primary `group`.
+ */
 export function groupsForNode(node: Node): GroupId[] {
-  if (node.groups && node.groups.length > 0) {
+  if (Array.isArray(node.groups)) {
     return [...node.groups];
   }
   return [node.group];
@@ -63,7 +68,10 @@ export function nodeInSelectedGroups(
   selected: ReadonlySet<string> | null,
 ): boolean {
   if (!selected || selected.size === 0) return true;
-  return groupsForNode(node).some((g) => selected.has(String(g)));
+  const gs = groupsForNode(node);
+  // Standalone nodes (empty membership) stay visible with any team filter.
+  if (gs.length === 0) return true;
+  return gs.some((g) => selected.has(String(g)));
 }
 
 export function isKnownNodeGroup(id: string): id is NodeGroup {

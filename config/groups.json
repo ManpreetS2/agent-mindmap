@@ -1,12 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "description": "MM-020a: group registry + membership (identity lives in bots.json). Add a bot to a group by appending its id to members — no code change required.",
+  "description": "MM-020a/k: three team groups (Build, Q&R, Radar). Owner/Manpreet is a standalone node — not a group frame.",
   "groups": [
-    {
-      "id": "owner",
-      "label": "Owner",
-      "members": ["manpreet"]
-    },
     {
       "id": "build",
       "label": "Build",

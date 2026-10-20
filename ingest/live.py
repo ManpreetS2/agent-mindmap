@@ -34,6 +34,7 @@ from .build import (
     build_nodes,
     merge_events,
     resolve_ledger_path,
+    resolve_project_name,
     write_activity,
 )
 from .edges import derive_edges
@@ -332,6 +333,8 @@ class HealthState:
     last_events_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    ledger_status: str = "never_run"
+    github_status: str = "never_run"
     network_event_count: int = 0
     dropped_network_events: int = 0
     errors: list[str] = field(default_factory=list)
@@ -344,6 +347,8 @@ class HealthState:
             "last_events_poll": self.last_events_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "ledger_status": self.ledger_status,
+            "github_status": self.github_status,
             "network_event_count": self.network_event_count,
             "dropped_network_events": self.dropped_network_events,
             "errors": list(self.errors),
@@ -367,6 +372,65 @@ def _fingerprint_github(gh: GitHubPollResult) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
+def network_event_to_activity_event(
+    ne: dict[str, Any],
+    bots: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """
+    MM-020k: map a NetworkEvent (SSE / data/events) into an activity Event.
+
+    Root cause of empty LIVE UI: NetworkEventLog was never merged into
+    activity.json, which is what the graph/timeline read.
+
+    QA-MM020g-8: UNKNOWN senders resolve via room member map, else null
+    actor (UI labels ``unattributed``) — never invent.
+    """
+    from .sender_resolve import resolve_network_sender
+
+    eid = ne.get("id")
+    if not isinstance(eid, str) or not eid.strip():
+        return None
+    summary = ne.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    actor = resolve_network_sender(ne, bots=bots)
+    prov = ne.get("provenance")
+    if prov not in {"observed", "agent-reported", "github-verified"}:
+        prov = "agent-reported"
+    etype = str(ne.get("type") or "note")
+    attribution_method = (
+        "github_login"
+        if prov == "github-verified"
+        else ("signature" if actor else "unknown")
+    )
+    evt: dict[str, Any] = {
+        "id": eid,
+        "type": etype,
+        "actor": actor,
+        "target": None,
+        "task_id": ne.get("task_id"),
+        "attribution": {"method": attribution_method},
+        "source_url": "live:network-events",
+        "source_time": str(ne.get("ts") or "1970-01-01T00:00:00Z"),
+        "raw": summary,
+        "provenance": prov,
+    }
+    group = ne.get("group")
+    if isinstance(group, str) and group.strip():
+        evt["group"] = group.strip()
+    rec = ne.get("recipients")
+    if isinstance(rec, list) and rec:
+        evt["recipients"] = [str(x) for x in rec if isinstance(x, str) and x.strip()]
+        if evt["recipients"] and not evt.get("target"):
+            evt["target"] = evt["recipients"][0]
+    if ne.get("related_id") is not None:
+        evt["related_id"] = ne.get("related_id")
+    repo = ne.get("repo")
+    if isinstance(repo, str) and "/" in repo:
+        evt["repo"] = repo
+    return evt
+
+
 def assemble_activity(
     *,
     ledger: LedgerParseResult,
@@ -374,20 +438,33 @@ def assemble_activity(
     bots: list[dict[str, Any]],
     generated_at: str,
     meta_ledger: str = "ok",
+    network_events: list[dict[str, Any]] | None = None,
+    meta_github: str | None = None,
 ) -> dict[str, Any]:
     """Same shape as build.build_activity without re-fetching sources."""
     events = merge_events(ledger, gh)
+    seen = {str(e.get("id")) for e in events if e.get("id")}
+    for ne in network_events or []:
+        mapped = network_event_to_activity_event(ne, bots=bots)
+        if mapped is None:
+            continue
+        mid = mapped["id"]
+        if mid in seen:
+            continue
+        seen.add(mid)
+        events.append(mapped)
     edges = derive_edges(events)
     nodes = build_nodes(
         bots, ledger.tasks, events, membership=membership_index()
     )
+    gh_status = meta_github if meta_github is not None else gh.meta_github
     activity = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": "fencepost",
+        "project": resolve_project_name(),
         "meta": {
             "mode": "live",
-            "github": gh.meta_github,
+            "github": gh_status,
             "ledger": meta_ledger,
             "ledger_last_entry_at": ledger_last_entry_at(ledger),
         },
@@ -429,7 +506,7 @@ class LiveDaemon:
 
     _ledger_fp: str | None = field(default=None, init=False)
     _ledger: LedgerParseResult | None = field(default=None, init=False)
-    _meta_ledger: str = field(default="ok", init=False)
+    _meta_ledger: str = field(default="unavailable", init=False)
     _gh_fp: str | None = field(default=None, init=False)
     _gh: GitHubPollResult | None = field(default=None, init=False)
     _last_good_gh: GitHubPollResult | None = field(default=None, init=False)
@@ -453,6 +530,8 @@ class LiveDaemon:
                 last_events_poll=self._health.last_events_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                ledger_status=self._health.ledger_status,
+                github_status=self._health.github_status,
                 network_event_count=self._event_log.count(),
                 dropped_network_events=self._event_log.dropped_count(),
                 errors=list(self._health.errors),
@@ -565,6 +644,8 @@ class LiveDaemon:
             self._append_error(f"ledger not found: {path}")
             with self._lock:
                 self._health.last_ledger_poll = now
+                self._health.ledger_status = "unavailable"
+                self._meta_ledger = "unavailable"
             return False
         try:
             fp = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -577,12 +658,15 @@ class LiveDaemon:
             self._append_error(f"ledger read failed: {type(exc).__name__}")
             with self._lock:
                 self._health.last_ledger_poll = now
+                self._health.ledger_status = "error"
+                self._meta_ledger = "error"
             return False
 
         changed = fp != self._ledger_fp
         with self._lock:
             self._health.last_ledger_poll = now
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
+            self._health.ledger_status = "ok"
             self._meta_ledger = "ok"
             if changed:
                 self._ledger_fp = fp
@@ -600,8 +684,19 @@ class LiveDaemon:
         if fetched.meta_ledger != "ok" or fetched.text is None:
             for err in fetched.errors:
                 self._append_error(err)
-            if fetched.meta_ledger == "error":
+            status = "unavailable"
+            joined = " ".join(fetched.errors).lower()
+            if "404" in joined or "not found" in joined:
+                status = "unavailable"
+                self._append_error(
+                    "ledger unavailable: data/ledger branch or ledger.md missing (MM-010)"
+                )
+            elif fetched.meta_ledger == "error":
+                status = "error"
                 self._append_error("ledger fetch failed")
+            with self._lock:
+                self._health.ledger_status = status
+                self._meta_ledger = status
             return False
 
         fp = _fingerprint_text(fetched.text)
@@ -616,11 +711,15 @@ class LiveDaemon:
             )
         except Exception as exc:  # noqa: BLE001
             self._append_error(f"ledger parse failed: {type(exc).__name__}")
+            with self._lock:
+                self._health.ledger_status = "error"
+                self._meta_ledger = "error"
             return False
 
         changed = fp != self._ledger_fp
         with self._lock:
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
+            self._health.ledger_status = "ok"
             self._meta_ledger = fetched.meta_ledger
             if changed:
                 self._ledger_fp = fp
@@ -646,6 +745,8 @@ class LiveDaemon:
 
         if self.clock() < self._gh_backoff_until:
             self._append_error("github poll skipped (rate-limit backoff)")
+            with self._lock:
+                self._health.github_status = "skipped"
             return False
 
         try:
@@ -656,10 +757,15 @@ class LiveDaemon:
             )
         except Exception as exc:  # noqa: BLE001
             self._append_error(f"github poll failed: {type(exc).__name__}")
+            with self._lock:
+                self._health.github_status = "error"
             return False
 
         if gh.meta_github == "rate_limited" and self._rate_limit_reset:
             self._gh_backoff_until = float(self._rate_limit_reset)
+
+        with self._lock:
+            self._health.github_status = gh.meta_github
 
         if gh.meta_github in {"error", "rate_limited"}:
             for err in gh.errors:
@@ -718,8 +824,13 @@ class LiveDaemon:
     def run_poll_cycle(self) -> None:
         ledger_changed = self.poll_ledger_once()
         gh_changed = self.poll_github_once()
-        self.poll_events_once()
-        if ledger_changed or gh_changed or self._activity_bytes is None:
+        events_changed = self.poll_events_once()
+        if (
+            ledger_changed
+            or gh_changed
+            or events_changed
+            or self._activity_bytes is None
+        ):
             self.maybe_rebuild()
 
     def start_polling(self) -> None:
@@ -745,9 +856,11 @@ class LiveDaemon:
                     if changed:
                         self.maybe_rebuild()
                 if now >= next_events:
-                    self.poll_events_once()
+                    events_changed = self.poll_events_once()
                     next_events = now + self.events_poll_sec
-                if self._activity_bytes is None and self._ledger is not None:
+                    if events_changed:
+                        self.maybe_rebuild()
+                if self._activity_bytes is None:
                     self.maybe_rebuild()
                 wait = min(
                     max(0.0, next_ledger - self.clock()),
@@ -771,29 +884,41 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
     """
     Write activity.json when inputs changed (or force).
 
-    On failure, keep the last on-disk file and record errors.
+    MM-020k: rebuild even when ledger is unavailable so GitHub + NetworkEventLog
+    still populate the UI. On failure, keep the last on-disk file and record errors.
     Returns True if a new file was written.
     """
     if daemon.demo_mode:
         return False
     ledger = daemon._ledger
+    if ledger is None:
+        ledger = LedgerParseResult(source_url=daemon.ledger_source_url)
     gh = daemon._gh if daemon._gh is not None else daemon._last_good_gh
     meta_ledger = daemon._meta_ledger
+    network_events = daemon.network_events_after(None)
+    network_fp = hashlib.sha256(
+        ",".join(str(e.get("id") or "") for e in network_events).encode()
+    ).hexdigest()
     inputs_fp = (
-        None
-        if daemon._ledger_fp is None
-        else f"{daemon._ledger_fp}:{daemon._gh_fp or 'none'}"
+        f"{daemon._ledger_fp or 'no-ledger'}:"
+        f"{daemon._gh_fp or 'none'}:"
+        f"{network_fp}:"
+        f"{meta_ledger}"
     )
 
-    if ledger is None:
-        return False
-
-    if not force and inputs_fp is not None and inputs_fp == daemon._last_build_inputs_fp:
-        if daemon.activity_path.is_file():
+    if not force and inputs_fp == daemon._last_build_inputs_fp:
+        if daemon.activity_path.is_file() or daemon._activity_bytes is not None:
             return False
 
     if gh is None:
-        gh = GitHubPollResult(events=[], meta_github="skipped")
+        gh_status = daemon._health.github_status
+        if gh_status == "never_run":
+            gh = GitHubPollResult(events=[], meta_github="never_run")
+        else:
+            gh = GitHubPollResult(events=[], meta_github=gh_status or "skipped")
+        meta_github = gh.meta_github
+    else:
+        meta_github = gh.meta_github
 
     try:
         activity = assemble_activity(
@@ -801,7 +926,9 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
             gh=gh,
             bots=daemon.bots,
             generated_at=_iso_now(daemon.clock),
-            meta_ledger=meta_ledger,
+            meta_ledger=meta_ledger if meta_ledger else "unavailable",
+            network_events=network_events,
+            meta_github=meta_github,
         )
         if daemon.events_source != "off":
             activity["meta"]["events_source"] = EVENTS_SOURCE_URL

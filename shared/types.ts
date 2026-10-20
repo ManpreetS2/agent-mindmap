@@ -152,9 +152,14 @@ export interface Edge {
   event_ids: string[];
 }
 
-export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
+export type GitHubMetaStatus =
+  | "ok"
+  | "error"
+  | "skipped"
+  | "rate_limited"
+  | "never_run";
 
-export type LedgerMetaStatus = "ok" | "error" | "skipped";
+export type LedgerMetaStatus = "ok" | "error" | "skipped" | "unavailable";
 
 export interface ActivityMeta {
   github: GitHubMetaStatus;
@@ -172,7 +177,8 @@ export type ActivitySchemaVersion = "1.0.0" | "1.1.0";
 export interface Activity {
   schema_version: ActivitySchemaVersion;
   generated_at: string;
-  project: "fencepost";
+  /** Repo-derived project name (e.g. agent-mindmap); not a hardcoded brand. */
+  project: string;
   meta: ActivityMeta;
   nodes: Node[];
   tasks: Task[];
@@ -197,6 +203,8 @@ export interface NetworkEvent {
   summary: string;
   provenance: Provenance;
   related_id?: string | null;
+  /** owner/name when known (MM-020k cross-project); never invented. */
+  repo?: string;
 }
 
 /** Identity entry from config/bots.json. */

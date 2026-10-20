@@ -62,13 +62,13 @@ def pr_key(evt: dict[str, Any]) -> tuple[str, int] | None:
 
 def _merger_eligible(evt: dict[str, Any]) -> bool:
     """
-    QA-MM004-7 / Director: merger only from ledger actor or ~Bot signature.
-    Never attribute from merged_by / unknown owner login.
+    Merger from ledger, ~Bot signature, or verified GitHub login mapping
+    (MM-020e2 ``merged_by.login`` / ``github_login``). Unknown actor → no edge.
     """
     if not evt.get("actor"):
         return False
     method = _attr_method(evt)
-    if method == "signature":
+    if method in {"signature", "github_login"}:
         return True
     if method == "ledger_owner" or _is_ledger_source(evt):
         return True
@@ -182,9 +182,9 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         add_edge(evt.get("actor"), evt.get("target"), "handoff", str(evt["id"]))
 
-    # --- signature-attributed reviews / comments → verdict + pr ---
+    # --- attributed reviews / comments → verdict + pr (signature or github_login) ---
     for evt in events:
-        if _attr_method(evt) != "signature":
+        if _attr_method(evt) not in {"signature", "github_login"}:
             continue
         if evt.get("type") not in {"verdict", "note"}:
             continue

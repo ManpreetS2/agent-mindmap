@@ -62,8 +62,13 @@ function EventMarker({
   const hasSource = isHttpSourceUrl(event.source_url);
   const hasTaskChip =
     Boolean(event.task_id) && isLifecycleTaskId(event.task_id!);
+  const repoLabel =
+    typeof event.repo === "string" && event.repo.includes("/")
+      ? event.repo
+      : null;
   const opacity = dimmed ? 0.25 : 1;
   const stroke = highlighted ? "var(--accent)" : "var(--border-subtle)";
+  const titleText = repoLabel ? `${glyph.title} · ${repoLabel}` : glyph.title;
 
   const markerBody = (
     <g opacity={opacity} transform={`translate(${x - 10}, ${y - 8})`}>
@@ -86,7 +91,7 @@ function EventMarker({
       >
         {glyph.label}
       </text>
-      <title>{glyph.title}</title>
+      <title>{titleText}</title>
     </g>
   );
 
@@ -98,7 +103,7 @@ function EventMarker({
           className="timeline-event-focus-btn"
           data-timeline-focus={event.id}
           tabIndex={focused ? 0 : -1}
-          aria-label={glyph.title}
+          aria-label={titleText}
         >
           <span className="sr-only">{glyph.label}</span>
         </button>
@@ -108,7 +113,7 @@ function EventMarker({
           href={event.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`${glyph.title}. Open event source in new tab.`}
+          aria-label={`${titleText}. Open event source in new tab.`}
         >
           {markerBody}
         </a>
@@ -134,11 +139,34 @@ function EventMarker({
           </button>
         </foreignObject>
       )}
-      {!hasSource && (
+      {repoLabel && (
         <foreignObject
           x={hasTaskChip ? x + 88 : x + 14}
-          y={hasTaskChip ? y - 10 : y - 8}
-          width={hasTaskChip ? 88 : 100}
+          y={y - 10}
+          width={120}
+          height={20}
+          opacity={opacity}
+        >
+          <span
+            className="timeline-repo-tag mono"
+            data-testid={`timeline-repo-${event.id}`}
+            title={repoLabel}
+          >
+            {repoLabel.split("/")[1] ?? repoLabel}
+          </span>
+        </foreignObject>
+      )}
+      {!hasSource && (
+        <foreignObject
+          x={
+            hasTaskChip && repoLabel
+              ? x + 212
+              : hasTaskChip || repoLabel
+                ? x + 88
+                : x + 14
+          }
+          y={hasTaskChip || repoLabel ? y - 10 : y - 8}
+          width={hasTaskChip || repoLabel ? 88 : 100}
           height={20}
           opacity={opacity}
         >

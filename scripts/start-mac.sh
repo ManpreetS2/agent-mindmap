@@ -99,7 +99,13 @@ ensure_venv_python() {
     exit 1
   fi
 
-  "$bootstrap" -m venv "$REPO_ROOT/.venv"
+  # Prefer full venv; fall back when ensurepip is unavailable (some Linux images).
+  if ! "$bootstrap" -m venv "$REPO_ROOT/.venv" 2>/dev/null; then
+    echo "mindmap: venv ensurepip unavailable; creating --without-pip and bootstrapping pip" >&2
+    rm -rf "$REPO_ROOT/.venv"
+    "$bootstrap" -m venv --without-pip "$REPO_ROOT/.venv"
+    curl -fsSL https://bootstrap.pypa.io/get-pip.py | "$REPO_ROOT/.venv/bin/python"
+  fi
   install_venv_deps
 
   py="$REPO_ROOT/.venv/bin/python"

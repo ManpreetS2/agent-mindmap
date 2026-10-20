@@ -31,6 +31,12 @@ import {
   nodeInSelectedGroups,
 } from "../utils/groupMembership";
 import {
+  applyDragPositions,
+  loadDragPositions,
+  saveDragPositions,
+  type DragPositionMap,
+} from "../utils/dragPositions";
+import {
   collectDraggedIds,
   mergeFlowNodes,
 } from "../utils/mergeFlowNodes";
@@ -209,14 +215,23 @@ export function AgentGraph({
     ],
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes);
+  const persistedRef = useRef<DragPositionMap>(loadDragPositions());
+  const draggedIdsRef = useRef<Set<string>>(
+    new Set(Object.keys(persistedRef.current)),
+  );
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    applyDragPositions(builtNodes, persistedRef.current),
+  );
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges);
-  const draggedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     // Merge layout into the live node list without treating user drags as
     // layout resets (QA-MM020f-1). New / structurally changed agents re-layout.
-    setNodes((prev) => mergeFlowNodes(prev, builtNodes, draggedIdsRef.current));
+    // Persisted drag ids stay in draggedIdsRef so reload survives (QA-MM020g-3).
+    const withPersist = applyDragPositions(builtNodes, persistedRef.current);
+    setNodes((prev) =>
+      mergeFlowNodes(prev, withPersist, draggedIdsRef.current),
+    );
   }, [builtNodes, setNodes]);
 
   useEffect(() => {
@@ -227,6 +242,24 @@ export function AgentGraph({
     (changes: NodeChange[]) => {
       draggedIdsRef.current = collectDraggedIds(changes, draggedIdsRef.current);
       onNodesChange(changes);
+      // Persist when a drag ends (dragging === false) — QA-MM020g-3.
+      let dirty = false;
+      const next: DragPositionMap = { ...persistedRef.current };
+      for (const c of changes) {
+        if (
+          c.type === "position" &&
+          c.dragging === false &&
+          c.id &&
+          c.position
+        ) {
+          next[c.id] = { x: c.position.x, y: c.position.y };
+          dirty = true;
+        }
+      }
+      if (dirty) {
+        persistedRef.current = next;
+        saveDragPositions(next);
+      }
     },
     [onNodesChange],
   );

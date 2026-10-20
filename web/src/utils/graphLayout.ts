@@ -129,12 +129,33 @@ export function layoutMultiGroupClusters(
     });
   }
 
-  // Nodes not placed (e.g. home group missing from collect) — append.
+  // Standalone / ungrouped nodes (empty groups[], e.g. Owner) — row above clusters.
+  const standalones = nodes.filter(
+    (n) => !positions.has(n.id) && groupsForNode(n).length === 0,
+  );
+  if (standalones.length > 0) {
+    const shift = CELL_H + CLUSTER_GAP;
+    for (const [id, p] of positions) {
+      positions.set(id, { x: p.x, y: p.y + shift });
+    }
+    for (const c of clusters) {
+      c.y += shift;
+    }
+    for (const [gid, a] of groupAnchors) {
+      groupAnchors.set(gid, { x: a.x, y: a.y + shift });
+    }
+    const sorted = [...standalones].sort(
+      (a, b) => a.layout.x - b.layout.x || a.layout.y - b.layout.y,
+    );
+    for (let i = 0; i < sorted.length; i++) {
+      positions.set(sorted[i].id, { x: 16 + i * CELL_W, y: 16 });
+    }
+  }
+
+  // Any remaining unplaced nodes — config layout, then gap enforce.
   for (const n of nodes) {
     if (positions.has(n.id)) continue;
-    const fallback = layoutWithDagreEngine([n], []);
-    const p = fallback.get(n.id) ?? n.layout;
-    positions.set(n.id, p);
+    positions.set(n.id, { x: n.layout.x, y: n.layout.y });
   }
 
   const membershipLinks: MembershipLink[] = [];

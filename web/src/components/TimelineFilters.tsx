@@ -19,6 +19,7 @@ const TYPE_GROUP_CHIPS: { id: EventTypeGroup; label: string }[] = [
 interface TimelineFiltersProps {
   nodes: Node[];
   taskIds: string[];
+  repos?: string[];
   filters: TimelineFilterState;
   onChange: (next: TimelineFilterState) => void;
 }
@@ -33,6 +34,7 @@ function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
 export function TimelineFilters({
   nodes,
   taskIds,
+  repos = [],
   filters,
   onChange,
 }: TimelineFiltersProps) {
@@ -51,12 +53,17 @@ export function TimelineFilters({
     onChange({ ...filters, taskIds: toggleInSet(filters.taskIds, taskId) });
   };
 
+  const toggleRepo = (repo: string) => {
+    onChange({ ...filters, repos: toggleInSet(filters.repos, repo) });
+  };
+
   const clearAll = () => onChange(EMPTY_FILTERS);
 
   const anyActive =
     filters.eventGroups.size > 0 ||
     filters.botIds.size > 0 ||
-    filters.taskIds.size > 0;
+    filters.taskIds.size > 0 ||
+    filters.repos.size > 0;
 
   return (
     <div className="timeline-filters" aria-label="Timeline filters">
@@ -98,12 +105,29 @@ export function TimelineFilters({
         <button
           type="button"
           className="filter-chip filter-chip--compact"
-          aria-pressed={filters.botIds.has("unknown")}
-          onClick={() => toggleBot("unknown")}
+          aria-pressed={filters.botIds.has("unattributed")}
+          onClick={() => toggleBot("unattributed")}
         >
-          unknown
+          unattributed
         </button>
       </div>
+      {repos.length > 0 && (
+        <div className="timeline-filters__row">
+          <span className="timeline-filters__heading">Repo</span>
+          {repos.map((repo) => (
+            <button
+              key={repo}
+              type="button"
+              className="filter-chip filter-chip--mono"
+              aria-pressed={filters.repos.has(repo)}
+              onClick={() => toggleRepo(repo)}
+              title={repo}
+            >
+              {repo.split("/")[1] ?? repo}
+            </button>
+          ))}
+        </div>
+      )}
       {taskIds.length > 0 && (
         <div className="timeline-filters__row">
           <span className="timeline-filters__heading">Task</span>

@@ -116,7 +116,7 @@ def test_unknown_author_no_false_edge() -> None:
     )
     review["verdict"] = "PASS"
     network, edges = build_pr_lane_events([opened, review], load_bots())
-    assert any(n["sender"] == "UNKNOWN" for n in network)
+    assert any(n["sender"] == "unattributed" for n in network)
     # No pr/verdict edge without known PR author
     assert not any(e["type"] in {"pr", "verdict"} for e in edges)
 
@@ -197,12 +197,13 @@ def test_activity_event_to_network_unknown_sender() -> None:
     evt["provenance"] = "agent-reported"
     ne = activity_event_to_network_event(evt, load_bots())
     assert ne is not None
-    assert ne["sender"] == "UNKNOWN"
+    assert ne["sender"] == "unattributed"
     assert ne["provenance"] == "agent-reported"
 
 
 def test_legacy_1_0_0_fixture_still_validates() -> None:
-    with FIXTURE_1_0.open(encoding="utf-8") as f:
+    legacy = ROOT / "fixtures" / "sample-activity-1.0.0.json"
+    with legacy.open(encoding="utf-8") as f:
         doc = json.load(f)
     assert doc["schema_version"] == "1.0.0"
     jsonschema.validate(instance=doc, schema=_schema())

@@ -43,14 +43,30 @@ export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
   return `${Math.round(hours / 24)} days ago`;
 }
 
+/** MM-020k: banner from real GitHub poller state (ok / skipped / error / never_run). */
 export function partialGithubBanner(meta: ActivityMeta): string | null {
   const status = meta.github as string;
   if (status === "ok") return null;
+  if (status === "never_run") {
+    return "GitHub (never run) — waiting for first poll.";
+  }
   const sourceName =
     status === "rate_limited"
       ? "GitHub (rate limited)"
       : status === "skipped"
         ? "GitHub (skipped)"
         : "GitHub (error)";
-  return `${sourceName} — showing ledger only. Retry refresh.`;
+  return `${sourceName} — GitHub data incomplete. Retry refresh.`;
+}
+
+/** MM-020k: honest ledger unavailable when data/ledger is missing. */
+export function ledgerStatusBanner(meta: ActivityMeta): string | null {
+  const status = meta.ledger as string | undefined;
+  if (!status || status === "ok" || status === "skipped" || status === "demo") {
+    return null;
+  }
+  if (status === "unavailable") {
+    return "Ledger unavailable — data/ledger mirror missing or unreadable.";
+  }
+  return "Ledger (error) — could not load task ledger.";
 }

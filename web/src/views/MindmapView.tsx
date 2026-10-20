@@ -24,6 +24,7 @@ import { handoffEdgeCount } from "../utils/nodeFacts";
 import {
   EMPTY_FILTERS,
   filterTimelineEvents,
+  uniqueRepos,
   uniqueTaskIds,
   type TimelineFilterState,
 } from "../utils/timelineFilters";
@@ -48,6 +49,7 @@ import {
 import {
   isActivityEmpty,
   isActivityStale,
+  ledgerStatusBanner,
   partialGithubBanner,
   staleAgeLabel,
   staleReferenceTime,
@@ -104,6 +106,10 @@ export function MindmapView({
     () => uniqueTaskIds(allEvents),
     [allEvents],
   );
+  const reposForFilters = useMemo(
+    () => uniqueRepos(allEvents),
+    [allEvents],
+  );
 
   const timelineFocusOrder = useMemo(
     () => orderedTimelineFocusItems(activity, visibleEvents),
@@ -127,6 +133,10 @@ export function MindmapView({
 
   const partialBanner = useMemo(
     () => partialGithubBanner(activity.meta),
+    [activity.meta],
+  );
+  const ledgerBanner = useMemo(
+    () => ledgerStatusBanner(activity.meta),
     [activity.meta],
   );
   const staleRef = useMemo(() => staleReferenceTime(activity), [activity]);
@@ -243,9 +253,8 @@ export function MindmapView({
     <div className="mindmap-layout">
       <header className="app-header">
         <div className="app-header__brand">
-          <span className="app-header__title">MINDMAP</span>
-          <span className="app-header__project">
-            Project: {activity.project}
+          <span className="app-header__title" data-testid="app-name">
+            {activity.project}
           </span>
         </div>
         <div className="app-header__actions">
@@ -281,6 +290,9 @@ export function MindmapView({
 
       {partialBanner && (
         <PartialSourceBanner message={partialBanner} onRetry={onRefresh} />
+      )}
+      {ledgerBanner && (
+        <PartialSourceBanner message={ledgerBanner} onRetry={onRefresh} />
       )}
 
       <HandoffBanner handoffCount={handoffs} threshold={3} />
@@ -361,6 +373,7 @@ export function MindmapView({
             <TimelineFilters
               nodes={activity.nodes}
               taskIds={taskIdsForFilters}
+              repos={reposForFilters}
               filters={filters}
               onChange={setFilters}
             />

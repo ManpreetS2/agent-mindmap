@@ -16,7 +16,7 @@ describe("Timeline (MM-006)", () => {
     });
     expect(within(timeline).getAllByText("Director").length).toBeGreaterThan(0);
     expect(within(timeline).getAllByText("DEV 1").length).toBeGreaterThan(0);
-    expect(within(timeline).getAllByText("unknown").length).toBeGreaterThan(0);
+    expect(within(timeline).getAllByText("unattributed").length).toBeGreaterThan(0);
     expect(within(timeline).getAllByText(/Verifier|QA/).length).toBeGreaterThan(0);
   });
 

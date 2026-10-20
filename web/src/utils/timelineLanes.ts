@@ -1,6 +1,7 @@
 import type { Activity, Event, Node } from "@shared/types";
 
-export const UNKNOWN_LANE_ID = "unknown";
+/** QA-MM020g-8: unresolved sender lane (never invent a bot id). */
+export const UNKNOWN_LANE_ID = "unattributed";
 
 export interface TimelineLane {
   id: string;
@@ -9,7 +10,7 @@ export interface TimelineLane {
 
 export function buildTimelineLanes(nodes: Node[]): TimelineLane[] {
   const lanes: TimelineLane[] = nodes.map((n) => ({ id: n.id, label: n.label }));
-  lanes.push({ id: UNKNOWN_LANE_ID, label: "unknown" });
+  lanes.push({ id: UNKNOWN_LANE_ID, label: "unattributed" });
   return lanes;
 }
 

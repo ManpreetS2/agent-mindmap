@@ -55,14 +55,16 @@ def empty_live_activity_bytes(
     """Minimal live-mode snapshot when rebuild cannot run (no demo mixing)."""
     from .build import build_nodes
 
+    from .build import resolve_project_name
+
     doc = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": "fencepost",
+        "project": resolve_project_name(),
         "meta": {
             "mode": "live",
-            "github": "skipped",
-            "ledger": "error",
+            "github": "never_run",
+            "ledger": "unavailable",
             "ledger_last_entry_at": None,
         },
         "nodes": build_nodes(bots, [], []),
@@ -131,15 +133,72 @@ def load_demo_activity_bytes(
     *,
     mode: ServerMode = "demo",
 ) -> bytes:
-    """In-memory activity snapshot for DEMO (never written to live activity-out)."""
+    """
+    In-memory activity snapshot for DEMO (never written to live activity-out).
+
+    MM-020k / QA-MM020g-1/4: bump to schema 1.1.0, populate ``groups`` from
+    membership_index, merge demo NetworkEvents (message edges), set project.
+    """
+    from .attribute import load_bots
+    from .build import build_nodes, resolve_project_name
+    from .edges import derive_edges
+    from .live import network_event_to_activity_event
+    from .membership import membership_index
+
     base = fixtures_dir or DEFAULT_FIXTURES_DIR
     activity_path = base / "sample-activity.json"
     if not activity_path.is_file():
         raise DemoFixtureError(f"demo activity fixture missing: {activity_path}")
     doc = json.loads(activity_path.read_text(encoding="utf-8"))
-    doc = migrate_activity(doc)
+    doc = migrate_activity(doc, bump_version=True)
+    bots = load_bots()
+    network = load_demo_network_events(base)
+    events = list(doc.get("events") or [])
+    seen = {str(e.get("id")) for e in events if e.get("id")}
+    for ne in network:
+        mapped = network_event_to_activity_event(ne, bots=bots)
+        if mapped is None:
+            continue
+        mid = mapped["id"]
+        if mid in seen:
+            continue
+        seen.add(mid)
+        # Demo stream is agent-mindmap unless the event already tagged a repo.
+        if not mapped.get("repo"):
+            mapped["repo"] = "ManpreetS2/agent-mindmap"
+        events.append(mapped)
+    # Tag GitHub-sourced fixture events with repo from source_url when missing.
+    for evt in events:
+        if evt.get("repo"):
+            continue
+        url = str(evt.get("source_url") or "")
+        if "github.com/" in url:
+            try:
+                part = url.split("github.com/", 1)[1]
+                owner, name, *_rest = part.split("/")
+                if owner and name:
+                    evt["repo"] = f"{owner}/{name}"
+            except ValueError:
+                pass
+    tasks = list(doc.get("tasks") or [])
+    unparsed = list(doc.get("unparsed") or [])
+    nodes = build_nodes(
+        bots, tasks, events, membership=membership_index()
+    )
+    edges = derive_edges(events)
     meta = doc.setdefault("meta", {})
     meta["mode"] = mode
     meta["github"] = "skipped"
     meta["ledger"] = "demo"
-    return (json.dumps(doc, indent=2, sort_keys=False) + "\n").encode("utf-8")
+    out = {
+        "schema_version": "1.1.0",
+        "generated_at": doc.get("generated_at"),
+        "project": resolve_project_name(),
+        "meta": meta,
+        "nodes": nodes,
+        "tasks": tasks,
+        "events": events,
+        "edges": edges,
+        "unparsed": unparsed,
+    }
+    return (json.dumps(out, indent=2, sort_keys=False) + "\n").encode("utf-8")

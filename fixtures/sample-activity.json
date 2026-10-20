@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "generated_at": "2026-10-20T04:58:00-07:00",
-  "project": "fencepost",
+  "project": "agent-mindmap",
   "meta": {
     "github": "ok",
     "ledger": "ok",
@@ -12,124 +12,204 @@
       "id": "manpreet",
       "label": "Manpreet",
       "group": "owner",
+      "groups": [],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 400, "y": 0 }
+      "layout": {
+        "x": 400,
+        "y": 0
+      }
     },
     {
       "id": "director",
       "label": "Director",
       "group": "build",
-      "status": "IN_PROGRESS",
-      "current_task": "RP-009",
-      "last_activity_ts": "2026-10-19T21:20:00-07:00",
+      "groups": [
+        "build",
+        "qr",
+        "radar"
+      ],
+      "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 400, "y": 72 }
+      "layout": {
+        "x": 400,
+        "y": 72
+      },
+      "last_activity_ts": "2026-10-20T12:00:00+00:00"
     },
     {
       "id": "architect",
       "label": "Architect",
       "group": "build",
-      "status": "DONE",
-      "current_task": "MM-001",
-      "last_activity_ts": "2026-10-19T21:35:00-07:00",
-      "agent_links": ["bc-9f84dbdb"],
-      "layout": { "x": 400, "y": 144 }
+      "groups": [
+        "build",
+        "qr",
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 144
+      },
+      "last_activity_ts": "2026-10-20T12:00:05+00:00"
     },
     {
       "id": "dev-1",
       "label": "DEV 1",
       "group": "build",
+      "groups": [
+        "build"
+      ],
       "status": "IN_REVIEW",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 256
+      },
       "current_task": "RP-004",
-      "last_activity_ts": "2026-10-19T21:10:00-07:00",
-      "agent_links": ["bc-1a2b3c4d"],
-      "layout": { "x": 80, "y": 256 }
+      "last_activity_ts": "2026-10-19T21:35:00-07:00"
     },
     {
       "id": "dev-2",
       "label": "DEV 2",
       "group": "build",
+      "groups": [
+        "build"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 240, "y": 256 }
+      "layout": {
+        "x": 240,
+        "y": 256
+      }
     },
     {
       "id": "ui-ux-maker",
       "label": "UI/UX Maker",
       "group": "build",
-      "status": "IN_PROGRESS",
-      "current_task": "MM-005",
-      "last_activity_ts": "2026-10-19T20:45:00-07:00",
+      "groups": [
+        "build"
+      ],
+      "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 400, "y": 256 }
+      "layout": {
+        "x": 400,
+        "y": 256
+      }
     },
     {
       "id": "documentation",
       "label": "Documentation",
       "group": "build",
+      "groups": [
+        "build"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 560, "y": 256 }
+      "layout": {
+        "x": 560,
+        "y": 256
+      }
     },
     {
       "id": "qa-verifier",
       "label": "QA / Verifier",
       "group": "qr",
-      "status": "DONE",
-      "last_activity_ts": "2026-10-19T21:37:00-07:00",
+      "groups": [
+        "qr"
+      ],
+      "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 800, "y": 176 }
+      "layout": {
+        "x": 800,
+        "y": 176
+      },
+      "last_activity_ts": "2026-10-20T12:00:10+00:00"
     },
     {
       "id": "security-engineer",
       "label": "Security Engineer",
       "group": "qr",
-      "status": "IN_REVIEW",
-      "current_task": "RP-004",
-      "last_activity_ts": "2026-10-19T21:15:00-07:00",
+      "groups": [
+        "qr"
+      ],
+      "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 800, "y": 256 }
+      "layout": {
+        "x": 800,
+        "y": 256
+      },
+      "last_activity_ts": "2026-10-19T21:15:00-07:00"
     },
     {
       "id": "devops-release",
       "label": "DevOps / Release",
       "group": "qr",
+      "groups": [
+        "qr"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 800, "y": 336 }
+      "layout": {
+        "x": 800,
+        "y": 336
+      },
+      "last_activity_ts": "2026-10-19T21:39:00-07:00"
     },
     {
       "id": "scout",
       "label": "Scout",
       "group": "radar",
+      "groups": [
+        "radar"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 80, "y": 384 }
+      "layout": {
+        "x": 80,
+        "y": 384
+      }
     },
     {
       "id": "skeptic",
       "label": "Skeptic",
       "group": "radar",
+      "groups": [
+        "radar"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 240, "y": 384 }
+      "layout": {
+        "x": 240,
+        "y": 384
+      }
     },
     {
       "id": "nomen",
       "label": "NOMEN",
       "group": "radar",
+      "groups": [
+        "radar"
+      ],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 400, "y": 384 }
+      "layout": {
+        "x": 400,
+        "y": 384
+      }
     },
     {
       "id": "bug-fixer",
       "label": "Bug fixer",
-      "group": "radar",
+      "group": "build",
+      "groups": [],
       "status": "IDLE",
       "agent_links": [],
-      "layout": { "x": 560, "y": 384 }
+      "layout": {
+        "x": 720,
+        "y": 256
+      }
     }
   ],
   "tasks": [
@@ -140,7 +220,9 @@
       "owner": "DEV 1",
       "status_raw": "PR #6 IN_REVIEW; Security review pending",
       "status": "IN_REVIEW",
-      "prs": [6],
+      "prs": [
+        6
+      ],
       "source_url": "build/task-ledger.md#RP-004"
     },
     {
@@ -150,7 +232,9 @@
       "owner": "DEV 1",
       "status_raw": "DONE (merged)",
       "status": "DONE",
-      "prs": [5],
+      "prs": [
+        5
+      ],
       "source_url": "build/task-ledger.md#RP-005"
     }
   ],
@@ -161,10 +245,13 @@
       "actor": "director",
       "target": "architect",
       "task_id": "RP-009",
-      "attribution": { "method": "ledger_owner" },
+      "attribution": {
+        "method": "ledger_owner"
+      },
       "source_url": "build/task-ledger.md",
       "source_time": "2026-10-19T21:20:00-07:00",
-      "raw": "- 2026-10-19 9:20 PM PDT, Director: GO for Architect on RP-009 schema spec."
+      "raw": "- 2026-10-19 9:20 PM PDT, Director: GO for Architect on RP-009 schema spec.",
+      "provenance": "agent-reported"
     },
     {
       "id": "evt-pr5-opened",
@@ -173,10 +260,14 @@
       "target": null,
       "task_id": "RP-005",
       "pr": 5,
-      "attribution": { "method": "ledger_owner" },
+      "attribution": {
+        "method": "ledger_owner"
+      },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
       "source_time": "2026-10-19T21:35:00-07:00",
-      "raw": "Opened pull request #5: feat/RP-005-ingest-hardening"
+      "raw": "Opened pull request #5: feat/RP-005-ingest-hardening",
+      "provenance": "github-verified",
+      "repo": "ManpreetS2/fencepost"
     },
     {
       "id": "evt-pr5-verdict-qa",
@@ -186,10 +277,14 @@
       "task_id": "RP-005",
       "pr": 5,
       "verdict": "CHANGES",
-      "attribution": { "method": "signature" },
+      "attribution": {
+        "method": "signature"
+      },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/5#issuecomment-1",
       "source_time": "2026-10-19T21:37:00-07:00",
-      "raw": "~QA / Verifier 🧪 CHANGES on RP-005: tighten etag cache tests."
+      "raw": "~QA / Verifier \ud83e\uddea CHANGES on RP-005: tighten etag cache tests.",
+      "provenance": "agent-reported",
+      "repo": "ManpreetS2/fencepost"
     },
     {
       "id": "evt-pr5-merged",
@@ -199,10 +294,14 @@
       "task_id": "RP-005",
       "pr": 5,
       "sha": "693ebc7",
-      "attribution": { "method": "signature" },
+      "attribution": {
+        "method": "signature"
+      },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
       "source_time": "2026-10-19T21:39:00-07:00",
-      "raw": "squash-merged as 693ebc7"
+      "raw": "squash-merged as 693ebc7",
+      "provenance": "agent-reported",
+      "repo": "ManpreetS2/fencepost"
     },
     {
       "id": "evt-pr6-security-review",
@@ -212,52 +311,143 @@
       "task_id": "RP-004",
       "pr": 6,
       "verdict": "PASS",
-      "attribution": { "method": "signature" },
+      "attribution": {
+        "method": "signature"
+      },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/6#issuecomment-2",
       "source_time": "2026-10-19T21:15:00-07:00",
-      "raw": "~Security Engineer 🔐 PASS — no secrets in workload fixtures."
+      "raw": "~Security Engineer \ud83d\udd10 PASS \u2014 no secrets in workload fixtures.",
+      "provenance": "agent-reported",
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "demo-evt-1",
+      "type": "message",
+      "actor": "director",
+      "target": "architect",
+      "task_id": "MM-020",
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T12:00:00+00:00",
+      "raw": "Demo: Director \u2192 Architect handoff note",
+      "provenance": "agent-reported",
+      "group": "build",
+      "recipients": [
+        "architect"
+      ],
+      "repo": "ManpreetS2/agent-mindmap"
+    },
+    {
+      "id": "demo-evt-2",
+      "type": "message",
+      "actor": "architect",
+      "target": "qa-verifier",
+      "task_id": "MM-020",
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T12:00:05+00:00",
+      "raw": "Demo: Architect \u2192 QA cross-group message",
+      "provenance": "agent-reported",
+      "group": "qr",
+      "recipients": [
+        "qa-verifier"
+      ],
+      "repo": "ManpreetS2/agent-mindmap"
+    },
+    {
+      "id": "demo-evt-3",
+      "type": "message",
+      "actor": "qa-verifier",
+      "target": "director",
+      "task_id": "MM-020",
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T12:00:10+00:00",
+      "raw": "Demo: QA \u2192 Director reply",
+      "provenance": "agent-reported",
+      "group": "qr",
+      "recipients": [
+        "director"
+      ],
+      "repo": "ManpreetS2/agent-mindmap"
     }
   ],
   "edges": [
     {
-      "id": "edge-handoff-director-architect",
+      "id": "cd607f4c3a4bb4267158bcb139e046e566db45fc",
       "source": "director",
       "target": "architect",
       "type": "handoff",
       "count": 1,
-      "event_ids": ["evt-handoff-director-architect-rp009"]
+      "event_ids": [
+        "evt-handoff-director-architect-rp009"
+      ]
     },
     {
-      "id": "edge-verdict-qa-dev1",
-      "source": "qa-verifier",
-      "target": "dev-1",
-      "type": "verdict",
-      "count": 1,
-      "event_ids": ["evt-pr5-verdict-qa"]
-    },
-    {
-      "id": "edge-pr-dev1-qa",
-      "source": "dev-1",
-      "target": "qa-verifier",
-      "type": "pr",
-      "count": 1,
-      "event_ids": ["evt-pr5-opened"]
-    },
-    {
-      "id": "edge-merge-devops-dev1",
+      "id": "405fb6c1d2baa035a4946d99ed40abdd25d3b939",
       "source": "devops-release",
       "target": "dev-1",
       "type": "merge",
       "count": 1,
-      "event_ids": ["evt-pr5-merged"]
+      "event_ids": [
+        "evt-pr5-merged"
+      ]
     },
     {
-      "id": "edge-verdict-security-dev1",
-      "source": "security-engineer",
+      "id": "a42cb852f870cd80df6baaa24d7868ad755355e2",
+      "source": "architect",
+      "target": "qa-verifier",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "demo-evt-2"
+      ]
+    },
+    {
+      "id": "4d063409a02c748d5fa91b522e6f6485c6750432",
+      "source": "director",
+      "target": "architect",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "demo-evt-1"
+      ]
+    },
+    {
+      "id": "e5a1bacd4343cee13cecdf075d65a9359e286c3d",
+      "source": "qa-verifier",
+      "target": "director",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "demo-evt-3"
+      ]
+    },
+    {
+      "id": "7d49bb5ec1675715fba658ecfa3e6659ba089149",
+      "source": "dev-1",
+      "target": "qa-verifier",
+      "type": "pr",
+      "count": 1,
+      "event_ids": [
+        "evt-pr5-verdict-qa"
+      ]
+    },
+    {
+      "id": "5d0e83ae693005c3ed7e970ea94d70aae6aac91a",
+      "source": "qa-verifier",
       "target": "dev-1",
       "type": "verdict",
       "count": 1,
-      "event_ids": ["evt-pr6-security-review"]
+      "event_ids": [
+        "evt-pr5-verdict-qa"
+      ]
     }
   ],
   "unparsed": []

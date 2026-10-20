@@ -124,6 +124,11 @@ describe("layoutMultiGroupClusters (MM-020f)", () => {
     delete (legacy as { groups?: string[] }).groups;
     expect(groupsForNode(legacy)).toEqual(["build"]);
   });
+
+  it("empty groups[] means standalone (not primary-group frame)", () => {
+    const owner = node("manpreet", "owner", []);
+    expect(groupsForNode(owner)).toEqual([]);
+  });
 });
 
 describe("sample activity still layouts without multi-membership", () => {
