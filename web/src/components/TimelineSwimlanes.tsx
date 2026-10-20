@@ -70,7 +70,12 @@ function EventMarker({
   return (
     <g className="timeline-event-marker">
       {hasSource ? (
-        <a href={event.source_url} target="_blank" rel="noopener noreferrer">
+        <a
+          href={event.source_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${glyph.title}. Open event source in new tab.`}
+        >
           {markerBody}
         </a>
       ) : (
@@ -160,14 +165,13 @@ export function TimelineSwimlanes({
     <div
       ref={containerRef}
       className="timeline-swimlanes"
-      role="img"
+      role="group"
       aria-label="Activity timeline swim lanes"
     >
       <svg
         width={width}
         height={svgHeight}
         className="timeline-svg"
-        aria-hidden="false"
       >
         {lanes.map((lane: TimelineLane, index) => {
           const y = index * LANE_HEIGHT + 4;
@@ -178,6 +182,7 @@ export function TimelineSwimlanes({
                 y={y + 12}
                 className="timeline-lane-label"
               >
+                <title>{lane.label}</title>
                 {lane.label.length > 14
                   ? `${lane.label.slice(0, 13)}…`
                   : lane.label}

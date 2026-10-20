@@ -11,10 +11,12 @@ const activity = fixture as Activity;
 describe("Timeline (MM-006)", () => {
   it("renders one swim lane label per bot plus unknown", () => {
     renderMindmap(<MindmapView activity={activity} />);
-    const timeline = screen.getByRole("img", { name: /Activity timeline swim lanes/i });
-    expect(within(timeline).getByText("Director")).toBeInTheDocument();
-    expect(within(timeline).getByText("DEV 1")).toBeInTheDocument();
-    expect(within(timeline).getByText("unknown")).toBeInTheDocument();
+    const timeline = screen.getByRole("group", {
+      name: /Activity timeline swim lanes/i,
+    });
+    expect(within(timeline).getAllByText("Director").length).toBeGreaterThan(0);
+    expect(within(timeline).getAllByText("DEV 1").length).toBeGreaterThan(0);
+    expect(within(timeline).getAllByText("unknown").length).toBeGreaterThan(0);
     expect(within(timeline).getAllByText(/Verifier|QA/).length).toBeGreaterThan(0);
   });
 
@@ -25,6 +27,18 @@ describe("Timeline (MM-006)", () => {
     expect(handoffs).toHaveAttribute("aria-pressed", "false");
     await user.click(handoffs);
     expect(handoffs).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("exposes timeline task buttons and source links to assistive tech", () => {
+    renderMindmap(<MindmapView activity={activity} />);
+    expect(
+      screen.getAllByRole("button", { name: /RP-005/i }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", {
+        name: /Open event source in new tab/i,
+      }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("highlights task lifecycle in timeline and graph when task id is clicked", async () => {
