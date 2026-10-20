@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /tmp/qa-mm023/repo/web
+
+ ✓ src/test/activityTransport.test.ts (11 tests) 65ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  21:09:39
+   Duration  650ms (transform 60ms, setup 99ms, collect 50ms, tests 65ms, environment 223ms, prepare 78ms)
+

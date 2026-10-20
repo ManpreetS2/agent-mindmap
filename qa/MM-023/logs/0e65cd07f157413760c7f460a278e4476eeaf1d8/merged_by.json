@@ -1,0 +1,22 @@
+{
+  "mapped": {
+    "actor": "manpreet",
+    "provenance": "github-verified",
+    "method": "github_login"
+  },
+  "unmapped": {
+    "actor": null,
+    "provenance": "agent-reported",
+    "method": "github_login_unmapped"
+  },
+  "missing_merged_by": {
+    "actor": null,
+    "provenance": "agent-reported",
+    "method": "unknown"
+  },
+  "squash_no_commit_match": {
+    "actor": "manpreet",
+    "provenance": "github-verified",
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

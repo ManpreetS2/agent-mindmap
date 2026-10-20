@@ -1,0 +1,9 @@
+test_mapped_unmapped_missing_squash (__main__.TestMergedByLogin.test_mapped_unmapped_missing_squash) ... ok
+test_pending_reconnect_tracked (__main__.TestQaMm020e7Source.test_pending_reconnect_tracked) ... ok
+test_no_dangling_refs (__main__.TestResolveMergerRemoved.test_no_dangling_refs) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.028s
+
+OK
+

@@ -1,0 +1,9 @@
+QA environment — MM-023 / PR #23 @ 0e65cd0
+
+Date (UTC): 2026-10-20
+Python: 3.12.3
+Node: v22.23.3
+Fresh checkout: /tmp/qa-mm023/repo
+Verified SHA: 0e65cd07f157413760c7f460a278e4476eeaf1d8
+Base: feat/MM-020-unified-network @ b2baf35db14fc5df18e151b89a2eac3354a176e1
+Mode: verify-only

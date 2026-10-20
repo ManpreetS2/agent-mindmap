@@ -1,0 +1,5 @@
+{
+  "pendingReconnect": true,
+  "dispose_closes_pending": true,
+  "onopen_closes_if_cancelled": true
+}
