@@ -1,0 +1,39 @@
+bash: line 1: ip: command not found
+[PASS] Dev server binds 127.0.0.1 only —   ➜  Local:   http://127.0.0.1:5173/ |   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                      |    0: 00000000:65CA 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 7071 1 0000000084841ece 100 0 0 10 0                       |    1: 00000000:6784 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 443 1 000000002531f527 100 0 0 10 0                        |    2: 0100007F:1435 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 12690 1 0000000015cd5e1c 100 0 0 10 0                      |    3: 0100007F:170D 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 5946 1 0000000060e6447b 100 0 0 10 0                       | loopback_ok | non_loopback_ips []
+[PASS] Demo UI loads with group filter — graph=true filter=true
+[PASS] Director appears exactly once — count=1
+[PASS] Architect appears exactly once — count=1
+[PASS] No duplicate agent node ids — ids=14 unique=14
+[PASS] Membership edges present for multi-group agents — count=4
+[PASS] Graph edges rendered — count=7
+[PASS] Group filter chips for each group — chips=owner,build,qr,radar
+[PASS] All-groups agent count — count=14
+[PASS] Filter Build-only shows Build members (+shared) — ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation
+[PASS] Filter Q&R-only shows Q&R members (+shared) — ids=director,architect,qa-verifier,security-engineer,devops-release
+[PASS] Filter Radar includes Director+Architect once — ids=director,architect,scout,skeptic,nomen,bug-fixer
+[PASS] Filter Build+Q&R combination — ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation,qa-verifier,security-engineer,devops-release
+[PASS] Select-all restores full roster — all=14 expected=14
+[PASS] Cannot select none (keeps ≥1 group) — ownerPressed=true agents=1 before=[{"text":"Owner","pressed":true,"testid":"group-filter-owner"}]
+[N/A (not required by spec)] Group filter survives full page refresh — before=group-filter-build after=group-filter-owner,group-filter-build,group-filter-qr,group-filter-radar
+[FAIL] Dragged Director stays put after new events — delta={"dx":148.364,"dy":97.007} before={"x":188.364,"y":313.007} after={"x":40,"y":216}
+[FINDING:high] AgentGraph position preserve effect: Director moved after append: delta={"dx":148.364,"dy":97.007}; anyLargeReset=true
+[PASS] Undragged nodes do not jump >30px on append — deltas_summary={"director":{"dx":148.364,"dy":97.007}}
+[FAIL] QA-MM012-1 missing activity.json → LedgerErrorView — ledgerError=false jsonParse=true fetch={"status":200,"startsWith":"<!doctype html>\n<html lang=\"en\">\n  <head"} bodySnippet=Skip to main content Unexpected token '<', "<!doctype "... is not valid JSON Retry
+[FINDING:medium] loadActivity + Vite SPA host: fetch status=200 startsWith="<!doctype html>\n<html lang=\"en\">\n  <head"; UI ledgerError=false jsonParse=true
+[PASS] Empty activity.json handled (no silent blank graph) — handled=true agents=0 snippet=Skip to main content Failed to execute 'json' on 'Response': Unexpected end of JSON input Retry
+[PASS] Malformed activity.json handled — snippet=Skip to main content Expected property name or '}' in JSON at position 1 (line 1 column 2) Retry
+[PASS] Verdict fallback (COND/BLK/INC/unknown) no crash — consoleErrors=0
+[PASS] No self-loop edges in demo/activity — dataSelfLoops=0 domHint=0
+[PASS] XSS via group/agent/message text does not execute — __xss=false
+[PASS] Keyboard: slash focuses filter UI — {"tag":"BUTTON","className":"filter-chip","aria":null,"text":"All"}
+[PASS] Skip link present — skipLinkCount=1
+[PASS] Group filter a11y role/label
+[PASS] No console errors on demo load
+[PASS] No outbound calls beyond localhost
+[PASS] QA-MM020a-1 duplicate members → no duplicate chips/nodes — chipsUnique=true director=1 architect=1 ingestIndex={"director": ["build", "build", "build", "qr", "radar"], "architect": ["build", "qr", "radar"]}
+
+=== SUMMARY ===
+PASS 27
+FAIL 2
+OTHER 1
+FINDINGS 3

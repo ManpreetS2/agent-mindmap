@@ -1,0 +1,27 @@
+[
+  {
+    "text": "All groups",
+    "pressed": true,
+    "testid": null
+  },
+  {
+    "text": "Owner",
+    "pressed": true,
+    "testid": "group-filter-owner"
+  },
+  {
+    "text": "Build",
+    "pressed": true,
+    "testid": "group-filter-build"
+  },
+  {
+    "text": "Quality & Release",
+    "pressed": true,
+    "testid": "group-filter-qr"
+  },
+  {
+    "text": "Research / Radar",
+    "pressed": true,
+    "testid": "group-filter-radar"
+  }
+]

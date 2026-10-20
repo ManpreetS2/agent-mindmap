@@ -1,0 +1,27 @@
+{
+  "chips": [
+    "group-filter-owner",
+    "group-filter-build",
+    "group-filter-qr",
+    "group-filter-radar"
+  ],
+  "chipsUnique": true,
+  "directorNodes": 1,
+  "architectNodes": 1,
+  "agentIds": [
+    "manpreet",
+    "director",
+    "architect",
+    "dev-1",
+    "dev-2",
+    "ui-ux-maker",
+    "documentation",
+    "qa-verifier",
+    "security-engineer",
+    "devops-release",
+    "scout",
+    "skeptic",
+    "nomen",
+    "bug-fixer"
+  ]
+}

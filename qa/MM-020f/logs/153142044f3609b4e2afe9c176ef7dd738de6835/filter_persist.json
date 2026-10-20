@@ -1,0 +1,58 @@
+{
+  "beforeRefresh": [
+    {
+      "text": "All groups",
+      "pressed": false,
+      "testid": null
+    },
+    {
+      "text": "Owner",
+      "pressed": false,
+      "testid": "group-filter-owner"
+    },
+    {
+      "text": "Build",
+      "pressed": true,
+      "testid": "group-filter-build"
+    },
+    {
+      "text": "Quality & Release",
+      "pressed": false,
+      "testid": "group-filter-qr"
+    },
+    {
+      "text": "Research / Radar",
+      "pressed": false,
+      "testid": "group-filter-radar"
+    }
+  ],
+  "afterRefresh": [
+    {
+      "text": "All groups",
+      "pressed": true,
+      "testid": null
+    },
+    {
+      "text": "Owner",
+      "pressed": true,
+      "testid": "group-filter-owner"
+    },
+    {
+      "text": "Build",
+      "pressed": true,
+      "testid": "group-filter-build"
+    },
+    {
+      "text": "Quality & Release",
+      "pressed": true,
+      "testid": "group-filter-qr"
+    },
+    {
+      "text": "Research / Radar",
+      "pressed": true,
+      "testid": "group-filter-radar"
+    }
+  ],
+  "persisted": false,
+  "specRequires": false
+}

@@ -1,0 +1,1 @@
+web	pass	1m2s	https://github.com/ManpreetS2/agent-mindmap/actions/runs/39394328429/job/118533176909	

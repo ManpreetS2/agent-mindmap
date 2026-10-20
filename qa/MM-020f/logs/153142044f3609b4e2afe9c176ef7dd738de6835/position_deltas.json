@@ -1,0 +1,58 @@
+{
+  "manpreet": {
+    "dx": 0,
+    "dy": 0
+  },
+  "director": {
+    "dx": 148.364,
+    "dy": 97.007
+  },
+  "architect": {
+    "dx": 0,
+    "dy": 0
+  },
+  "dev-1": {
+    "dx": 0,
+    "dy": 0
+  },
+  "dev-2": {
+    "dx": 0,
+    "dy": 0
+  },
+  "ui-ux-maker": {
+    "dx": 0,
+    "dy": 0
+  },
+  "documentation": {
+    "dx": 0,
+    "dy": 0
+  },
+  "qa-verifier": {
+    "dx": 0,
+    "dy": 0
+  },
+  "security-engineer": {
+    "dx": 0,
+    "dy": 0
+  },
+  "devops-release": {
+    "dx": 0,
+    "dy": 0
+  },
+  "scout": {
+    "dx": 0,
+    "dy": 0
+  },
+  "skeptic": {
+    "dx": 0,
+    "dy": 0
+  },
+  "nomen": {
+    "dx": 0,
+    "dy": 0
+  },
+  "bug-fixer": {
+    "dx": 0,
+    "dy": 0
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "sha": "153142044f3609b4e2afe9c176ef7dd738de6835",
+  "pr": 19,
+  "base": "feat/MM-020-unified-network",
+  "head_branch": "feat/MM-020f-multigroup-graph",
+  "checks": [
+    {
+      "check": "Dev server binds 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "  ➜  Local:   http://127.0.0.1:5173/ |   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                      |    0: 00000000:65CA 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 7071 1 0000000084841ece 100 0 0 10 0                       |    1: 00000000:6784 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 443 1 000000002531f527 100 0 0 10 0                        |    2: 0100007F:1435 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 12690 1 0000000015cd5e1c 100 0 0 10 0                      |    3: 0100007F:170D 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 5946 1 0000000060e6447b 100 0 0 10 0                       | loopback_ok | non_loopback_ips []"
+    },
+    {
+      "check": "Demo UI loads with group filter",
+      "result": "PASS",
+      "detail": "graph=true filter=true"
+    },
+    {
+      "check": "Director appears exactly once",
+      "result": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "check": "Architect appears exactly once",
+      "result": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "check": "No duplicate agent node ids",
+      "result": "PASS",
+      "detail": "ids=14 unique=14"
+    },
+    {
+      "check": "Membership edges present for multi-group agents",
+      "result": "PASS",
+      "detail": "count=4"
+    },
+    {
+      "check": "Graph edges rendered",
+      "result": "PASS",
+      "detail": "count=7"
+    },
+    {
+      "check": "Group filter chips for each group",
+      "result": "PASS",
+      "detail": "chips=owner,build,qr,radar"
+    },
+    {
+      "check": "All-groups agent count",
+      "result": "PASS",
+      "detail": "count=14"
+    },
+    {
+      "check": "Filter Build-only shows Build members (+shared)",
+      "result": "PASS",
+      "detail": "ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation"
+    },
+    {
+      "check": "Filter Q&R-only shows Q&R members (+shared)",
+      "result": "PASS",
+      "detail": "ids=director,architect,qa-verifier,security-engineer,devops-release"
+    },
+    {
+      "check": "Filter Radar includes Director+Architect once",
+      "result": "PASS",
+      "detail": "ids=director,architect,scout,skeptic,nomen,bug-fixer"
+    },
+    {
+      "check": "Filter Build+Q&R combination",
+      "result": "PASS",
+      "detail": "ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation,qa-verifier,security-engineer,devops-release"
+    },
+    {
+      "check": "Select-all restores full roster",
+      "result": "PASS",
+      "detail": "all=14 expected=14"
+    },
+    {
+      "check": "Cannot select none (keeps ≥1 group)",
+      "result": "PASS",
+      "detail": "ownerPressed=true agents=1 before=[{\"text\":\"Owner\",\"pressed\":true,\"testid\":\"group-filter-owner\"}]"
+    },
+    {
+      "check": "Group filter survives full page refresh",
+      "result": "N/A (not required by spec)",
+      "detail": "before=group-filter-build after=group-filter-owner,group-filter-build,group-filter-qr,group-filter-radar"
+    },
+    {
+      "check": "Dragged Director stays put after new events",
+      "result": "FAIL",
+      "detail": "delta={\"dx\":148.364,\"dy\":97.007} before={\"x\":188.364,\"y\":313.007} after={\"x\":40,\"y\":216}"
+    },
+    {
+      "check": "Undragged nodes do not jump >30px on append",
+      "result": "PASS",
+      "detail": "deltas_summary={\"director\":{\"dx\":148.364,\"dy\":97.007}}"
+    },
+    {
+      "check": "QA-MM012-1 missing activity.json → LedgerErrorView",
+      "result": "FAIL",
+      "detail": "ledgerError=false jsonParse=true fetch={\"status\":200,\"startsWith\":\"<!doctype html>\\n<html lang=\\\"en\\\">\\n  <head\"} bodySnippet=Skip to main content Unexpected token '<', \"<!doctype \"... is not valid JSON Retry"
+    },
+    {
+      "check": "Empty activity.json handled (no silent blank graph)",
+      "result": "PASS",
+      "detail": "handled=true agents=0 snippet=Skip to main content Failed to execute 'json' on 'Response': Unexpected end of JSON input Retry"
+    },
+    {
+      "check": "Malformed activity.json handled",
+      "result": "PASS",
+      "detail": "snippet=Skip to main content Expected property name or '}' in JSON at position 1 (line 1 column 2) Retry"
+    },
+    {
+      "check": "Verdict fallback (COND/BLK/INC/unknown) no crash",
+      "result": "PASS",
+      "detail": "consoleErrors=0"
+    },
+    {
+      "check": "No self-loop edges in demo/activity",
+      "result": "PASS",
+      "detail": "dataSelfLoops=0 domHint=0"
+    },
+    {
+      "check": "XSS via group/agent/message text does not execute",
+      "result": "PASS",
+      "detail": "__xss=false"
+    },
+    {
+      "check": "Keyboard: slash focuses filter UI",
+      "result": "PASS",
+      "detail": "{\"tag\":\"BUTTON\",\"className\":\"filter-chip\",\"aria\":null,\"text\":\"All\"}"
+    },
+    {
+      "check": "Skip link present",
+      "result": "PASS",
+      "detail": "skipLinkCount=1"
+    },
+    {
+      "check": "Group filter a11y role/label",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "No console errors on demo load",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "No outbound calls beyond localhost",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "QA-MM020a-1 duplicate members → no duplicate chips/nodes",
+      "result": "PASS",
+      "detail": "chipsUnique=true director=1 architect=1 ingestIndex={\"director\": [\"build\", \"build\", \"build\", \"qr\", \"radar\"], \"architect\": [\"build\", \"qr\", \"radar\"]}"
+    }
+  ],
+  "findings": [
+    {
+      "id": "QA-MM020f-position-reset",
+      "component": "AgentGraph position preserve effect",
+      "expected": "Node positions (especially user-dragged) remain stable when activity.json gains new events via poll",
+      "actual": "Director moved after append: delta={\"dx\":148.364,\"dy\":97.007}; anyLargeReset=true",
+      "repro": "Open demo UI; drag Director; append message event+edge to web/public/activity.json; wait >10s for poll; compare transform",
+      "evidence": "screenshots/08-after-drag-director.png, screenshots/09-after-event-append.png, position_deltas.json",
+      "environment": "Playwright chromium @ 1531420; poll ~10s",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "QA-MM012-1",
+      "component": "loadActivity + Vite SPA host",
+      "expected": "Missing activity.json → HTTP 404/422 → LedgerErrorView (“Can't read …”) + Retry",
+      "actual": "fetch status=200 startsWith=\"<!doctype html>\\n<html lang=\\\"en\\\">\\n  <head\"; UI ledgerError=false jsonParse=true",
+      "repro": "rm web/public/activity.json; curl -i http://127.0.0.1:5173/activity.json; reload UI",
+      "evidence": "screenshots/10-missing-activity.png, missing_activity_fetch.json",
+      "environment": "Vite 5.4.21, Playwright @ 1531420",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "QA-MM020a-1-note",
+      "component": "ingest.membership.membership_index",
+      "expected": "Optional: dedupe group ids per bot when members lists contain duplicates",
+      "actual": "membership_index preserves duplicate group ids: {\"director\": [\"build\", \"build\", \"build\", \"qr\", \"radar\"], \"architect\": [\"build\", \"qr\", \"radar\"]}",
+      "repro": "Append duplicate bot id to a group's members; call membership_index",
+      "evidence": "qa_mm020a1_membership_index.json",
+      "environment": "python ingest @ 1531420",
+      "severity": "low",
+      "confidence": "high",
+      "note": "UI chips/nodes still unique via Set-based collectGroupIds; ingest may emit duplicate groups[] entries"
+    }
+  ],
+  "consoleErrorsFinal": [],
+  "outboundCount": 0
+}
