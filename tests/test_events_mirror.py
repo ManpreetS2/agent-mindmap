@@ -15,14 +15,13 @@ from tools.events_mirror import (
     decide_flush,
     event_state_fingerprints,
     load_state,
-    looks_like_mirror_secret,
     mark_flushed,
     prepare_events_payload,
     secret_line_numbers,
     sha256_text,
     validate_network_event,
 )
-from ingest.github_poller import _looks_like_secret
+from tools.secret_scan import looks_like_secret
 
 ROOT = Path(__file__).resolve().parents[1]
 MIRROR = ROOT / "tools" / "events_mirror.py"
@@ -182,16 +181,40 @@ QA_MM020B2_PROBES = {
 }
 
 
-def test_qa_mm020b2_patterns_already_vs_extended() -> None:
-    """Document which QA probes shared scanner covers vs mirror extension."""
-    already = {"ghp_", "github_pat_", "Bearer"}
-    missed_before = {"sk-", "AKIA", "JWT", "private_key", "email"}
-    for name in already:
-        assert _looks_like_secret(QA_MM020B2_PROBES[name]), name
-        assert looks_like_mirror_secret(QA_MM020B2_PROBES[name]), name
-    for name in missed_before:
-        assert not _looks_like_secret(QA_MM020B2_PROBES[name]), name
-        assert looks_like_mirror_secret(QA_MM020B2_PROBES[name]), name
+def test_qa_mm020b2_all_probes_hit_shared_scanner() -> None:
+    """All QA-MM020b-2 probes hit tools.secret_scan (SEC-MM020c-2)."""
+    for name, sample in QA_MM020B2_PROBES.items():
+        assert looks_like_secret(sample), name
+
+
+def test_sec_mm020c1_sk_benign_summaries_not_dropped() -> None:
+    """SEC-MM020c-1: benign sk- substrings in summaries must not be dropped."""
+    keepers = [
+        _ev("t1", summary="use the task-runner for builds"),
+        _ev("t2", summary="risk-based prioritization"),
+        _ev("t3", summary="desk-lamp lighting notes"),
+    ]
+    raw = "".join(json.dumps(e, sort_keys=True) + "\n" for e in keepers)
+    text, events, warns, secrets_seen = prepare_events_payload(
+        raw, now=NOW, warn=False
+    )
+    assert secrets_seen is False
+    assert [e["id"] for e in events] == ["t1", "t2", "t3"]
+    assert not any("secret-like" in w for w in warns)
+    assert "task-runner" in text
+
+    # Real-looking sk- key is dropped + refuse path.
+    bad = _ev(
+        "bad-sk",
+        summary="sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF",
+    )
+    raw2 = json.dumps(bad, sort_keys=True) + "\n"
+    _, events2, warns2, secrets_seen2 = prepare_events_payload(
+        raw2, now=NOW, warn=False
+    )
+    assert secrets_seen2 is True
+    assert events2 == []
+    assert any("secret-like content" in w for w in warns2)
 
 
 def test_qa_mm020b2_secret_lines_dropped_with_warning_and_refuse_flush(

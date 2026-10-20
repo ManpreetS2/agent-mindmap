@@ -21,11 +21,12 @@ Flush is true only when:
 Idempotent: the same content sha256 never flushes twice.
 State is updated only via `--mark-flushed <sha256>`.
 
-SEC-MM010-1: before any flush, scan with ingest.github_poller._looks_like_secret.
-Secrets refuse the flush (reason=secret_detected, line numbers only); --force
-cannot bypass. Matched secret text is never printed.
+SEC-MM010-1 / SEC-MM020c-2: before any flush, scan with
+tools.secret_scan.looks_like_secret (shared denylist). Secrets refuse the
+flush (reason=secret_detected, line numbers only); --force cannot bypass.
+Matched secret text is never printed.
 
-Stdlib only (+ reuse of existing ingest secret scanner; no new deps).
+Stdlib only (+ shared tools.secret_scan; no new deps).
 event_emit.py is not on this branch yet — minimal local NetworkEvent validator.
 """
 
@@ -46,7 +47,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do not duplicate
+from tools.secret_scan import looks_like_secret  # noqa: E402  — shared scanner (SEC-MM020c-2)
 
 FLUSH_MIN_INTERVAL_S = 180
 RETENTION_DAYS = 7
@@ -78,39 +79,16 @@ DEFAULT_EVENTS_PATH = Path(
     os.environ.get("MINDMAP_EVENTS", "/workspace/events.jsonl")
 )
 
-# QA-MM020b-2 samples (qa/MM-020b @ 849f359) beyond shared `_looks_like_secret`
-# (which only covers ghp_/gho_/…/github_pat_/Bearer/Authorization).
-_MIRROR_SECRET_EXTRA_RE = re.compile(
-    r"("
-    r"sk-[A-Za-z0-9_\-]+"  # OpenAI-style
-    r"|AKIA[0-9A-Z]{16}"  # AWS access key id
-    r"|eyJ[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+){2}"  # JWT
-    r"|-----BEGIN(?:\s+\w+)?\s+PRIVATE KEY-----"
-    r"|[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"  # email
-    r")",
-    re.IGNORECASE,
-)
-
-
-def looks_like_mirror_secret(text: str) -> bool:
-    """
-    Secret scan for events mirror: shared SEC-MM010-1 patterns plus QA-MM020b-2
-    (sk-, AKIA, JWT, private-key blocks, emails). Never return matched text.
-    """
-    if _looks_like_secret(text):
-        return True
-    return bool(_MIRROR_SECRET_EXTRA_RE.search(text))
-
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def secret_line_numbers(content: str) -> list[int]:
-    """1-based line numbers that match looks_like_mirror_secret (never return text)."""
+    """1-based line numbers that match looks_like_secret (never return text)."""
     hits: list[int] = []
     for i, line in enumerate(content.splitlines(), start=1):
-        if looks_like_mirror_secret(line):
+        if looks_like_secret(line):
             hits.append(i)
     return hits
 
@@ -146,7 +124,7 @@ def validate_network_event(obj: Any) -> dict[str, Any] | None:
       group: any non-empty string (unknown groups pass through)
       recipients: optional list of non-empty strings
       task_id: optional null or schema taskId pattern
-      secrets: refused at flush via SEC-MM010-1 (_looks_like_secret), same as emit
+      secrets: refused at flush via tools.secret_scan (SEC-MM010-1 / SEC-MM020c-2)
 
     Returns a cleaned dict, or None if invalid (caller drops the line).
     """
@@ -326,7 +304,7 @@ def prepare_events_payload(
             continue
         # QA-MM020b-2 / SEC-MM010-1: drop secret-like lines (warning only — never echo).
         summary = ev.get("summary") if isinstance(ev.get("summary"), str) else ""
-        if looks_like_mirror_secret(summary) or looks_like_mirror_secret(line):
+        if looks_like_secret(summary) or looks_like_secret(line):
             secrets_seen = True
             msg = (
                 f"events_mirror: drop secret-like content at line {lineno} "

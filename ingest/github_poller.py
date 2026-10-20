@@ -271,14 +271,10 @@ def default_gh_runner(args: list[str], *, timeout: float = 60.0) -> GhResponse:
 
 
 def _looks_like_secret(text: str) -> bool:
-    return bool(
-        re.search(
-            r"(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|Bearer\s+[A-Za-z0-9._\-]+|"
-            r"Authorization:\s*\S+)",
-            text,
-            re.IGNORECASE,
-        )
-    )
+    """Delegate to tools.secret_scan (SEC-MM020c-2 — no local denylist regex)."""
+    from tools.secret_scan import looks_like_secret
+
+    return looks_like_secret(text)
 
 
 def _is_rate_limit_response(resp: GhResponse) -> bool:

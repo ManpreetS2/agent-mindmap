@@ -183,10 +183,10 @@ python3 tools/ledger_mirror.py \
 
 Reasons: `unchanged` | `no_state_change` | `under_180s` | `state_change` | `force` | `marked` | `secret_detected`.
 
-**SEC-MM010-1:** before any flush, the payload is scanned with the same
-`_looks_like_secret` helper used by the GitHub poller. A match refuses the flush
-(`reason: secret_detected`, **line numbers only** — never the matched text),
-leaves the state file untouched, and **`--force` cannot bypass** it.
+**SEC-MM010-1 / SEC-MM020c-2:** before any flush, the payload is scanned with
+`tools.secret_scan.looks_like_secret` (shared denylist). A match refuses the
+flush (`reason: secret_detected`, **line numbers only** — never the matched
+text), leaves the state file untouched, and **`--force` cannot bypass** it.
 
 ### Ingest side
 
