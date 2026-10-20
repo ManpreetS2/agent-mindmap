@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -68,6 +70,77 @@ def test_secret_summary_refused() -> None:
     safe, err = summary_safe_for_emit("ghp_deadbeef")
     assert safe is None
     assert err
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF",
+        "AKIAIOSFODNN7EXAMPLE",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.signature",
+        "-----BEGIN PRIVATE KEY----- MIIEvQIBADANBg -----END PRIVATE KEY-----",
+        "contact alice@example.com please",
+    ],
+)
+def test_emit_refuses_extended_secret_patterns(tmp_path: Path, summary: str) -> None:
+    out = tmp_path / "events.jsonl"
+    with pytest.raises(SecretRefusedError):
+        emit_message(
+            out,
+            sender="dev-1",
+            group="build",
+            summary=summary,
+            ts="2026-10-20T12:00:00+00:00",
+        )
+    assert not out.exists()
+
+
+def test_preexisting_jsonl_mode_tightened_to_600(tmp_path: Path) -> None:
+    out = tmp_path / "events.jsonl"
+    out.write_text("", encoding="utf-8")
+    os.chmod(out, 0o644)
+    emit_message(
+        out,
+        sender="dev-1",
+        group="build",
+        summary="preexisting mode",
+        ts="2026-10-20T12:00:00+00:00",
+    )
+    assert stat.S_IMODE(out.stat().st_mode) == JSONL_FILE_MODE
+
+
+def test_unknown_recipients_partitioned_and_logged(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    out = tmp_path / "rec.jsonl"
+    with caplog.at_level("WARNING"):
+        evt = emit_message(
+            out,
+            sender="director",
+            group="build",
+            summary="explicit ping",
+            recipients=["dev-1", "not-a-real-bot"],
+            ts="2026-10-20T15:00:01+00:00",
+        )
+    assert evt["recipients"] == ["dev-1"]
+    assert evt["unknown_recipients"] == ["not-a-real-bot"]
+    assert "not-a-real-bot" in caplog.text
+    validate_network_event(evt)
+    line = json.loads(out.read_text(encoding="utf-8").strip())
+    assert line["unknown_recipients"] == ["not-a-real-bot"]
+
+
+def test_recipients_not_inferred_from_mentions(tmp_path: Path) -> None:
+    out = tmp_path / "rec.jsonl"
+    evt = emit_message(
+        out,
+        sender="director",
+        group="build",
+        summary="Hey @dev-1 and @qa please review this",
+        ts="2026-10-20T15:00:00+00:00",
+    )
+    assert "recipients" not in evt
+    assert "unknown_recipients" not in evt
 
 
 def test_emit_refuses_secret_in_summary(tmp_path: Path) -> None:

@@ -342,6 +342,11 @@
           "items": { "type": "string", "minLength": 1 },
           "description": "Only when explicit — never invented"
         },
+        "unknown_recipients": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Explicit recipient ids not found in config/bots.json"
+        },
         "group": { "$ref": "#/$defs/groupId" },
         "type": { "type": "string", "minLength": 1 },
         "task_id": {

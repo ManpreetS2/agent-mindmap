@@ -17,7 +17,9 @@ from __future__ import annotations
 import errno
 import hashlib
 import json
+import logging
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +29,10 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from ingest.attribute import load_bots  # noqa: E402
 from ingest.github_poller import _looks_like_secret  # noqa: E402 — MM-010 pattern
+
+logger = logging.getLogger(__name__)
 
 PIPE_BUF = 4096
 SUMMARY_MAX_CHARS = 240
@@ -36,6 +41,38 @@ EVENT_SOURCE = "network-event"
 DEFAULT_PROVENANCE = "agent-reported"
 DEFAULT_EVENT_TYPE = "message"
 SCHEMA_PATH = _ROOT / "schema" / "activity.schema.json"
+
+# MM-020b / QA-MM020b-2: extra free-text patterns beyond MM-010 github_poller scan.
+_RE_OPENAI_SK = re.compile(r"sk-[A-Za-z0-9_-]+")
+_RE_AWS_AKIA = re.compile(r"AKIA[0-9A-Z]{16}")
+_RE_JWT = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
+_RE_PEM_PRIVATE = re.compile(
+    r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.IGNORECASE
+)
+_RE_EMAIL = re.compile(
+    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    re.IGNORECASE,
+)
+
+_FREE_TEXT_SCANNERS: tuple[re.Pattern[str], ...] = (
+    _RE_OPENAI_SK,
+    _RE_AWS_AKIA,
+    _RE_JWT,
+    _RE_PEM_PRIVATE,
+    _RE_EMAIL,
+)
+
+
+def _free_text_looks_like_secret(text: str) -> bool:
+    """Refuse OpenAI/AWS/JWT/PEM/email patterns plus MM-010 credential scan."""
+    if _looks_like_secret(text):
+        return True
+    return any(p.search(text) for p in _FREE_TEXT_SCANNERS)
+
+
+def _refuse_free_text_field(field: str, value: str) -> None:
+    if _free_text_looks_like_secret(value):
+        raise SecretRefusedError(f"{field} refused: secret-like content")
 
 
 class EventEmitError(ValueError):
@@ -94,7 +131,7 @@ def sanitize_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str:
     cleaned = " ".join(text.split())
     if not cleaned:
         raise EventEmitError("summary must not be empty")
-    if _looks_like_secret(cleaned):
+    if _free_text_looks_like_secret(cleaned):
         raise SecretRefusedError("summary refused: secret-like content")
     if len(cleaned) > max_chars:
         cleaned = cleaned[: max_chars - 1] + "…"
@@ -115,6 +152,27 @@ def summary_safe_for_emit(text: str) -> tuple[str | None, str | None]:
         return None, str(exc)
 
 
+def _known_bot_ids() -> set[str]:
+    return {str(bot["id"]) for bot in load_bots()}
+
+
+def _partition_recipients(
+    recipients: list[str] | None,
+) -> tuple[list[str], list[str]]:
+    """Split explicit recipients into config-known ids vs unknown (never invent)."""
+    if not recipients:
+        return [], []
+    known_ids = _known_bot_ids()
+    known: list[str] = []
+    unknown: list[str] = []
+    for recipient in recipients:
+        if recipient in known_ids:
+            known.append(recipient)
+        else:
+            unknown.append(recipient)
+    return known, unknown
+
+
 def build_network_event(
     *,
     ts: str,
@@ -129,7 +187,26 @@ def build_network_event(
     locator: str | None = None,
 ) -> dict[str, Any]:
     """Build a networkEvent-shaped dict (schema $defs/networkEvent)."""
+    _refuse_free_text_field("sender", sender)
+    _refuse_free_text_field("group", group)
+    _refuse_free_text_field("type", event_type)
+    _refuse_free_text_field("provenance", provenance)
+    if task_id is not None:
+        _refuse_free_text_field("task_id", task_id)
+    if related_id is not None:
+        _refuse_free_text_field("related_id", related_id)
+    if recipients:
+        for recipient in recipients:
+            _refuse_free_text_field("recipient", recipient)
+
     safe_summary = sanitize_summary(summary)
+    known_recipients, unknown_recipients = _partition_recipients(recipients)
+    if unknown_recipients:
+        logger.warning(
+            "unknown recipient id(s) in explicit recipients: %s",
+            ", ".join(sorted(unknown_recipients)),
+        )
+
     loc = locator or build_locator(
         ts=ts,
         sender=sender,
@@ -149,8 +226,10 @@ def build_network_event(
         "summary": safe_summary,
         "provenance": provenance,
     }
-    if recipients:
-        evt["recipients"] = list(recipients)
+    if known_recipients:
+        evt["recipients"] = list(known_recipients)
+    if unknown_recipients:
+        evt["unknown_recipients"] = list(unknown_recipients)
     if task_id is not None:
         evt["task_id"] = task_id
     if related_id is not None:
@@ -160,7 +239,7 @@ def build_network_event(
 
 def _serialize_line(event: dict[str, Any]) -> bytes:
     blob = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    if _looks_like_secret(blob):
+    if _free_text_looks_like_secret(blob):
         raise SecretRefusedError("serialized event refused: secret-like content")
     line = (blob + "\n").encode("utf-8")
     if b"\n" in blob.encode("utf-8"):
@@ -211,16 +290,20 @@ def _fit_line_to_pipe_buf(event: dict[str, Any], *, max_bytes: int = PIPE_BUF) -
 
 
 def _open_jsonl_append(path: Path) -> int:
-    """O_APPEND + O_NOFOLLOW; create with 0o600. Refuses symlink paths."""
+    """O_APPEND + O_NOFOLLOW; create with 0o600; fchmod existing files to 0o600."""
     if path.is_symlink():
         raise SymlinkRefusedError(f"refusing symlink JSONL path: {path}")
+    existed = path.exists()
     flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW
     try:
-        return os.open(path, flags, JSONL_FILE_MODE)
+        fd = os.open(path, flags, JSONL_FILE_MODE)
     except OSError as exc:
         if exc.errno in (errno.ELOOP, errno.EMLINK):
             raise SymlinkRefusedError(f"refusing symlink JSONL path: {path}") from exc
         raise
+    if existed:
+        os.fchmod(fd, JSONL_FILE_MODE)
+    return fd
 
 
 def append_event(
