@@ -94,7 +94,7 @@ export interface Edge {
   event_ids: string[];
 }
 
-export type GitHubMetaStatus = "ok" | "error" | "skipped";
+export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
 
 export interface ActivityMeta {
   github: GitHubMetaStatus;

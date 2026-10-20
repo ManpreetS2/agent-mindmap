@@ -37,7 +37,7 @@
       "properties": {
         "github": {
           "type": "string",
-          "enum": ["ok", "error", "skipped"]
+          "enum": ["ok", "error", "skipped", "rate_limited"]
         }
       }
     },
