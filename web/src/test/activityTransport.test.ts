@@ -121,6 +121,30 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     expect(FakeEventSource.instances[0].closed).toBe(true);
   });
 
+  it("reports SSE disconnect on error and reconnect on recovery", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const connections: boolean[] = [];
+    const fetchImpl = mockFetch();
+    const transport = createSseTransport({
+      intervalMs: 100,
+      sseRetryInitialMs: 200,
+      fetchImpl,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+      onSseConnectionChange: (c) => connections.push(c),
+    });
+    const stop = transport.subscribe!(() => undefined);
+    expect(connections).toContain(true);
+    FakeEventSource.instances[0].emitError();
+    expect(connections).toContain(false);
+    await vi.advanceTimersByTimeAsync(250);
+    const last = FakeEventSource.instances.at(-1);
+    last?.emitOpen();
+    expect(connections.filter(Boolean).length).toBeGreaterThanOrEqual(2);
+    stop();
+    vi.useRealTimers();
+  });
+
   it("falls back to poll when EventSource errors", async () => {
     vi.useFakeTimers();
     FakeEventSource.instances = [];
