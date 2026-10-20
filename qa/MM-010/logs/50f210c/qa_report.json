@@ -1,0 +1,97 @@
+{
+  "head": "50f210c965a052ed4d41b2a83f72f75c672d2d30",
+  "checks": [
+    {
+      "name": "fixture_schema_validation",
+      "result": "PASS",
+      "detail": "7 activity fixtures",
+      "evidence": "PASS fixtures/sample-activity.json\nPASS web/src/fixtures/state-empty.json\nPASS web/src/fixtures/state-partial-github-error.json\nPASS web/src/fixtures/state-partial-github-rate-limited.json\nPASS web/src/fixtures/state-partial-github-skipped.json\nPASS web/src/fixtures/state-stale.json\nPASS web/src/fixtures/state-unparsed.json"
+    },
+    {
+      "name": "required_ledger_path_no_default",
+      "result": "PASS",
+      "detail": "rc=2\nstdout=\nstderr=error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable (or use --ledger-source gh)\n",
+      "evidence": "rc=2\nstdout=\nstderr=error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable (or use --ledger-source gh)\n"
+    },
+    {
+      "name": "malformed_ledger_local",
+      "result": "PASS",
+      "detail": "parser tolerates garbage or exits cleanly",
+      "evidence": "rc=0\nstderr=\nexists=True\nmeta={'github': 'skipped', 'ledger': 'ok', 'ledger_last_entry_at': None}\ntasks=0\nschema=ok"
+    },
+    {
+      "name": "malformed_ledger_gh_decode",
+      "result": "PASS",
+      "detail": "meta_ledger=error text=None errors=['decode failed: Error: Invalid base64-encoded string: number of data characters (9) cannot be 1 more than a multiple of 4']",
+      "evidence": "meta_ledger=error text=None errors=['decode failed: Error: Invalid base64-encoded string: number of data characters (9) cannot be 1 more than a multiple of 4']"
+    },
+    {
+      "name": "idempotent_mirror_rerun",
+      "result": "PASS",
+      "detail": "first={'flush': True, 'payload': '/tmp/tmplk39yz5f/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\nmark_rc=0\nsecond={'flush': False, 'reason': 'unchanged', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}",
+      "evidence": "first={'flush': True, 'payload': '/tmp/tmplk39yz5f/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\nmark_rc=0\nsecond={'flush': False, 'reason': 'unchanged', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}"
+    },
+    {
+      "name": "idempotent_ingest_rerun",
+      "result": "PASS",
+      "detail": "equal=True",
+      "evidence": "equal=True"
+    },
+    {
+      "name": "pr_join_repo_number",
+      "result": "PASS",
+      "detail": "pairs={('qa-verifier', 'dev-2'), ('architect', 'dev-1')}",
+      "evidence": "[\n  {\n    \"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\",\n    \"source\": \"architect\",\n    \"target\": \"dev-1\",\n    \"type\": \"merge\",\n    \"count\": 1,\n    \"event_ids\": [\n      \"m1\"\n    ]\n  },\n  {\n    \"id\": \"8bd085190da9f928e194829d161dae9d24cc3f53\",\n    \"source\": \"qa-verifier\",\n    \"target\": \"dev-2\",\n    \"type\": \"merge\",\n    \"count\": 1,\n    \"event_ids\": [\n      \"m2\"\n    ]\n  }\n]"
+    },
+    {
+      "name": "merged_by_ignored_no_edge",
+      "result": "PASS",
+      "detail": "[]",
+      "evidence": "[]"
+    },
+    {
+      "name": "merger_from_bot_signature",
+      "result": "PASS",
+      "detail": "[{\"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\", \"source\": \"architect\", \"target\": \"dev-1\", \"type\": \"merge\", \"count\": 1, \"event_ids\": [\"ms\"]}]",
+      "evidence": "[{\"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\", \"source\": \"architect\", \"target\": \"dev-1\", \"type\": \"merge\", \"count\": 1, \"event_ids\": [\"ms\"]}]"
+    },
+    {
+      "name": "merged_by_not_read_for_actor",
+      "result": "PASS",
+      "detail": "no runtime reads of merged_by",
+      "evidence": "none"
+    },
+    {
+      "name": "gh_read_only",
+      "result": "PASS",
+      "detail": "runner_ok=True",
+      "evidence": "write_verbs=[]"
+    },
+    {
+      "name": "SEC-MM010-1_secret_blocks_force_no_write_no_leak",
+      "result": "PASS",
+      "detail": "calls_scanner=True\ncli_rc=0\ncli_out={'flush': False, 'lines': [7], 'reason': 'secret_detected', 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}\ndecide={'flush': False, 'reason': 'secret_detected', 'lines': [7], 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}\nsecret_in_stdout_stderr=False\nsecret_in_json_dumps_decision=False\npayload_exists=False\nstate_exists=False\nlines_expected=[7]\n_looks_like_secret(dirty)=True\n",
+      "evidence": "calls_scanner=True\ncli_rc=0\ncli_out={'flush': False, 'lines': [7], 'reason': 'secret_detected', 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}\ndecide={'flush': False, 'reason': 'secret_detected', 'lines': [7], 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}\nsecret_in_stdout_stderr=False\nsecret_in_json_dumps_decision=False\npayload_exists=False\nstate_exists=False\nlines_expected=[7]\n_looks_like_secret(dirty)=True\n"
+    },
+    {
+      "name": "SEC-MM010-1_clean_payload_still_flushes",
+      "result": "PASS",
+      "detail": "rc=0\nout={'flush': True, 'payload': '/tmp/tmpeb8zabqp/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\npayload_exists=True\npayload_matches=True\n",
+      "evidence": "rc=0\nout={'flush': True, 'payload': '/tmp/tmpeb8zabqp/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\npayload_exists=True\npayload_matches=True\n"
+    },
+    {
+      "name": "write_paths_constrained_gh_mocked_e2e",
+      "result": "PASS",
+      "detail": "gh_calls=[['repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger']]\nfiles=['activity.json', 'cache/ledger/bodies/90aa5ba5f00cee94f167bde45945b530cd9e0808.json', 'cache/ledger/etags.json']\nunexpected=[]\nmutating=[]\n",
+      "evidence": "gh_calls=[['repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger']]\nfiles=['activity.json', 'cache/ledger/bodies/90aa5ba5f00cee94f167bde45945b530cd9e0808.json', 'cache/ledger/etags.json']\nunexpected=[]\nmutating=[]\n"
+    },
+    {
+      "name": "no_secrets_in_repo",
+      "result": "PASS",
+      "detail": "only test/scanner references",
+      "evidence": "/tmp/qa-mm010/repo/tests/test_ledger_mirror.py:167:SECRET_TOKEN = \"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\"\n"
+    }
+  ],
+  "findings": [],
+  "environment": "linux python=3.12.3 cwd=/tmp/qa-mm010/repo head=50f210c965a052ed4d41b2a83f72f75c672d2d30"
+}

@@ -1,0 +1,3 @@
+first={'flush': True, 'payload': '/tmp/tmplk39yz5f/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}
+mark_rc=0
+second={'flush': False, 'reason': 'unchanged', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}

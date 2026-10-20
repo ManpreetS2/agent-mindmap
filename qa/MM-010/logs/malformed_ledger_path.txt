@@ -1,0 +1,21 @@
+rc=1
+stderr=Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/qa-mm010/repo/ingest/__main__.py", line 5, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/tmp/qa-mm010/repo/ingest/build.py", line 298, in main
+    activity = build_activity(
+               ^^^^^^^^^^^^^^^
+  File "/tmp/qa-mm010/repo/ingest/build.py", line 152, in build_activity
+    ledger = parse_ledger_file(
+             ^^^^^^^^^^^^^^^^^^
+  File "/tmp/qa-mm010/repo/ingest/ledger_parser.py", line 722, in parse_ledger_file
+    text = p.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1030, in read_text
+    return f.read()
+           ^^^^^^^^
+  
+exists=False

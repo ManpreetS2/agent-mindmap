@@ -1,0 +1,1 @@
+architecture.md: not in this repo (build/mindmap/architecture.md referenced from ledger; GitHub 404). AC sourced from PR body + MM-010 report comment + README ledger mirror contract.

@@ -1,0 +1,8 @@
+Baseline only (not verdict target).
+
+Head: 3be3f32659484de503a149c1f2b3fa55e92ee82e
+pytest: 80 passed
+vitest: 40 passed
+tsc/build: clean
+SEC-MM010-1: FAIL — tools/ledger_mirror.py did not call _looks_like_secret;
+  secretish payload (ghp_…) flushed to --payload even without scan.

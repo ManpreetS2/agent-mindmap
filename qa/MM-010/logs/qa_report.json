@@ -1,0 +1,98 @@
+{
+  "head": "3be3f32659484de503a149c1f2b3fa55e92ee82e",
+  "head_short": "3be3f32",
+  "checks": [
+    {
+      "name": "fixture_schema_validation",
+      "result": "PASS",
+      "detail": "7 activity fixtures",
+      "evidence": "PASS fixtures/sample-activity.json\nPASS web/src/fixtures/state-empty.json\nPASS web/src/fixtures/state-partial-github-error.json\nPASS web/src/fixtures/state-partial-github-rate-limited.json\nPASS web/src/fixtures/state-partial-github-skipped.json\nPASS web/src/fixtures/state-stale.json\nPASS web/src/fixtures/state-unparsed.json"
+    },
+    {
+      "name": "required_ledger_path_no_default",
+      "result": "PASS",
+      "detail": "rc=2\nstdout=\nstderr=error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable (or use --ledger-source gh)\n",
+      "evidence": "rc=2\nstdout=\nstderr=error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable (or use --ledger-source gh)\n"
+    },
+    {
+      "name": "malformed_ledger_local",
+      "result": "PASS",
+      "detail": "parser tolerates garbage or exits cleanly",
+      "evidence": "rc=1\nstderr=Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/tmp/qa-mm010/repo/ingest/__main__.py\", line 5, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/tmp/qa-mm010/repo/ingest/build.py\", line 298, in main\n    activity = build_activity(\n               ^^^^^^^^^^^^^^^\n  File \"/tmp/qa-mm010/repo/ingest/build.py\", line 152, in build_activity\n    ledger = parse_ledger_file(\n             ^^^^^^^^^^^^^^^^^^\n  File \"/tmp/qa-mm010/repo/ingest/ledger_parser.py\", line 722, in parse_ledger_file\n    text = p.read_text(encoding=\"utf-8\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/pathlib.py\", line 1030, in read_text\n    return f.read()\n           ^^^^^^^^\n  \nexists=False"
+    },
+    {
+      "name": "malformed_ledger_gh_decode",
+      "result": "PASS",
+      "detail": "meta_ledger=error text=None errors=['decode failed: Error: Invalid base64-encoded string: number of data characters (9) cannot be 1 more than a multiple of 4']",
+      "evidence": "meta_ledger=error text=None errors=['decode failed: Error: Invalid base64-encoded string: number of data characters (9) cannot be 1 more than a multiple of 4']"
+    },
+    {
+      "name": "idempotent_mirror_rerun",
+      "result": "PASS",
+      "detail": "first={'flush': True, 'payload': '/tmp/tmped7zumpx/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\nmark_rc=0\nsecond={'flush': False, 'reason': 'unchanged', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}",
+      "evidence": "first={'flush': True, 'payload': '/tmp/tmped7zumpx/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}\nmark_rc=0\nsecond={'flush': False, 'reason': 'unchanged', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}"
+    },
+    {
+      "name": "idempotent_ingest_rerun",
+      "result": "PASS",
+      "detail": "equal=True",
+      "evidence": "equal=True"
+    },
+    {
+      "name": "pr_join_repo_number",
+      "result": "PASS",
+      "detail": "pairs={('qa-verifier', 'dev-2'), ('architect', 'dev-1')}",
+      "evidence": "[\n  {\n    \"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\",\n    \"source\": \"architect\",\n    \"target\": \"dev-1\",\n    \"type\": \"merge\",\n    \"count\": 1,\n    \"event_ids\": [\n      \"m1\"\n    ]\n  },\n  {\n    \"id\": \"8bd085190da9f928e194829d161dae9d24cc3f53\",\n    \"source\": \"qa-verifier\",\n    \"target\": \"dev-2\",\n    \"type\": \"merge\",\n    \"count\": 1,\n    \"event_ids\": [\n      \"m2\"\n    ]\n  }\n]"
+    },
+    {
+      "name": "merged_by_ignored_no_edge",
+      "result": "PASS",
+      "detail": "[]",
+      "evidence": "[]"
+    },
+    {
+      "name": "merger_from_bot_signature",
+      "result": "PASS",
+      "detail": "[{\"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\", \"source\": \"architect\", \"target\": \"dev-1\", \"type\": \"merge\", \"count\": 1, \"event_ids\": [\"ms\"]}]",
+      "evidence": "[{\"id\": \"058e814564d09cad6e7d66dc35299c06e4d5050d\", \"source\": \"architect\", \"target\": \"dev-1\", \"type\": \"merge\", \"count\": 1, \"event_ids\": [\"ms\"]}]"
+    },
+    {
+      "name": "merged_by_not_read_for_actor",
+      "result": "PASS",
+      "detail": "lines=['            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a', '    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).']",
+      "evidence": "no runtime reads of merged_by"
+    },
+    {
+      "name": "gh_read_only",
+      "result": "PASS",
+      "detail": "runner_ok=True write_verbs=[]",
+      "evidence": "ingest/github_poller.py:2:GitHub poller via `gh api` (read-only). No tokens in process, logs, or output.\ningest/github_poller.py:220:\"\"\"Parse `gh api --include` output into status, headers, body.\"\"\"\ningest/github_poller.py:250:Run `gh api --include ...` via subprocess. Never passes or logs tokens.\ningest/github_poller.py:253:cmd = [\"gh\", \"api\", \"--include\", *args]\ningest/github_poller.py:344:self._errors.append(f\"gh spawn failed for {api_path}: {type(exc).__name__}\")\ningest/github_poller.py:357:self._errors.append(f\"gh api {api_path} -> HTTP {resp.status} (rate limited)\")\ningest/github_poller.py:367:self._errors.append(f\"gh api {api_path} -> HTTP {resp.status}\")\ningest/github_poller.py:371:self._errors.append(f\"gh api {api_path} -> HTTP {resp.status}\")\ningest/build.py:5:No network secrets; GitHub access is via the poller's `gh api` runner.\ningest/build.py:238:help=\"path (default) or gh (data/ledger mirror via gh api)\",\ningest/ledger_fetch.py:2:Fetch mirrored ledger.md from GitHub via `gh api` (MM-010)."
+    },
+    {
+      "name": "SEC-MM010-1_flush_secret_scan",
+      "result": "FAIL",
+      "detail": "flush path does not call _looks_like_secret",
+      "evidence": "flush_calls__looks_like_secret=False\nimports_ingest=False\n_looks_like_secret(content)=True\ncli_out={'flush': True, 'payload': '/tmp/tmpxiniv1_p/out.md', 'reason': 'state_change', 'sha256': 'fe2336571cdeddb8730a1b7731c63f6318bc3becc413a3f78f8e2b7111af73ca'}\npayload_written_with_secretish=True\n"
+    },
+    {
+      "name": "write_paths_constrained_gh_mocked_e2e",
+      "result": "PASS",
+      "detail": "gh_calls=[['repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger']]\napi_path_used=True\nfiles_under_sandbox=['activity.json', 'cache/ledger/bodies/90aa5ba5f00cee94f167bde45945b530cd9e0808.json', 'cache/ledger/etags.json', 'ledger.md', 'payload.md', 'state.json']\noutside=[]\n",
+      "evidence": "gh_calls=[['repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger']]\napi_path_used=True\nfiles_under_sandbox=['activity.json', 'cache/ledger/bodies/90aa5ba5f00cee94f167bde45945b530cd9e0808.json', 'cache/ledger/etags.json', 'ledger.md', 'payload.md', 'state.json']\noutside=[]\n"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SEC-MM010-1",
+      "component": "tools/ledger_mirror.py (flush path)",
+      "expected": "Flush path scans ledger content with _looks_like_secret (or equivalent) before writing payload intended for data/ledger push",
+      "actual": "_looks_like_secret is defined only in ingest/github_poller.py and used for gh stderr redaction + assert_no_credentials. tools/ledger_mirror.py never imports or calls it. Content containing ghp_ was flushed to payload (flush=True, wrote=True).",
+      "repro": "python3 tools/ledger_mirror.py --ledger <file-with-ghp_> --state s.json --payload p.md --now 4000000; rg _looks_like_secret tools/ledger_mirror.py",
+      "evidence": "flush_calls__looks_like_secret=False\nimports_ingest=False\n_looks_like_secret(content)=True\ncli_out={'flush': True, 'payload': '/tmp/tmpxiniv1_p/out.md', 'reason': 'state_change', 'sha256': 'fe2336571cdeddb8730a1b7731c63f6318bc3becc413a3f78f8e2b7111af73ca'}\npayload_written_with_secretish=True\n",
+      "environment": "linux python=3.12.3 cwd=/tmp/qa-mm010/repo head=3be3f32659484de503a149c1f2b3fa55e92ee82e",
+      "severity": "LOW",
+      "confidence": "HIGH"
+    }
+  ],
+  "environment": "linux python=3.12.3 cwd=/tmp/qa-mm010/repo head=3be3f32659484de503a149c1f2b3fa55e92ee82e"
+}

@@ -1,0 +1,1 @@
+Baseline head 3be3f32: pytest 80 passed (see prior run). SEC-MM010-1: flush path did NOT call _looks_like_secret; secretish payload flushed.

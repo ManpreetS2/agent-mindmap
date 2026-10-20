@@ -1,0 +1,15 @@
+hits:
+ingest/github_poller.py:2:GitHub poller via `gh api` (read-only). No tokens in process, logs, or output.
+ingest/github_poller.py:220:"""Parse `gh api --include` output into status, headers, body."""
+ingest/github_poller.py:250:Run `gh api --include ...` via subprocess. Never passes or logs tokens.
+ingest/github_poller.py:253:cmd = ["gh", "api", "--include", *args]
+ingest/github_poller.py:344:self._errors.append(f"gh spawn failed for {api_path}: {type(exc).__name__}")
+ingest/github_poller.py:357:self._errors.append(f"gh api {api_path} -> HTTP {resp.status} (rate limited)")
+ingest/github_poller.py:367:self._errors.append(f"gh api {api_path} -> HTTP {resp.status}")
+ingest/github_poller.py:371:self._errors.append(f"gh api {api_path} -> HTTP {resp.status}")
+ingest/build.py:5:No network secrets; GitHub access is via the poller's `gh api` runner.
+ingest/build.py:238:help="path (default) or gh (data/ledger mirror via gh api)",
+ingest/ledger_fetch.py:2:Fetch mirrored ledger.md from GitHub via `gh api` (MM-010).
+
+write_verbs:
+NONE
