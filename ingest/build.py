@@ -251,7 +251,14 @@ def main(argv: list[str] | None = None) -> int:
         default="path",
         help="path (default) or gh (data/ledger mirror via gh api)",
     )
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--out",
+        "--activity-out",
+        type=Path,
+        dest="out",
+        default=DEFAULT_OUT,
+        help="Output activity.json path",
+    )
     parser.add_argument("--cache-dir", type=Path, default=None)
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--skip-github", action="store_true")

@@ -5,8 +5,10 @@ import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
 import { CommandCenterShell } from "./components/CommandCenterShell";
+import { ModeBanner } from "./components/ModeBanner";
 import { MindmapView } from "./views/MindmapView";
 import { useActivityFeed } from "./hooks/useActivityFeed";
+import { useServerMode } from "./hooks/useServerMode";
 
 const POLL_MS = Number(
   (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
@@ -14,6 +16,7 @@ const POLL_MS = Number(
 );
 
 export function App() {
+  const { mode: serverMode } = useServerMode();
   const transport = useMemo(
     () =>
       createSseTransport({
@@ -24,9 +27,12 @@ export function App() {
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
 
+  const banner = serverMode ? <ModeBanner mode={serverMode} /> : null;
+
   if (error instanceof LedgerLoadError) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <LedgerErrorView onRetry={reload} />
       </CommandCenterShell>
@@ -36,6 +42,7 @@ export function App() {
   if (error) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <div className="app-error" role="alert">
           {error.message}
@@ -50,6 +57,7 @@ export function App() {
   if (!activity) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <MindmapLoadingView />
       </CommandCenterShell>
@@ -58,6 +66,7 @@ export function App() {
 
   return (
     <CommandCenterShell>
+      {banner}
       <SkipLink />
       <MindmapView
         activity={activity}
