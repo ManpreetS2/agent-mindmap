@@ -1,7 +1,7 @@
 # MINDMAP — local ingest + web (MM-008)
 # Bind the UI to 127.0.0.1 only. GitHub access is via `gh` login (no tokens).
 
-.PHONY: refresh refresh-demo test test-py test-web typecheck help
+.PHONY: refresh refresh-gh-ledger refresh-demo live test test-py test-web typecheck help
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT ?= $(ROOT)/web/public/activity.json
@@ -12,6 +12,7 @@ help:
 	@echo "  make refresh          Build from \$$MINDMAP_LEDGER + gh PR poll"
 	@echo "  make refresh-gh-ledger Build from data/ledger mirror + gh PR poll"
 	@echo "  make refresh-demo     Offline: fixture ledger, skip GitHub"
+	@echo "  make live             Live daemon: poll ledger/gh + serve web/dist on 127.0.0.1"
 	@echo "  make test             pytest + web vitest"
 	@echo "  make typecheck        shared + web TypeScript"
 	@echo ""
@@ -36,6 +37,14 @@ refresh-demo:
 		--ledger "$(ROOT)/tests/fixtures/ledger-sample.md" \
 		--out "$(OUT)" \
 		--skip-github
+
+# Long-running: path ledger via MINDMAP_LEDGER, or gh mirror when unset.
+live:
+ifdef MINDMAP_LEDGER
+	$(PYTHON) -m ingest.live --ledger "$(MINDMAP_LEDGER)"
+else
+	$(PYTHON) -m ingest.live --ledger-source gh
+endif
 
 test-py:
 	$(PYTHON) -m pytest -q

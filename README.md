@@ -98,7 +98,28 @@ export MINDMAP_LEDGER=/absolute/path/to/build/task-ledger.md
 make refresh && cd web && npm run dev
 ```
 
-The UI fetches `/activity.json` via `web/src/data/loadActivity.ts`. There is no backend server, socket, DB, or auth.
+The UI fetches `/activity.json` via `web/src/data/loadActivity.ts`. For day-to-day use on a Mac, prefer the **live daemon** (below) instead of Vite dev + manual `make refresh`.
+
+---
+
+## Running live (MM-011)
+
+One stdlib Python process polls the ledger and GitHub, keeps `web/dist/activity.json` fresh, and serves the built UI on **127.0.0.1 only** (default port **8787**).
+
+```bash
+cd web && npm run build && cd ..
+export MINDMAP_LEDGER=/absolute/path/to/build/task-ledger.md
+make live
+# or: python3 -m ingest.live --ledger "$MINDMAP_LEDGER"
+# gh mirror (MM-010): python3 -m ingest.live --ledger-source gh
+#   (or `make live` with MINDMAP_LEDGER unset)
+```
+
+- Ledger: `--ledger PATH` / `MINDMAP_LEDGER`, or `--ledger-source gh` for the allowlisted `data/ledger` mirror (same fetcher as `make refresh-gh-ledger`).
+- Poll intervals: `--ledger-poll-sec` / `--gh-poll-sec`, or `MINDMAP_LEDGER_POLL_SEC` / `MINDMAP_GH_POLL_SEC` (defaults 30s / 60s).
+- Endpoints: `/` (static `web/dist`), `/activity.json` (ETag + `If-None-Match` → 304), `/healthz` (poll timestamps + errors).
+- GitHub: same read-only `gh api` allowlist as ingest; no tokens stored or logged.
+- macOS autostart: copy `ops/com.manpreet.mindmap.plist` into `~/Library/LaunchAgents/`, set `WorkingDirectory`, `MINDMAP_LEDGER`, and log paths under `~/Library/Logs/mindmap/`, then `launchctl load` it. Validate with `plutil -lint ops/com.manpreet.mindmap.plist` (macOS only; CI skips on Linux).
 
 ---
 
