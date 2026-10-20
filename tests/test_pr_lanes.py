@@ -222,71 +222,137 @@ def test_poller_events_have_github_verified_and_stable_ids(tmp_path: Path) -> No
     assert all(len(e["id"]) == 40 for e in result.events)
 
 
-def test_sec_mm020e1_push_secret_subject_dropped_nowhere_in_output() -> None:
-    """SEC-MM020e-1: secret in commit subject → drop event; raw subject not retained."""
-    secret_subject = "fix: rotate sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF"
-    assert "sk-proj-" in secret_subject
+def test_qa_mm020e_secret_raw_dropped_on_all_paths() -> None:
+    """QA-MM020e-1/2: secrets in title, review, comment, commit → drop; nowhere in output."""
+    from ingest.github_poller import GitHubPoller, _event
+
+    sk = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF"
     poller = GitHubPoller(bots=load_bots(), runner=MockGh(fail=True))
-    commit = {
-        "sha": "abcdef1234567890abcdef1234567890abcdef12",
-        "commit": {
-            "message": secret_subject + "\n\nbody with ~Architect 🛠️",
-            "author": {"date": "2026-10-20T12:00:00Z"},
-        },
-    }
-    seen: set[str] = set()
-    out = poller._push_events(
-        "ManpreetS2/fencepost",
-        42,
-        "https://github.com/ManpreetS2/fencepost/pull/42",
-        "MM-020",
-        commit,
-        seen,
-    )
-    assert out == []
-    assert seen == set()
-    # Nowhere in serialized output
-    blob = json.dumps({"events": out, "seen": list(seen)})
-    assert secret_subject not in blob
-    assert "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF" not in blob
+    html = "https://github.com/ManpreetS2/fencepost/pull/42"
 
-    # Email in subject also dropped
-    email_subject = "wip from alice@example.com please"
-    commit2 = {
-        "sha": "bbbbbb1234567890abcdef1234567890abcdef12",
-        "commit": {"message": email_subject, "author": {"date": "2026-10-20T12:01:00Z"}},
+    # --- PR title path (_events_for_pr → pr_opened) ---
+    pr_with_secret_title = {
+        "number": 42,
+        "title": f"feat: ship {sk}",
+        "body": "~Architect 🛠️",
+        "html_url": html,
+        "created_at": "2026-10-20T12:00:00Z",
+        "head": {"ref": "feat/x"},
     }
-    out2 = poller._push_events(
+    title_events = poller._events_for_pr(
+        "ManpreetS2/fencepost", pr_with_secret_title, set()
+    )
+    # No network; commits/reviews will 404 via fail runner — still assert title path
+    opened = [e for e in title_events if e.get("type") == "pr_opened"]
+    assert opened == []
+    blob_title = json.dumps(title_events)
+    assert sk not in blob_title
+
+    # Direct _event with title-shaped raw
+    assert (
+        _event(
+            locator="t",
+            etype="pr_opened",
+            actor="architect",
+            task_id=None,
+            pr=1,
+            source_url=html,
+            source_time="2026-10-20T12:00:00Z",
+            attribution="signature",
+            raw=f"Opened pull request #1: feat {sk}",
+            repo="ManpreetS2/fencepost",
+        )
+        is None
+    )
+
+    # --- Review body path ---
+    rev_out = poller._review_events(
         "ManpreetS2/fencepost",
         42,
-        "https://github.com/ManpreetS2/fencepost/pull/42",
+        html,
+        "MM-020",
+        {
+            "id": 99,
+            "body": f"~Architect 🛠️ PASS but token {sk}",
+            "html_url": html,
+            "submitted_at": "2026-10-20T12:01:00Z",
+        },
+        set(),
+    )
+    assert rev_out == []
+    assert sk not in json.dumps(rev_out)
+
+    # --- Comment body path ---
+    cmt_out = poller._comment_events(
+        "ManpreetS2/fencepost",
+        42,
+        "MM-020",
+        {
+            "id": 77,
+            "body": f"note with {sk} ~DEV 2",
+            "html_url": html,
+            "created_at": "2026-10-20T12:02:00Z",
+        },
+        set(),
+        kind="issue_comment",
+    )
+    assert cmt_out == []
+    assert sk not in json.dumps(cmt_out)
+
+    # Email in comment also dropped
+    email = "alice@example.com"
+    cmt_email = poller._comment_events(
+        "ManpreetS2/fencepost",
+        42,
         None,
-        commit2,
-        set(),
-    )
-    assert out2 == []
-    assert email_subject not in json.dumps(out2)
-    assert "alice@example.com" not in json.dumps(out2)
-
-    # Clean subject is kept (sanitized form only)
-    clean = {
-        "sha": "cccccc1234567890abcdef1234567890abcdef12",
-        "commit": {
-            "message": "feat: wire PR lanes ~DEV 2\n\nmore",
-            "author": {"date": "2026-10-20T12:02:00Z"},
+        {
+            "id": 78,
+            "body": f"ping {email}",
+            "html_url": html,
+            "created_at": "2026-10-20T12:03:00Z",
         },
-    }
-    out3 = poller._push_events(
+        set(),
+        kind="review_comment",
+    )
+    assert cmt_email == []
+    assert email not in json.dumps(cmt_email)
+
+    # --- Commit subject path ---
+    push_out = poller._push_events(
         "ManpreetS2/fencepost",
         42,
-        "https://github.com/ManpreetS2/fencepost/pull/42",
+        html,
         "MM-020",
-        clean,
+        {
+            "sha": "abcdef1234567890abcdef1234567890abcdef12",
+            "commit": {
+                "message": f"fix: rotate {sk}\n\nbody",
+                "author": {"date": "2026-10-20T12:04:00Z"},
+            },
+        },
         set(),
     )
-    assert len(out3) == 1
-    assert out3[0]["raw"] == "feat: wire PR lanes ~DEV 2"
-    assert out3[0]["type"] == "pr_updated"
+    assert push_out == []
+    assert sk not in json.dumps(push_out)
+
+    # Clean paths still emit (sanitized raw only)
+    clean_push = poller._push_events(
+        "ManpreetS2/fencepost",
+        42,
+        html,
+        "MM-020",
+        {
+            "sha": "cccccc1234567890abcdef1234567890abcdef12",
+            "commit": {
+                "message": "feat: wire PR lanes ~DEV 2\n\nmore",
+                "author": {"date": "2026-10-20T12:05:00Z"},
+            },
+        },
+        set(),
+    )
+    assert len(clean_push) == 1
+    assert clean_push[0]["raw"] == "feat: wire PR lanes ~DEV 2"
+    assert clean_push[0]["type"] == "pr_updated"
 
 
 def test_derive_edges_idempotent_with_duplicate_lane_events() -> None:

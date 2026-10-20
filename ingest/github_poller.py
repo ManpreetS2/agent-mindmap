@@ -552,19 +552,22 @@ class GitHubPoller:
         created = pr.get("created_at") or pr.get("updated_at")
 
         actor, method = attribute_from_body(body, self.bots)
-        opened = _event(
-            locator=f"{repo}#pr{number}:opened",
-            etype="pr_opened",
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=html,
-            source_time=created,
-            attribution=method,
-            raw=f"Opened pull request #{number}: {title}",
+        _append_unique(
+            events,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:opened",
+                etype="pr_opened",
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=html,
+                source_time=created,
+                attribution=method,
+                raw=f"Opened pull request #{number}: {title}",
+            ),
         )
-        _append_unique(events, seen, opened)
 
         reviews = self._get_json_list(
             f"repos/{repo}/pulls/{number}/reviews", repo=repo
@@ -599,20 +602,27 @@ class GitHubPoller:
             merger_actor, merger_method = _resolve_merger(
                 issue_comments, review_comments, self.bots
             )
-            merged = _event(
-                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
-                etype="merged",
-                actor=merger_actor,
-                task_id=task_id,
-                pr=number,
-                repo=repo,
-                sha=sha_val,
-                source_url=html,
-                source_time=pr.get("merged_at"),
-                attribution=merger_method,
-                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
+            _append_unique(
+                events,
+                seen,
+                _event(
+                    locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
+                    etype="merged",
+                    actor=merger_actor,
+                    task_id=task_id,
+                    pr=number,
+                    repo=repo,
+                    sha=sha_val,
+                    source_url=html,
+                    source_time=pr.get("merged_at"),
+                    attribution=merger_method,
+                    raw=(
+                        f"squash-merged as {sha_val}"
+                        if sha_val
+                        else f"Merged PR #{number}"
+                    ),
+                ),
             )
-            _append_unique(events, seen, merged)
 
         commits = self._get_json_list(
             f"repos/{repo}/pulls/{number}/commits", repo=repo
@@ -640,9 +650,8 @@ class GitHubPoller:
     ) -> list[dict[str, Any]]:
         """PR push / commit → pr_updated (stable id by sha).
 
-        SEC-MM020e-1: sanitize the commit subject before it is stored on the
-        event. If ``sanitize_pr_summary`` returns None, drop the event entirely
-        so the raw subject is never retained.
+        Raw sanitization / secret refusal is centralized in ``_event``
+        (QA-MM020e-1 / QA-MM020e-2).
         """
         sha = (commit.get("sha") or "")[:40].lower()
         if not sha or not re.fullmatch(r"[0-9a-f]+", sha) or len(sha) < 7:
@@ -650,30 +659,29 @@ class GitHubPoller:
         commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
         msg = str((commit_obj or {}).get("message") or "")
         subject = msg.split("\n", 1)[0].strip() or f"Push on PR #{number} ({sha[:7]})"
-        # Sanitize BEFORE any event field is populated (SEC-MM020e-1).
-        safe_subject = sanitize_pr_summary(subject)
-        if safe_subject is None:
-            return []
         actor, method = attribute_from_body(msg, self.bots)
         ts = ""
         author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
         if isinstance(author, dict):
             ts = str(author.get("date") or "")
-        evt = _event(
-            locator=f"{repo}#pr{number}:push:{sha}",
-            etype="pr_updated",
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            sha=sha,
-            source_url=html,
-            source_time=ts or None,
-            attribution=method,
-            raw=safe_subject,
-        )
         out: list[dict[str, Any]] = []
-        _append_unique(out, seen, evt)
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:push:{sha}",
+                etype="pr_updated",
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                sha=sha,
+                source_url=html,
+                source_time=ts or None,
+                attribution=method,
+                raw=subject,
+            ),
+        )
         return out
 
     def _review_events(
@@ -692,21 +700,24 @@ class GitHubPoller:
         url = rev.get("html_url") or html
         ts = rev.get("submitted_at") or ""
         extra = {"verdict": verdict} if verdict else {}
-        evt = _event(
-            locator=f"{repo}#pr{number}:review:{rev.get('id')}",
-            etype=etype,
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=url,
-            source_time=ts,
-            attribution=method,
-            raw=body or f"Review on PR #{number}",
-            **extra,
-        )
         out: list[dict[str, Any]] = []
-        _append_unique(out, seen, evt)
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:review:{rev.get('id')}",
+                etype=etype,
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=url,
+                source_time=ts,
+                attribution=method,
+                raw=body or f"Review on PR #{number}",
+                **extra,
+            ),
+        )
         return out
 
     def _comment_events(
@@ -726,21 +737,24 @@ class GitHubPoller:
         url = comment.get("html_url") or f"https://github.com/{repo}/pull/{number}"
         ts = comment.get("created_at") or ""
         extra = {"verdict": verdict} if verdict else {}
-        evt = _event(
-            locator=f"{repo}#pr{number}:{kind}:{comment.get('id')}",
-            etype=etype,
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=url,
-            source_time=ts,
-            attribution=method,
-            raw=body or f"Comment on PR #{number}",
-            **extra,
-        )
         out: list[dict[str, Any]] = []
-        _append_unique(out, seen, evt)
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:{kind}:{comment.get('id')}",
+                etype=etype,
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=url,
+                source_time=ts,
+                attribution=method,
+                raw=body or f"Comment on PR #{number}",
+                **extra,
+            ),
+        )
         return out
 
 
@@ -775,47 +789,6 @@ def _resolve_merger(
     return None, "unknown"
 
 
-def _event(
-    *,
-    locator: str,
-    etype: str,
-    actor: str | None,
-    task_id: str | None,
-    pr: int | None,
-    source_url: str,
-    source_time: str | None,
-    attribution: str,
-    raw: str,
-    sha: str | None = None,
-    verdict: str | None = None,
-    target: str | None = None,
-    repo: str | None = None,
-) -> dict[str, Any]:
-
-    evt: dict[str, Any] = {
-        "id": event_id("github", locator),
-        "type": etype,
-        "actor": actor,
-        "target": target,
-        "task_id": task_id,
-        "attribution": {"method": attribution},
-        "source_url": source_url,
-        "source_time": source_time or "1970-01-01T00:00:00Z",
-        "raw": raw,
-        # MM-020e / schema 1.1.0: GitHub-derived facts are github-verified.
-        "provenance": GITHUB_PROVENANCE,
-    }
-    if pr is not None:
-        evt["pr"] = pr
-    if repo:
-        evt["repo"] = repo
-    if sha:
-        evt["sha"] = sha
-    if verdict:
-        evt["verdict"] = verdict
-    return evt
-
-
 def sanitize_pr_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str | None:
     """
     Cap summary at 240 chars; refuse (return None) if secret_scan hits.
@@ -832,6 +805,57 @@ def sanitize_pr_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str
     if len(cleaned) > max_chars:
         cleaned = cleaned[: max_chars - 1] + "…"
     return cleaned
+
+
+def _event(
+    *,
+    locator: str,
+    etype: str,
+    actor: str | None,
+    task_id: str | None,
+    pr: int | None,
+    source_url: str,
+    source_time: str | None,
+    attribution: str,
+    raw: str,
+    sha: str | None = None,
+    verdict: str | None = None,
+    target: str | None = None,
+    repo: str | None = None,
+) -> dict[str, Any] | None:
+    """
+    Build one activity Event, or None if ``raw`` is refused.
+
+    QA-MM020e-1 / QA-MM020e-2: every ``raw`` value is passed through
+    ``sanitize_pr_summary`` before storage. Secrets / empty → drop (None);
+    callers must skip None via ``_append_unique``.
+    """
+    safe_raw = sanitize_pr_summary(raw)
+    if safe_raw is None:
+        return None
+
+    evt: dict[str, Any] = {
+        "id": event_id("github", locator),
+        "type": etype,
+        "actor": actor,
+        "target": target,
+        "task_id": task_id,
+        "attribution": {"method": attribution},
+        "source_url": source_url,
+        "source_time": source_time or "1970-01-01T00:00:00Z",
+        "raw": safe_raw,
+        # MM-020e / schema 1.1.0: GitHub-derived facts are github-verified.
+        "provenance": GITHUB_PROVENANCE,
+    }
+    if pr is not None:
+        evt["pr"] = pr
+    if repo:
+        evt["repo"] = repo
+    if sha:
+        evt["sha"] = sha
+    if verdict:
+        evt["verdict"] = verdict
+    return evt
 
 
 def _normalize_gh_events(gh_data: Any) -> list[dict[str, Any]]:
@@ -957,8 +981,11 @@ def build_pr_lane_events(
 def _append_unique(
     events: list[dict[str, Any]],
     seen: set[str],
-    evt: dict[str, Any],
+    evt: dict[str, Any] | None,
 ) -> None:
+    """Append ``evt`` if non-None and id not yet seen (skips dropped secrets)."""
+    if evt is None:
+        return
     eid = evt["id"]
     if eid in seen:
         return
