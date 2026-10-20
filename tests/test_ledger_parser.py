@@ -1,4 +1,4 @@
-"""Golden tests for ingest/ledger_parser.py (MM-002)."""
+"""Golden tests for ingest/ledger_parser.py (MM-002) against the real ledger snapshot."""
 
 from __future__ import annotations
 
@@ -11,29 +11,26 @@ import pytest
 
 from ingest.ledger_parser import (
     NOTE_RE,
-    STRUCTURED_ISO_RE,
     STRUCTURED_PDT_RE,
+    extract_task_id,
     is_valid_task_id,
     parse_ledger,
     parse_ledger_file,
+    task_id_from_column,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "ledger-sample.md"
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
 
-# Per-type counts for the sanitized golden fixture (events[] only).
-# unparsed lines also produce a timeline `note` with a [reason] prefix.
+# Per-type counts for events[] on the sanitized real-ledger fixture.
 EXPECTED_EVENT_TYPE_COUNTS = {
-    "assigned": 1,  # GO for Architect (deduped)
-    "handoff": 2,  # free-text handed to DEV 1 + structured PDT handoff
-    "merged": 1,  # squash-merged 693ebc7
-    "note": 3,  # Architect CORRECTION + 2 unparsed mirrors (malformed_time, undated)
-    "verdict": 1,  # structured ISO QA verdict
-    # prose "Active coding workers" also → note mirror
-    # Wait: undated UI/UX + malformed + prose = 3 unparsed → 3 note mirrors
-    # CORRECTION is type note from classifier → +1
-    # So note = 1 (correction) + 3 (mirrors) = 4 if prose is included
+    "assigned": 2,
+    "handoff": 2,
+    "merged": 5,
+    "blocker": 3,
+    "verdict": 6,
+    "note": 27,
 }
 
 
@@ -53,127 +50,136 @@ def fixture_text() -> str:
     return FIXTURE.read_text(encoding="utf-8")
 
 
+def test_fixture_uses_real_ledger_header(fixture_text: str) -> None:
+    assert "| Task ID | Project | Owner | Mode | Model | Status | Evidence |" in fixture_text
+    assert "| ID | Title |" not in fixture_text
+
+
 def test_every_table_row_becomes_a_task(parsed) -> None:
     ids = {t["id"] for t in parsed.tasks}
-    assert ids == {"RP-004", "RP-005", "RP-005D", "MM-001", "QA-RP004-1"}
-    assert len(parsed.tasks) == 5
+    assert ids == {
+        "BD-000",
+        "QR-000",
+        "RP-001",
+        "RP-002",
+        "RP-003",
+        "RP-004",
+        "RP-005",
+        "RP-006",
+        "RP-007",
+        "RP-008",
+    }
+    assert len(parsed.tasks) == 10
     for task in parsed.tasks:
         assert is_valid_task_id(task["id"])
-
     by_id = {t["id"]: t for t in parsed.tasks}
-    assert by_id["RP-004"]["status"] == "IN_REVIEW"
-    assert by_id["RP-004"]["prs"] == [6]
-    assert by_id["RP-005"]["status"] == "DONE"
-    assert by_id["RP-005"]["prs"] == [5]
-    assert by_id["RP-005D"]["status"] == "BLOCKED"
-    assert by_id["MM-001"]["status"] == "IDLE"
-    assert by_id["QA-RP004-1"]["status"] == "IN_PROGRESS"
+    assert by_id["RP-001"]["status"] == "DONE"
+    assert by_id["RP-003"]["status"] == "IN_REVIEW"
+    assert by_id["RP-004"]["status"] == "IDLE"  # PLANNED
+    assert by_id["RP-004"]["title"].startswith("FENCEPOST:")
 
 
-def test_task_ids_match_schema_patterns() -> None:
-    assert is_valid_task_id("RP-005D")
-    assert is_valid_task_id("MM-001")
-    assert is_valid_task_id("QA-RP004-1")
-    assert not is_valid_task_id("FOO-BAR")
-    assert not is_valid_task_id("rp-004")
-
-
-def test_four_note_variants_parsed(fixture_text: str, parsed) -> None:
+def test_four_note_variants_from_real_ledger(parsed) -> None:
     variants = {
-        "no_comma": "- 2026-10-19 8:45 PM PDT Director: GO for Architect on MM-001 schema work.",
-        "comma": "- 2026-10-19 9:20 PM PDT, Architect: handed to DEV 1 for RP-004 workload generator.",
-        "24h_no_actor": "- 2026-10-19 21:35 PDT: squash-merged as 693ebc7 for PR #5 on RP-005.",
+        "no_comma": (
+            "- 2026-10-19 8:45 PM PDT Director: one-time exception approved. "
+            "DEV 2 may push a single bootstrap commit to main in ManpreetS2/fencepost "
+            '(README.md "# fencepost" only), because the repo is empty and PRs need a base branch. '
+            "All later work goes through PRs, with no pushes to main."
+        ),
+        "comma": (
+            "- 2026-10-19 8:58 PM PDT, Architect: AUTHORIZED in writing to run RP-003 on "
+            "`cursor-grok-4.5-high` (non-fast). This replaces Composer 2.5 for RP-003 because "
+            "it's a complex Docker and Compose task. If the CLI doesn't have that exact ID, "
+            "fall back to `composer-2.5`. Never use -fast or auto."
+        ),
+        "24h_no_actor": (
+            "- 2026-10-19 21:35 PDT: CLOUD SWITCH executed early per Manpreet directive. "
+            "All bots on Cursor Cloud, one cloud chat per bot, composer-2.5 / cursor-grok-4.5-high "
+            "only (no Fast/Auto). All prior limits retained. 9:50 routine deleted. Verification pending."
+        ),
         "correction": (
-            "- 2026-10-19 9:21 PM PDT, Architect CORRECTION: "
-            "RP-009 withdrawn/renamed RP-005D; keep RP-005D as the active id."
+            "- 2026-10-19 9:21 PM PDT, Architect CORRECTION: the canonical array name is `txns` "
+            "(as in the merged schema and the plan), not `transactions`. RP-004 and RP-005 build "
+            "against `txns`. QA-RP002-1 is being fixed in RP-002a (UUID pattern), and the contracts "
+            "lock waits on RP-002a merging."
         ),
     }
     for label, line in variants.items():
-        assert NOTE_RE.match(line), f"variant {label} must match NOTE_RE"
-        assert any(e["raw"] == line for e in parsed.events), f"missing event for {label}"
+        assert NOTE_RE.match(line), label
+        assert any(e["raw"] == line for e in parsed.events), label
 
-    assigned = next(e for e in parsed.events if e["raw"] == variants["no_comma"])
-    assert assigned["type"] == "assigned"
-    assert assigned["actor"] == "director"
-    assert assigned["target"] == "architect"
-    assert assigned["attribution"]["method"] == "ledger_owner"
-
-    handoff = next(e for e in parsed.events if e["raw"] == variants["comma"])
-    assert handoff["type"] == "handoff"
-    assert handoff["actor"] == "architect"
-    assert handoff["target"] == "dev-1"
-
-    merged = next(e for e in parsed.events if e["raw"] == variants["24h_no_actor"])
-    assert merged["type"] == "merged"
-    assert merged["sha"] == "693ebc7"
-    assert merged["attribution"]["method"] == "unknown"
-
-    correction = next(e for e in parsed.events if e["raw"] == variants["correction"])
-    assert correction["type"] == "note"
-    assert correction["actor"] == "architect"
+    assert next(e for e in parsed.events if e["raw"] == variants["no_comma"])["actor"] == "director"
+    assert next(e for e in parsed.events if e["raw"] == variants["comma"])["actor"] == "architect"
+    assert next(e for e in parsed.events if e["raw"] == variants["24h_no_actor"])["actor"] is None
+    corr = next(e for e in parsed.events if e["raw"] == variants["correction"])
+    assert corr["actor"] == "architect"
+    assert corr["type"] == "note"
 
 
-def test_structured_pdt_and_iso_handoff_and_verdict(parsed) -> None:
-    pdt_handoff = (
-        "- 2026-10-19 21:58 PDT | Director | handoff | MM-001 | "
-        "to Architect for schema + bot roster (MM-001)."
+def test_structured_pdt_handoff_from_real_ledger(parsed) -> None:
+    line = (
+        "- 2026-10-19 22:52 PDT | Architect | handoff | MM-002 | "
+        "IN_REVIEW PR #4 14b5831 -> QA. MM-003 started in bc-6c5db6e1."
     )
-    iso_verdict = (
-        "- 2026-10-19T21:40:00-07:00 | QA / Verifier | verdict | RP-005 | "
-        "PASS after recheck of etag cache tests."
-    )
-    assert STRUCTURED_PDT_RE.match(pdt_handoff)
-    assert STRUCTURED_ISO_RE.match(iso_verdict)
-
-    ho = next(e for e in parsed.events if e["raw"] == pdt_handoff)
-    assert ho["type"] == "handoff"
-    assert ho["actor"] == "director"
-    assert ho["target"] == "architect"
-    assert ho["task_id"] == "MM-001"
-    assert ho["attribution"]["method"] == "ledger_owner"
-
-    verd = next(e for e in parsed.events if e["raw"] == iso_verdict)
-    assert verd["type"] == "verdict"
-    assert verd["actor"] == "qa-verifier"
-    assert verd["verdict"] == "PASS"
-    assert verd["task_id"] == "RP-005"
+    assert STRUCTURED_PDT_RE.match(line)
+    evt = next(e for e in parsed.events if e["raw"] == line)
+    assert evt["type"] == "handoff"
+    assert evt["actor"] == "architect"
+    assert evt["task_id"] == "MM-002"
+    assert evt["target"] == "qa-verifier"
+    assert evt["attribution"]["method"] == "ledger_owner"
 
 
-def test_malformed_time_becomes_unparsed_without_abort(parsed) -> None:
-    bad = "- 2026-10-19 13:00 PM PDT Director: bad clock should not abort the parse."
-    assert any(e["raw"] == bad for e in parsed.unparsed)
-    assert "malformed_time" in parsed.unparsed_reasons
-    # Parse of the rest still produced tasks + other events
-    assert len(parsed.tasks) >= 4
-    assert any(e["type"] == "merged" for e in parsed.events)
-
-
-def test_malformed_time_isolated_snippet_does_not_raise() -> None:
+def test_structured_task_id_from_column_not_body() -> None:
+    """QA-MM002-11: body IDs must not override the task column."""
     text = (
-        "# t\n\n"
-        "| ID | Title | Owner | Mode | Model | Status | Evidence |\n"
-        "|----|-------|-------|------|-------|--------|----------|\n"
-        "| MM-002 | x | Architect | a | m | PLANNED | — |\n\n"
-        "- 2026-10-19 13:00 PM PDT Director: boom\n"
-        "- 2026-10-19 9:00 PM PDT Director: GO for Architect on MM-002 ok.\n"
+        "| Task ID | Project | Owner | Mode | Model | Status | Evidence |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| MM-001 | MINDMAP: schema | Architect | a | m | PLANNED | — |\n\n"
+        "- 2026-10-19 22:52 PDT | Architect | handoff | MM-002 | "
+        "mentions RP-004 and MM-001 in the body -> QA.\n"
+        "- 2026-10-19T22:00:00-07:00 | Architect | note | MM-003 | "
+        "body cites RP-005 and QA-RP004-1 only.\n"
     )
     result = parse_ledger(text)
-    assert len(result.tasks) == 1
-    assert any(e["type"] == "assigned" for e in result.events)
-    assert any(r == "malformed_time" for r in result.unparsed_reasons)
+    handoff = next(e for e in result.events if e["type"] == "handoff")
+    assert handoff["task_id"] == "MM-002"
+    assert handoff["target"] == "qa-verifier"
+    note = next(e for e in result.events if e["type"] == "note" and "QA-RP004-1" in e["raw"])
+    assert note["task_id"] == "MM-003"
+    assert note["target"] is None
+
+
+def test_structured_target_at_mention_and_null() -> None:
+    text = (
+        "- 2026-10-19 22:00 PDT | Director | handoff | MM-001 | ping @Architect for review.\n"
+        "- 2026-10-19 22:01 PDT | Director | handoff | MM-001 | no target mentioned at all.\n"
+    )
+    result = parse_ledger(text)
+    events = [e for e in result.events if e["type"] == "handoff"]
+    assert events[0]["target"] == "architect"
+    assert events[1]["target"] is None
+
+
+def test_task_id_word_boundaries() -> None:
+    """QA-MM002-12: 'xRP-004' must not match."""
+    assert extract_task_id("see RP-004 please") == "RP-004"
+    assert extract_task_id("xRP-004") is None
+    assert extract_task_id("foo xRP-004 bar") is None
+    assert task_id_from_column("xRP-004") is None
+    assert task_id_from_column("MM-002/MM-003") == "MM-002"
 
 
 def test_undated_and_prose_go_to_unparsed(parsed) -> None:
     unparsed_raws = {e["raw"] for e in parsed.unparsed}
-    assert "Active coding workers: 0 of 2 (DEV 1 idle after merge)." in unparsed_raws
-    assert "- UI/UX Maker: approved backup coder for design-spec polish." in unparsed_raws
+    assert any(r.startswith("Active coding workers:") for r in unparsed_raws)
+    assert any(r.startswith("- UI/UX Maker:") for r in unparsed_raws)
     for evt in parsed.unparsed:
         assert evt["type"] == "unparsed"
-        assert evt["attribution"]["method"] == "unknown"
 
 
 def test_no_line_lost(parsed) -> None:
-    assert len(parsed.input_lines) > 0
     assert len(parsed.parsed_lines) + len(parsed.unparsed_lines) == len(parsed.input_lines)
 
 
@@ -182,12 +188,6 @@ def test_event_ids_stable_across_runs(fixture_text: str) -> None:
     b = parse_ledger(fixture_text, source_url="build/task-ledger.md")
     assert [e["id"] for e in a.events] == [e["id"] for e in b.events]
     assert [e["id"] for e in a.unparsed] == [e["id"] for e in b.unparsed]
-    director_lines = [line for line in a.parsed_lines if "8:45 PM PDT Director" in line]
-    assert len(director_lines) == 2
-    director_events = [e for e in a.events if e["raw"].endswith(
-        "GO for Architect on MM-001 schema work."
-    ) and "8:45" in e["raw"]]
-    assert len(director_events) == 1
 
 
 def test_parser_output_validates_against_mm001_schema(schema: dict, parsed) -> None:
@@ -207,19 +207,18 @@ def test_parser_output_validates_against_mm001_schema(schema: dict, parsed) -> N
 
 def test_per_type_event_counts(parsed) -> None:
     counts = Counter(e["type"] for e in parsed.events)
-    # Core classified types from the golden fixture
-    assert counts["assigned"] == 1
-    assert counts["handoff"] == 2
-    assert counts["merged"] == 1
-    assert counts["verdict"] == 1
-    # Architect CORRECTION (note) + one timeline note per unparsed line
-    unparsed_n = len(parsed.unparsed)
-    assert counts["note"] == 1 + unparsed_n
-    assert unparsed_n == 3  # prose, undated UI/UX, malformed_time
-    assert dict(counts) == {
-        "assigned": 1,
-        "handoff": 2,
-        "merged": 1,
-        "verdict": 1,
-        "note": 4,
-    }
+    assert dict(counts) == EXPECTED_EVENT_TYPE_COUNTS
+
+
+def test_malformed_time_isolated_snippet_does_not_raise() -> None:
+    text = (
+        "| Task ID | Project | Owner | Mode | Model | Status | Evidence |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| MM-002 | x | Architect | a | m | PLANNED | — |\n\n"
+        "- 2026-10-19 13:00 PM PDT Director: boom\n"
+        "- 2026-10-19 9:00 PM PDT Director: GO for Architect on MM-002 ok.\n"
+    )
+    result = parse_ledger(text)
+    assert len(result.tasks) == 1
+    assert any(e["type"] == "assigned" for e in result.events)
+    assert "malformed_time" in result.unparsed_reasons

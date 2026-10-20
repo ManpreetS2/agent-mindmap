@@ -22,8 +22,9 @@ UNDATED_SOURCE_TIME = "1970-01-01T00:00:00-08:00"
 # Exact MM-001 task-id patterns (schema $defs/taskId).
 TASK_ID_STANDARD = re.compile(r"^[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?$")
 TASK_ID_BACKLOG = re.compile(r"^[A-Z]{2,}-[A-Z]{2}[0-9]{3}(-[0-9]+)?$")
+# Word boundaries so substrings like 'xRP-004' do not match.
 TASK_ID_ANY = re.compile(
-    r"(?:[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?:-[0-9]+)?|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?:-[0-9]+)?)"
+    r"\b(?:[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?:-[0-9]+)?|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?:-[0-9]+)?)\b"
 )
 
 # Architecture §4.1 — tolerant free-text note line.
@@ -75,12 +76,12 @@ STRUCTURED_PDT_RE = re.compile(
     re.VERBOSE | re.IGNORECASE,
 )
 
-# Table row: id cell must be a schema-valid task id.
+# Real ledger header: Task ID | Project | Owner | Mode | Model | Status | Evidence
 TABLE_ROW_RE = re.compile(
     r"""
     ^\|\s*
     (?P<id>[^|]+?)\s*\|\s*
-    (?P<title>[^|]+?)\s*\|\s*
+    (?P<project_col>[^|]+?)\s*\|\s*
     (?P<owner>[^|]+?)\s*\|\s*
     (?P<mode>[^|]*?)\s*\|\s*
     (?P<model>[^|]*?)\s*\|\s*
@@ -89,6 +90,14 @@ TABLE_ROW_RE = re.compile(
     \|\s*$
     """,
     re.VERBOSE,
+)
+
+AT_MENTION_RE = re.compile(
+    r"@([A-Za-z0-9 /&]+?)(?=\s|$|[.,;:!?]|\))",
+)
+ARROW_TARGET_RE = re.compile(
+    r"->\s*([A-Za-z0-9 /&]+?)(?=\s*$|\s*[.;,]|\s+for\b|\s+on\b|\s+MM-|\s+PR\b)",
+    re.IGNORECASE,
 )
 
 TABLE_SEP_RE = re.compile(r"^\|[\s:|-]+\|\s*$")
@@ -149,6 +158,39 @@ class LedgerParseResult:
 
 def is_valid_task_id(value: str) -> bool:
     return bool(TASK_ID_STANDARD.fullmatch(value) or TASK_ID_BACKLOG.fullmatch(value))
+
+
+def task_id_from_column(column: str) -> str | None:
+    """
+    Resolve task_id from a structured-note task column only.
+
+    Never scans body text. If the column is a compound like 'MM-002/MM-003',
+    the first schema-valid id token wins; otherwise None.
+    """
+    col = column.strip()
+    if not col:
+        return None
+    if is_valid_task_id(col):
+        return col
+    m = TASK_ID_ANY.search(col)
+    if m and is_valid_task_id(m.group(0)):
+        return m.group(0)
+    return None
+
+
+def derive_project_name(project_col: str, task_id: str) -> str:
+    if ":" in project_col:
+        return project_col.split(":", 1)[0].strip().lower() or "fencepost"
+    prefix = task_id.split("-", 1)[0].upper()
+    if prefix in {"RP", "FP"}:
+        return "fencepost"
+    if prefix == "MM":
+        return "mindmap"
+    if prefix == "QR":
+        return "qr"
+    if prefix == "BD":
+        return "build"
+    return "fencepost"
 
 
 def _repo_root() -> Path:
@@ -292,21 +334,34 @@ def classify_note_text(
     return "note", None, extra
 
 
-def _resolve_handoff_target(
+def resolve_target_from_text(
     text: str,
     alias_pairs: list[tuple[str, str]],
 ) -> str | None:
+    """
+    Derive event target from body when possible.
+
+    Preference: @mention, then '-> Name', then GO/assigned/handed phrases.
+    Otherwise None (never invent a target).
+    """
+    at = AT_MENTION_RE.search(text)
+    if at:
+        hit = resolve_actor(at.group(1).strip(), alias_pairs)
+        if hit:
+            return hit
+
+    arrow = ARROW_TARGET_RE.search(text)
+    if arrow:
+        hit = resolve_actor(arrow.group(1).strip(), alias_pairs)
+        if hit:
+            return hit
+
     handoff_m = HANDOFF_RE.search(text)
     if handoff_m:
-        return resolve_actor(handoff_m.group(1).strip(), alias_pairs)
-    # Structured body often: "to Architect for MM-001 …"
-    m = re.search(
-        r"\bto\s+([A-Za-z0-9 /&]+?)(?:\s+for\b|\s+on\b|[.;,]|$)",
-        text,
-        re.IGNORECASE,
-    )
-    if m:
-        return resolve_actor(m.group(1).strip(), alias_pairs)
+        hit = resolve_actor(handoff_m.group(1).strip(), alias_pairs)
+        if hit:
+            return hit
+
     return None
 
 
@@ -320,7 +375,11 @@ def _is_structural(line: str) -> bool:
         return True
     if s.startswith("|") and s.endswith("|"):
         cells = [c.strip() for c in s.strip("|").split("|")]
-        if cells and cells[0].upper() in {"ID", "TASK", "TASK ID"}:
+        if cells and cells[0].upper().replace("_", " ") in {
+            "ID",
+            "TASK",
+            "TASK ID",
+        }:
             return True
     return False
 
@@ -422,28 +481,26 @@ def _emit_structured_event(
     actor_id = resolve_actor(actor_raw, aliases)
     etype_norm = etype_raw.strip().lower()
     etype = etype_norm if etype_norm in EVENT_TYPES else "note"
-    task_id = task_raw.strip() if is_valid_task_id(task_raw.strip()) else extract_task_id(task_raw)
+    # QA-MM002-11: task_id from the 4th column only — never from body text.
+    task_id = task_id_from_column(task_raw)
     method = "ledger_owner" if actor_id else "unknown"
-    classified_type, target, extra = classify_note_text(body, actor_id, aliases)
-    if task_id:
-        extra.setdefault("task_id", task_id)
+    classified_type, _classified_target, extra = classify_note_text(body, actor_id, aliases)
+    extra.pop("task_id", None)
 
     if etype != "note":
         final_type = etype
     else:
         final_type = classified_type
 
-    if final_type == "handoff":
-        target = target or _resolve_handoff_target(body, aliases)
-    elif final_type == "assigned":
-        target = target or _resolve_handoff_target(body, aliases)
+    # Preferred: @mention / '-> Name'; fall back to GO/handed phrases; else null.
+    target = resolve_target_from_text(body, aliases)
 
     evt = _make_event(
         raw=stripped,
         etype=final_type,
         actor=actor_id,
         target=target,
-        task_id=extra.get("task_id", task_id),
+        task_id=task_id,
         source_time=source_time,
         source_url=source_url,
         attribution_method=method,
@@ -490,15 +547,12 @@ def parse_ledger(
                 continue
             status_raw = table_m.group("status").strip()
             evidence = table_m.group("evidence").strip()
-            title = table_m.group("title").strip()
+            project_col = table_m.group("project_col").strip()
             owner = table_m.group("owner").strip()
-            project = "fencepost"
-            if ":" in title:
-                project = title.split(":", 1)[0].strip().lower() or "fencepost"
             task = {
                 "id": task_id,
-                "title": title,
-                "project": project,
+                "title": project_col,
+                "project": derive_project_name(project_col, task_id),
                 "owner": owner,
                 "status_raw": status_raw,
                 "status": normalize_status(status_raw),
