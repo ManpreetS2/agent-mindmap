@@ -16,6 +16,8 @@ import { PartialSourceBanner } from "../components/PartialSourceBanner";
 import { TimelineFilters } from "../components/TimelineFilters";
 import { TimelineSwimlanes } from "../components/TimelineSwimlanes";
 import { UnparsedPanel } from "../components/UnparsedPanel";
+import { Button } from "../components/ui/button";
+import { NumberTicker } from "../components/magic/number-ticker";
 import { useResponsiveListDefault } from "../hooks/useResponsiveView";
 import { formatSourceTime } from "../utils/format";
 import { handoffEdgeCount } from "../utils/nodeFacts";
@@ -244,16 +246,22 @@ export function MindmapView({
           </span>
         </div>
         <div className="app-header__actions">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             className="view-toggle"
             aria-pressed={listView}
             onClick={() => setListView((v) => !v)}
           >
             {listView ? "Graph view" : "List view"}
-          </button>
+          </Button>
         </div>
         <div className="app-header__meta">
+          <span className="app-header__handoffs" aria-label="Handoff edge count">
+            Handoffs{" "}
+            <NumberTicker value={handoffs} className="text-sm" />
+          </span>
           <span className={stale ? "timestamp-stale" : ""}>
             Updated {formatSourceTime(activity.generated_at)}
             {stale && (

@@ -4,6 +4,7 @@ import { LedgerLoadError, loadActivity } from "./data/loadActivity";
 import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
+import { CommandCenterShell } from "./components/CommandCenterShell";
 import { MindmapView } from "./views/MindmapView";
 
 export function App() {
@@ -35,38 +36,38 @@ export function App() {
 
   if (error instanceof LedgerLoadError) {
     return (
-      <>
+      <CommandCenterShell>
         <SkipLink />
         <LedgerErrorView onRetry={reload} />
-      </>
+      </CommandCenterShell>
     );
   }
 
   if (error) {
     return (
-      <>
+      <CommandCenterShell>
         <SkipLink />
         <div className="app-error" role="alert">
           {error.message}
           <button type="button" onClick={reload}>Retry</button>
         </div>
-      </>
+      </CommandCenterShell>
     );
   }
 
   if (!activity) {
     return (
-      <>
+      <CommandCenterShell>
         <SkipLink />
         <MindmapLoadingView />
-      </>
+      </CommandCenterShell>
     );
   }
 
   return (
-    <>
+    <CommandCenterShell>
       <SkipLink />
       <MindmapView activity={activity} onRefresh={reload} />
-    </>
+    </CommandCenterShell>
   );
 }

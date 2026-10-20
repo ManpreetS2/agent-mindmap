@@ -226,6 +226,12 @@ MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.
 
 ---
 
+## Credits (web UI)
+
+Third-party libraries and adapted UI patterns (shadcn/ui, Magic UI, Tailwind, React Flow, etc.) are listed in **[CREDITS.md](CREDITS.md)** with licenses. The web app does not load fonts or scripts from CDNs at runtime.
+
+---
+
 ## Hard constraints
 
 1. No live Grok / room chat API — only ledger + GitHub + agent links (links only).
