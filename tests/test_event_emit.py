@@ -255,6 +255,21 @@ def test_concurrent_append_no_lost_lines(tmp_path: Path) -> None:
     assert not _looks_like_secret(raw.decode("utf-8", errors="replace"))
 
 
+def test_append_event_defaults_missing_provenance(tmp_path: Path) -> None:
+    out = tmp_path / "events.jsonl"
+    evt = build_network_event(
+        ts="2026-10-20T12:00:00+00:00",
+        sender="dev-1",
+        group="build",
+        summary="provenance default",
+    )
+    del evt["provenance"]
+    append_event(out, evt)
+    row = json.loads(out.read_text(encoding="utf-8").strip())
+    assert row["provenance"] == "agent-reported"
+    validate_network_event(row)
+
+
 def test_single_write_append_only(tmp_path: Path) -> None:
     """Each append adds exactly one newline-terminated record."""
     out = tmp_path / "one.jsonl"

@@ -317,6 +317,9 @@ def append_event(
 
     Returns bytes written. Raises SecretRefusedError or LineTooLongError on refusal.
     """
+    if not event.get("provenance"):
+        event = {**event, "provenance": DEFAULT_PROVENANCE}
+    validate_network_event(event)
     line = _fit_line_to_pipe_buf(event, max_bytes=max_line_bytes)
     if len(line) > max_line_bytes:
         raise LineTooLongError(f"line {len(line)} exceeds limit {max_line_bytes}")
