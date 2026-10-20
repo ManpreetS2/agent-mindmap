@@ -1,0 +1,2 @@
+tcp        0      0 127.0.0.1:5173          0.0.0.0:*               LISTEN      6595/node           
+ext:172.30.0.2:connection_failed

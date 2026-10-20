@@ -1,0 +1,79 @@
+=== patch-id --stable (original vs rebased thru polish) ===
+OK 2c44759 -> ea4f5be  be9e3a782fca vs be9e3a782fca
+OK acd4dd6 -> 14343c4  f52033ce7e7a vs f52033ce7e7a
+OK ed22901 -> 96c392d  6f1869ea1c88 vs 6f1869ea1c88
+OK 0220f7c -> 5264ef1  0903c624265e vs 0903c624265e
+OK ceebb76 -> 5dae42b  f55bec50a3f4 vs f55bec50a3f4
+stack_patch_ids_equal: True
+
+Commits after rebase polish (5dae42b..034655a): 1
+ NIT 034655a fix(web): timeline unsourced offset + neon zoom controls after MM-011 rebase
+
+ web/src/components/TimelineSwimlanes.tsx | 12 ++++++----
+ web/src/styles/graph.css                 | 39 ++++++++++++++++++++++++++------
+ 2 files changed, 39 insertions(+), 12 deletions(-)
+
+
+=== Paths where NEW blob != OLD (ceebb76) ===
+count: 26
+NEW==MAIN (main content): 22
+  MAIN .env.example
+  MAIN Makefile
+  MAIN fixtures/sample-activity.json
+  MAIN ingest/build.py
+  MAIN ingest/ledger_fetch.py
+  MAIN ingest/ledger_parser.py
+  MAIN ingest/live.py
+  MAIN ops/com.manpreet.mindmap.plist
+  MAIN schema/activity.schema.json
+  MAIN shared/types.ts
+  MAIN tests/test_ledger_fetch.py
+  MAIN tests/test_ledger_mirror.py
+  MAIN tests/test_live.py
+  MAIN tools/__init__.py
+  MAIN tools/ledger_mirror.py
+  MAIN web/src/fixtures/state-empty.json
+  MAIN web/src/fixtures/state-partial-github-error.json
+  MAIN web/src/fixtures/state-partial-github-rate-limited.json
+  MAIN web/src/fixtures/state-partial-github-skipped.json
+  MAIN web/src/fixtures/state-stale.json
+  MAIN web/src/fixtures/state-unparsed.json
+  MAIN web/src/utils/viewState.ts
+Other (nits/conflicts): 4
+  at_polish_or_conflict README.md
+    old=bd286421ac51f92e13712f1bcb4261d016d7cca6 polish=803b96a45e0327257d2a7813b85c51852fcccc44 new=803b96a45e0327257d2a7813b85c51852fcccc44 main=b0f0d434c6b0df47970cfeb608d40b20ed9d400a
+  nit_tip web/src/components/TimelineSwimlanes.tsx
+    old=8292b62f8f3a7caf56191daf415dc5f2c04e6c1e polish=8292b62f8f3a7caf56191daf415dc5f2c04e6c1e new=98cb8c27c083434bee51568544b2ee3c53d110d1 main=56ee2ca84c1ed46ead716bf4046b082734ce179c
+  nit_tip web/src/styles/graph.css
+    old=000197f07659c688fb9d0b517b47360bdb864eea polish=000197f07659c688fb9d0b517b47360bdb864eea new=3b428d18d1db7af02d56cdd407f442d84a7ddee2 main=26f8b3c507dfba7b997bef7becb577c5c5eee713
+  at_polish_or_conflict web/src/views/MindmapView.tsx
+    old=e9a8a54a2236fb6ea2e5371ba529e6c9d3a4568c polish=9f31ce2a342b0aadef3d52f5d37a0c26267a2780 new=9f31ce2a342b0aadef3d52f5d37a0c26267a2780 main=9238191923454bff00dc5b155042bf77a1d2e1cf
+
+=== Nit delta POLISH..NEW paths: 2 ===
+  web/src/components/TimelineSwimlanes.tsx
+  web/src/styles/graph.css
+
+Polish tip conflict-ish (≠ OLD and ≠ MAIN): 2
+  README.md
+    old=bd286421ac51f92e13712f1bcb4261d016d7cca6
+    polish=803b96a45e0327257d2a7813b85c51852fcccc44
+    main=b0f0d434c6b0df47970cfeb608d40b20ed9d400a
+  web/src/views/MindmapView.tsx
+    old=e9a8a54a2236fb6ea2e5371ba529e6c9d3a4568c
+    polish=9f31ce2a342b0aadef3d52f5d37a0c26267a2780
+    main=9238191923454bff00dc5b155042bf77a1d2e1cf
+
+merge-base(OLD,MAIN)=63e1bdf515b98bb1517addcf43b4373ea248778d
+only_mm012=40 only_main=22 both=2
+
+=== POLISH vs expected ===
+only_mm012 mismatches at polish: 0
+only_main mismatches at polish: 0
+both-touched at polish:
+  README.md eq_old=False eq_main=False
+  web/src/views/MindmapView.tsx eq_old=False eq_main=False
+
+=== NEW tip vs expected (allow nit paths) ===
+unexpected deltas at tip (excl nits): 0
+
+DELTA_OK True

@@ -1,0 +1,20 @@
+{
+  "task": "MM-012",
+  "pr": 14,
+  "sha": "034655aeee8f30bdfd883fbc3a319f437ec86ae3",
+  "prior_sha": "ceebb76030cf7b0ada835edd7df1069190b6afb5",
+  "rebase_base": "73457a13dacac38b6985df625e04fb39f1210e6f",
+  "verdict": "PASS",
+  "branch": "qa/MM-012",
+  "checks": {
+    "pytest": "97 passed, 1 skipped",
+    "vitest": "56 passed",
+    "typecheck": "clean",
+    "build": "success",
+    "ci_web": "success 39391439626",
+    "patch_id_stack": "5/5 equal ceebb76",
+    "nit_commit": "034655a (unsourced offset + neon zoom)",
+    "bind_xss_verdict_a11y_smoke": "PASS"
+  },
+  "findings": []
+}

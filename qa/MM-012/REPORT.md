@@ -102,3 +102,14 @@ Automated suites and CI are green; redesign claims verified in UI; security/loca
 
 - Independent QA: no product edits; no push to `feat/MM-012-redesign`; no GitHub comments on PR #14; no merge; no QA PR opened.
 - Artifacts only on `qa/MM-012`.
+
+
+---
+
+## Delta re-verify @ `034655a` (rebase onto `73457a1` + nits)
+
+**Verdict: PASS** — see [`logs/034655aeee8f30bdfd883fbc3a319f437ec86ae3/DELTA_REPORT.md`](logs/034655aeee8f30bdfd883fbc3a319f437ec86ae3/DELTA_REPORT.md).
+
+- Rebased stack `patch-id --stable` == `ceebb76` (5/5)
+- Nit commit `034655a`: unsourced offset + neon zoom (2 files, CSS/layout only)
+- pytest **97** / vitest **56** / tsc+build clean / CI web **success** (39391439626)

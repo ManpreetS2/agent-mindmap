@@ -1,0 +1,23 @@
+{
+  "hasCond": true,
+  "hasVer": true,
+  "xss": false,
+  "skip": 1,
+  "outbound": [],
+  "pass": true
+}
+node:fs:3090
+  binding.copyFile(
+          ^
+
+Error: EINVAL: invalid argument, copyfile '/tmp/qa-mm012-checkout-034655a/web/public/../..' -> '/dev/null'
+    at Object.copyFileSync (node:fs:3090:11)
+    at file:///tmp/qa-mm012-checkout-034655a/web/[eval1]:32:4 {
+  errno: -22,
+  code: 'EINVAL',
+  syscall: 'copyfile',
+  path: '/tmp/qa-mm012-checkout-034655a/web/public/../..',
+  dest: '/dev/null'
+}
+
+Node.js v22.23.3

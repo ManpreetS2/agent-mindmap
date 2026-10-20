@@ -1,0 +1,8 @@
+034655a fix(web): timeline unsourced offset + neon zoom controls after MM-011 rebase
+5dae42b fix(web): MM-012 polish layout, chrome, legend, unsourced tags
+5264ef1 feat(web): MM-012 graph motion, live poll + timeline brush
+96c392d feat(web): MM-012 dark glass neon command-center theme (no motion lib)
+14343c4 chore(web): MM-012 Tailwind, shadcn Button, Magic UI primitives
+ea4f5be fix(web): MM-012 timeline layout and debug drawer bug fixes
+73457a1 feat(MM-011): live daemon + localhost server (127.0.0.1) (#15)
+3b02368 MM-010: ledger mirror (#11)

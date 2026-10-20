@@ -1,0 +1,106 @@
+commit 034655aeee8f30bdfd883fbc3a319f437ec86ae3
+Author:     Cursor Agent <cursoragent@cursor.com>
+AuthorDate: Tue Oct 20 08:09:55 2026 +0000
+Commit:     Cursor Agent <cursoragent@cursor.com>
+CommitDate: Tue Oct 20 08:09:55 2026 +0000
+
+    fix(web): timeline unsourced offset + neon zoom controls after MM-011 rebase
+    
+    Co-authored-by: Manpreet Singh <ManpreetS2@users.noreply.github.com>
+
+diff --git a/web/src/components/TimelineSwimlanes.tsx b/web/src/components/TimelineSwimlanes.tsx
+index 8292b62..98cb8c2 100644
+--- a/web/src/components/TimelineSwimlanes.tsx
++++ b/web/src/components/TimelineSwimlanes.tsx
+@@ -60,6 +60,8 @@ function EventMarker({
+ }) {
+   const glyph = glyphForEvent(event);
+   const hasSource = isHttpSourceUrl(event.source_url);
++  const hasTaskChip =
++    Boolean(event.task_id) && isLifecycleTaskId(event.task_id!);
+   const opacity = dimmed ? 0.25 : 1;
+   const stroke = highlighted ? "var(--accent)" : "var(--border-subtle)";
+ 
+@@ -113,7 +115,7 @@ function EventMarker({
+       ) : (
+         <g>{markerBody}</g>
+       )}
+-      {event.task_id && isLifecycleTaskId(event.task_id) && (
++      {hasTaskChip && (
+         <foreignObject
+           x={x + 12}
+           y={y - 10}
+@@ -134,10 +136,10 @@ function EventMarker({
+       )}
+       {!hasSource && (
+         <foreignObject
+-          x={x + 14}
+-          y={y - 8}
+-          width={100}
+-          height={18}
++          x={hasTaskChip ? x + 88 : x + 14}
++          y={hasTaskChip ? y - 10 : y - 8}
++          width={hasTaskChip ? 88 : 100}
++          height={20}
+           opacity={opacity}
+         >
+           <UnsourcedTag />
+diff --git a/web/src/styles/graph.css b/web/src/styles/graph.css
+index 000197f..3b428d1 100644
+--- a/web/src/styles/graph.css
++++ b/web/src/styles/graph.css
+@@ -219,22 +219,47 @@
+ 
+ .timeline-zoom-controls {
+   display: flex;
+-  gap: var(--space-1);
+-  padding: 0 var(--space-3) var(--space-1);
++  justify-content: flex-end;
++  flex-wrap: wrap;
++  gap: var(--space-2);
++  padding: var(--space-2) var(--space-3) var(--space-1);
+ }
+ 
+ .timeline-zoom-btn {
+-  border: 1px solid var(--border-subtle);
+-  background: var(--bg-card);
++  cursor: pointer;
++  font-family: var(--font-mono);
++  font-size: 11px;
++  font-weight: 600;
++  letter-spacing: 0.03em;
++  text-transform: uppercase;
++  line-height: 1.2;
++  border: 1px solid color-mix(in srgb, hsl(187 92% 55%) 35%, var(--border-subtle));
++  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
++  backdrop-filter: blur(8px);
+   color: var(--text-secondary);
+   border-radius: var(--radius-pill);
+-  padding: 2px 8px;
+-  font-size: 11px;
++  padding: 4px 10px;
++  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-elevated) 40%, transparent);
++  transition:
++    color 0.15s ease,
++    border-color 0.15s ease,
++    box-shadow 0.15s ease,
++    background 0.15s ease;
+ }
+ 
+ .timeline-zoom-btn:hover {
+-  color: var(--text-primary);
++  color: hsl(187 92% 72%);
+   border-color: hsl(187 92% 55%);
++  background: color-mix(in srgb, hsl(187 92% 55%) 12%, var(--bg-card));
++  box-shadow: 0 0 12px color-mix(in srgb, hsl(187 92% 55%) 35%, transparent);
++}
++
++.timeline-zoom-btn:focus-visible {
++  outline: none;
++  border-color: hsl(187 92% 55%);
++  box-shadow:
++    0 0 0 2px color-mix(in srgb, hsl(187 92% 55%) 45%, transparent),
++    0 0 14px color-mix(in srgb, hsl(187 92% 55%) 30%, transparent);
+ }
+ 
+ .timeline-now-stroke {

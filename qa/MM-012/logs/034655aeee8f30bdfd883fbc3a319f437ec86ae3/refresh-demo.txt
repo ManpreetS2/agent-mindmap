@@ -1,0 +1,7 @@
+make: Entering directory '/tmp/qa-mm012-checkout-034655a'
+python3 -m ingest \
+	--ledger "/tmp/qa-mm012-checkout-034655a/tests/fixtures/ledger-sample.md" \
+	--out "/tmp/qa-mm012-checkout-034655a/web/public/activity.json" \
+	--skip-github
+wrote /tmp/qa-mm012-checkout-034655a/web/public/activity.json (github=skipped, ledger=ok)
+make: Leaving directory '/tmp/qa-mm012-checkout-034655a'

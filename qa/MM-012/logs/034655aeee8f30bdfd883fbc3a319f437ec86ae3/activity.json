@@ -1,0 +1,291 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-20T04:58:00-07:00",
+  "project": "fencepost",
+  "meta": {
+    "github": "ok",
+    "ledger": "ok",
+    "ledger_last_entry_at": "2026-10-19T21:39:00-07:00"
+  },
+  "nodes": [
+    {
+      "id": "manpreet",
+      "label": "Safe <script>window.__xss=1</script>",
+      "group": "owner",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 0
+      },
+      "current_task": "<img src=x onerror=\"window.__xss=1\">"
+    },
+    {
+      "id": "director",
+      "label": "Director",
+      "group": "build",
+      "status": "IN_PROGRESS",
+      "current_task": "RP-009",
+      "last_activity_ts": "2026-10-19T21:20:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 72
+      }
+    },
+    {
+      "id": "architect",
+      "label": "Architect",
+      "group": "build",
+      "status": "DONE",
+      "current_task": "MM-001",
+      "last_activity_ts": "2026-10-19T21:35:00-07:00",
+      "agent_links": [
+        "bc-9f84dbdb"
+      ],
+      "layout": {
+        "x": 400,
+        "y": 144
+      }
+    },
+    {
+      "id": "dev-1",
+      "label": "DEV 1",
+      "group": "build",
+      "status": "IN_REVIEW",
+      "current_task": "RP-004",
+      "last_activity_ts": "2026-10-19T21:10:00-07:00",
+      "agent_links": [
+        "bc-1a2b3c4d"
+      ],
+      "layout": {
+        "x": 80,
+        "y": 256
+      }
+    },
+    {
+      "id": "dev-2",
+      "label": "DEV 2",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 256
+      }
+    },
+    {
+      "id": "ui-ux-maker",
+      "label": "UI/UX Maker",
+      "group": "build",
+      "status": "IN_PROGRESS",
+      "current_task": "MM-005",
+      "last_activity_ts": "2026-10-19T20:45:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 256
+      }
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 256
+      }
+    },
+    {
+      "id": "qa-verifier",
+      "label": "QA / Verifier",
+      "group": "qr",
+      "status": "DONE",
+      "last_activity_ts": "2026-10-19T21:37:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 176
+      }
+    },
+    {
+      "id": "security-engineer",
+      "label": "Security Engineer",
+      "group": "qr",
+      "status": "IN_REVIEW",
+      "current_task": "RP-004",
+      "last_activity_ts": "2026-10-19T21:15:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 256
+      }
+    },
+    {
+      "id": "devops-release",
+      "label": "DevOps / Release",
+      "group": "qr",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 336
+      }
+    },
+    {
+      "id": "scout",
+      "label": "Scout",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 384
+      }
+    },
+    {
+      "id": "skeptic",
+      "label": "Skeptic",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 384
+      }
+    },
+    {
+      "id": "nomen",
+      "label": "NOMEN",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 384
+      }
+    },
+    {
+      "id": "bug-fixer",
+      "label": "Bug fixer",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 384
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "RP-004",
+      "title": "FENCEPOST: workload generator",
+      "project": "fencepost",
+      "owner": "DEV 1",
+      "status_raw": "PR #6 IN_REVIEW; Security review pending",
+      "status": "IN_REVIEW",
+      "prs": [
+        6
+      ],
+      "source_url": "build/task-ledger.md#RP-004"
+    },
+    {
+      "id": "RP-005",
+      "title": "FENCEPOST: ingest pipeline hardening",
+      "project": "fencepost",
+      "owner": "DEV 1",
+      "status_raw": "DONE (merged)",
+      "status": "DONE",
+      "prs": [
+        5
+      ],
+      "source_url": "build/task-ledger.md#RP-005"
+    }
+  ],
+  "events": [
+    {
+      "id": "v1",
+      "type": "verdict",
+      "actor": "qa-verifier",
+      "target": "dev-1",
+      "task_id": "MM-012",
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/1",
+      "source_time": "2026-10-20T08:14:43.394Z",
+      "raw": "CONDITIONAL",
+      "verdict": "CONDITIONAL"
+    },
+    {
+      "id": "v2",
+      "type": "verdict",
+      "actor": "qa-verifier",
+      "target": "dev-1",
+      "task_id": "MM-012",
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/1",
+      "source_time": "2026-10-20T08:14:43.394Z",
+      "raw": "X",
+      "verdict": "TOTALLY_NEW_TOKEN"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-handoff-director-architect",
+      "source": "director",
+      "target": "architect",
+      "type": "handoff",
+      "count": 1,
+      "event_ids": [
+        "evt-handoff-director-architect-rp009"
+      ]
+    },
+    {
+      "id": "edge-verdict-qa-dev1",
+      "source": "qa-verifier",
+      "target": "dev-1",
+      "type": "verdict",
+      "count": 1,
+      "event_ids": [
+        "evt-pr5-verdict-qa"
+      ]
+    },
+    {
+      "id": "edge-pr-dev1-qa",
+      "source": "dev-1",
+      "target": "qa-verifier",
+      "type": "pr",
+      "count": 1,
+      "event_ids": [
+        "evt-pr5-opened"
+      ]
+    },
+    {
+      "id": "edge-merge-devops-dev1",
+      "source": "devops-release",
+      "target": "dev-1",
+      "type": "merge",
+      "count": 1,
+      "event_ids": [
+        "evt-pr5-merged"
+      ]
+    },
+    {
+      "id": "edge-verdict-security-dev1",
+      "source": "security-engineer",
+      "target": "dev-1",
+      "type": "verdict",
+      "count": 1,
+      "event_ids": [
+        "evt-pr6-security-review"
+      ]
+    }
+  ],
+  "unparsed": []
+}

@@ -1,0 +1,41 @@
+
+ RUN  v2.1.9 /tmp/qa-mm012-checkout-034655a/web
+
+ ✓ src/test/eventGlyph.test.ts (3 tests) 2ms
+ ✓ src/test/Timeline.test.tsx (4 tests) 737ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > list view has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/KeyboardNav.test.tsx (10 tests) 1079ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > graph view shell has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm012-checkout-034655a/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm012-checkout-034655a/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/A11y.test.tsx (2 tests) 1003ms
+   ✓ Accessibility (axe) > list view has no serious or critical axe violations 644ms
+   ✓ Accessibility (axe) > graph view shell has no serious or critical axe violations 359ms
+
+ Test Files  4 passed (4)
+      Tests  19 passed (19)
+   Start at  08:13:41
+   Duration  2.60s (transform 555ms, setup 481ms, collect 1.80s, tests 2.82s, environment 1.12s, prepare 357ms)
+
