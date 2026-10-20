@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "check": "bind 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "['127.0.0.1:43917']"
+    },
+    {
+      "check": "XSS SSE payload is JSON text",
+      "result": "PASS",
+      "detail": "id: xss1\ndata: {\"id\":\"xss1\",\"ts\":\"2026-10-20T12:00:00-07:00\",\"sender\":\"director\",\"group\":\"build\",\"type\":\"message\",\"summary\":\"<img src=x onerror=\\\"window.__xss=1\\\">\",\"provenance\":\"agent-reported\"}\n\n: h"
+    }
+  ],
+  "findings": []
+}

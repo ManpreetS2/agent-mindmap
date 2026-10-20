@@ -1,0 +1,28 @@
+{
+  "ninth": {
+    "status": 503,
+    "retry": "5"
+  },
+  "graceful": {
+    "wait_ok": true,
+    "elapsed_s": 0.0,
+    "status": 200,
+    "active": 8
+  },
+  "abrupt": {
+    "wait_ok": true,
+    "elapsed_s": 0.0,
+    "status": 200,
+    "active": 7,
+    "active_before_rst": 7,
+    "target_after_rst": 6,
+    "method": "raw-SO_LINGER-RST"
+  },
+  "cycles100": {
+    "fail503": 0,
+    "stuck": 0,
+    "active_end": 0,
+    "thr0": 3,
+    "thr1": 3
+  }
+}

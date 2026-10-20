@@ -1,0 +1,121 @@
+{
+  "sha": "3d5415347d7f378b1bcbf135011941d3e472d107",
+  "checks": [
+    {
+      "check": "SEC-MM020d-2 garbage+open: CPU near idle over ~10s",
+      "result": "PASS",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}"
+    },
+    {
+      "check": "SEC-MM020d-2 garbage+open: stream/slot freed \u22641s",
+      "result": "PASS",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}"
+    },
+    {
+      "check": "SEC-MM020d-2 8 garbage clients \u2192 free; legit gets slot; active=0",
+      "result": "PASS",
+      "detail": "{'freed_all_within_1s': True, 'active_after': 0, 'legit_status': 200, 'active_with_legit': 1, 'active_final': 0, 'legit_cleared': True}"
+    },
+    {
+      "check": "SEC-MM020d-2 slow trickle \u2192 slot freed \u22641s",
+      "result": "PASS",
+      "detail": "{'freed': True, 'elapsed_s': 0.05, 'active': 0, 'bytes_sent': 1, 'pipe_err_after_end': False}"
+    },
+    {
+      "check": "SEC-MM020d-2 SHUT_WR half-close \u2192 slot freed \u22641s",
+      "result": "PASS",
+      "detail": "{'freed': True, 'elapsed_s': 0.0, 'active': 0}"
+    },
+    {
+      "check": "Legitimate curl-like SSE stays open across \u22653 heartbeats",
+      "result": "PASS",
+      "detail": "{'heartbeats': 3, 'active': 1, 'ok': True}"
+    },
+    {
+      "check": "Legitimate browser EventSource stays open across \u22653 heartbeats",
+      "result": "PASS",
+      "detail": "{'method': 'chromium-EventSource+node-eventsource', 'ok': True, 'error': None, 'node_state': {'readyState': 1, 'opened': True, 'err': None}, 'chrome_state': {'readyState': 1, 'opened': True, 'err': None}}"
+    },
+    {
+      "check": "Cap: 9th \u2192 503 + Retry-After",
+      "result": "PASS",
+      "detail": "{'status': 503, 'retry': '5'}"
+    },
+    {
+      "check": "QA-MM020d-1 graceful close \u2192 new stream \u22641s (heartbeat=15s)",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}"
+    },
+    {
+      "check": "QA-MM020d-1 abrupt close \u2192 new stream \u22641s",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 7, 'active_before_rst': 7, 'target_after_rst': 6, 'method': 'raw-SO_LINGER-RST'}"
+    },
+    {
+      "check": "QA-MM020d-1 100 rapid cycles: no spurious 503, no leak, threads bounded",
+      "result": "PASS",
+      "detail": "{'fail503': 0, 'stuck': 0, 'active_end': 0, 'thr0': 3, 'thr1': 3}"
+    },
+    {
+      "check": "QA-MM020d-2 Origin:null \u2192 403 all routes",
+      "result": "PASS",
+      "detail": "{'null_origin:/healthz': 403, 'null_origin:/activity.json': 403, 'null_origin:/index.html': 403, 'null_origin:/events': 403}"
+    },
+    {
+      "check": "Missing Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Local Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Host/Origin evil/bad/missing-host \u2192 403",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "SSE order+dedupe",
+      "result": "PASS",
+      "detail": "ids=['a1', 'a2']"
+    },
+    {
+      "check": "SSE Last-Event-ID",
+      "result": "PASS",
+      "detail": "ids=['a2', 'a3']"
+    },
+    {
+      "check": "flock mode 0o600",
+      "result": "PASS",
+      "detail": "0o600"
+    },
+    {
+      "check": "flock second refused",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock after kill -9",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock refuses symlink",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "bind 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "['127.0.0.1:43917']"
+    },
+    {
+      "check": "XSS SSE payload is JSON text",
+      "result": "PASS",
+      "detail": "id: xss1\ndata: {\"id\":\"xss1\",\"ts\":\"2026-10-20T12:00:00-07:00\",\"sender\":\"director\",\"group\":\"build\",\"type\":\"message\",\"summary\":\"<img src=x onerror=\\\"window.__xss=1\\\">\",\"provenance\":\"agent-reported\"}\n\n: h"
+    }
+  ],
+  "findings": []
+}

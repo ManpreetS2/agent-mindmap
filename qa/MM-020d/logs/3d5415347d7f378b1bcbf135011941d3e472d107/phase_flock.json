@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "check": "flock mode 0o600",
+      "result": "PASS",
+      "detail": "0o600"
+    },
+    {
+      "check": "flock second refused",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock after kill -9",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "flock refuses symlink",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "findings": []
+}

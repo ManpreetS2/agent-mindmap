@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "check": "QA-MM020d-2 Origin:null \u2192 403 all routes",
+      "result": "PASS",
+      "detail": "{'null_origin:/healthz': 403, 'null_origin:/activity.json': 403, 'null_origin:/index.html': 403, 'null_origin:/events': 403}"
+    },
+    {
+      "check": "Missing Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Local Origin \u2192 200",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Host/Origin evil/bad/missing-host \u2192 403",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "findings": []
+}

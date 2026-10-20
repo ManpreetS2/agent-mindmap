@@ -1,0 +1,22 @@
+{
+  "curl_like": {
+    "heartbeats": 3,
+    "active": 1,
+    "ok": true
+  },
+  "eventsource": {
+    "method": "chromium-EventSource+node-eventsource",
+    "ok": true,
+    "error": null,
+    "node_state": {
+      "readyState": 1,
+      "opened": true,
+      "err": null
+    },
+    "chrome_state": {
+      "readyState": 1,
+      "opened": true,
+      "err": null
+    }
+  }
+}

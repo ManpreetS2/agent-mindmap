@@ -1,0 +1,229 @@
+driver start sha=3d5415347d7f378b1bcbf135011941d3e472d107
+
+===== PHASE sec2_spin rc=0 =====
+[PASS] SEC-MM020d-2 garbage+open: CPU near idle over ~10s — {'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}
+[PASS] SEC-MM020d-2 garbage+open: stream/slot freed ≤1s — {'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}
+=== PHASE sec2_spin PASS=2 FAIL=0 ===
+
+[stderr]
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+
+===== PHASE sec2_eight rc=0 =====
+[PASS] SEC-MM020d-2 8 garbage clients → free; legit gets slot; active=0 — {'freed_all_within_1s': True, 'active_after': 0, 'legit_status': 200, 'active_with_legit': 1, 'active_final': 0, 'legit_cleared': True}
+=== PHASE sec2_eight PASS=1 FAIL=0 ===
+
+[stderr]
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+
+===== PHASE sec2_trickle rc=0 =====
+[PASS] SEC-MM020d-2 slow trickle → slot freed ≤1s — {'freed': True, 'elapsed_s': 0.05, 'active': 0, 'bytes_sent': 1, 'pipe_err_after_end': False}
+=== PHASE sec2_trickle PASS=1 FAIL=0 ===
+
+[stderr]
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+
+===== PHASE sec2_shutwr rc=0 =====
+[PASS] SEC-MM020d-2 SHUT_WR half-close → slot freed ≤1s — {'freed': True, 'elapsed_s': 0.0, 'active': 0}
+=== PHASE sec2_shutwr PASS=1 FAIL=0 ===
+
+[stderr]
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+
+===== PHASE legit rc=0 =====
+[PASS] Legitimate curl-like SSE stays open across ≥3 heartbeats — {'heartbeats': 3, 'active': 1, 'ok': True}
+[PASS] Legitimate browser EventSource stays open across ≥3 heartbeats — {'method': 'chromium-EventSource+node-eventsource', 'ok': True, 'error': None, 'node_state': {'readyState': 1, 'opened': True, 'err': None}, 'chrome_state': {'readyState': 1, 'opened': True, 'err': None}}
+=== PHASE legit PASS=2 FAIL=0 ===
+
+[stderr]
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /es_probe.html HTTP/1.1" 200 -
+127.0.0.1 - code 404, message Not Found
+127.0.0.1 - "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+[PASS] Cap: 9th → 503 + Retry-After — {'status': 503, 'retry': '5'}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] QA-MM020d-1 graceful close → new stream ≤1s (heartbeat=15s) — {'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] QA-MM020d-1 abrupt close → new stream ≤1s — {'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[FAIL] QA-MM020d-1 100 rapid cycles: no spurious 503, no leak, threads bounded — {'fail503': 0, 'stuck': 100, 'active_end': 1, 'thr0': 3, 'thr1': 3}
+=== PHASE prompt PASS=3 FAIL=1 ===
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+[PASS] QA-MM020d-2 Origin:null → 403 all routes — {'null_origin:/healthz': 403, 'null_origin:/activity.json': 403, 'null_origin:/index.html': 403, 'null_origin:/events': 403}
+[PASS] Missing Origin → 200
+[PASS] Local Origin → 200
+[PASS] Host/Origin evil/bad/missing-host → 403
+=== PHASE origin PASS=4 FAIL=0 ===
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] SSE order+dedupe — ids=['a1', 'a2']
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] SSE Last-Event-ID — ids=['a2', 'a3']
+=== PHASE sse PASS=2 FAIL=0 ===
+[PASS] flock mode 0o600 — 0o600
+[PASS] flock second refused
+[PASS] flock after kill -9
+[PASS] flock refuses symlink
+=== PHASE flock PASS=4 FAIL=0 ===
+[PASS] bind 127.0.0.1 only — ['127.0.0.1:43917']
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] XSS SSE payload is JSON text — id: xss1
+data: {"id":"xss1","ts":"2026-10-20T12:00:00-07:00","sender":"director","group":"build","type":"message","summary":"<img src=x onerror=\"window.__xss=1\">","provenance":"agent-reported"}
+
+: h
+=== PHASE bind PASS=2 FAIL=0 ===

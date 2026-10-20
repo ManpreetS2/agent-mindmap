@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "check": "SSE order+dedupe",
+      "result": "PASS",
+      "detail": "ids=['a1', 'a2']"
+    },
+    {
+      "check": "SSE Last-Event-ID",
+      "result": "PASS",
+      "detail": "ids=['a2', 'a3']"
+    }
+  ],
+  "findings": []
+}

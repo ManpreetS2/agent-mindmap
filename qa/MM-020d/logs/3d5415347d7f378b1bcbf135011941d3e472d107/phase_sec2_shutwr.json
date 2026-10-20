@@ -1,0 +1,10 @@
+{
+  "checks": [
+    {
+      "check": "SEC-MM020d-2 SHUT_WR half-close \u2192 slot freed \u22641s",
+      "result": "PASS",
+      "detail": "{'freed': True, 'elapsed_s': 0.0, 'active': 0}"
+    }
+  ],
+  "findings": []
+}

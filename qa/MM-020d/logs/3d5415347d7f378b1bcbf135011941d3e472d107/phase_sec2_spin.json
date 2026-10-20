@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "check": "SEC-MM020d-2 garbage+open: CPU near idle over ~10s",
+      "result": "PASS",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}"
+    },
+    {
+      "check": "SEC-MM020d-2 garbage+open: stream/slot freed \u22641s",
+      "result": "PASS",
+      "detail": "{'wall_s': 10.01, 'cpu_delta_s': 0.01, 'cpu_last_half_s': 0.0, 'approx_util_last_half': 0.0, 'freed_within_1s': True, 'free_elapsed_s': 0.0, 'active_after_free_wait': 0, 'peer_closed_seen': True}"
+    }
+  ],
+  "findings": []
+}

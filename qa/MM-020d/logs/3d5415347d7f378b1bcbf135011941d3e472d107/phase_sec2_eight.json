@@ -1,0 +1,10 @@
+{
+  "checks": [
+    {
+      "check": "SEC-MM020d-2 8 garbage clients \u2192 free; legit gets slot; active=0",
+      "result": "PASS",
+      "detail": "{'freed_all_within_1s': True, 'active_after': 0, 'legit_status': 200, 'active_with_legit': 1, 'active_final': 0, 'legit_cleared': True}"
+    }
+  ],
+  "findings": []
+}

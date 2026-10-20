@@ -1,0 +1,10 @@
+{
+  "wall_s": 10.01,
+  "cpu_delta_s": 0.01,
+  "cpu_last_half_s": 0.0,
+  "approx_util_last_half": 0.0,
+  "freed_within_1s": true,
+  "free_elapsed_s": 0.0,
+  "active_after_free_wait": 0,
+  "peer_closed_seen": true
+}

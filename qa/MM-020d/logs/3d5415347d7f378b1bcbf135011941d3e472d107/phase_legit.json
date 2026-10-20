@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "check": "Legitimate curl-like SSE stays open across \u22653 heartbeats",
+      "result": "PASS",
+      "detail": "{'heartbeats': 3, 'active': 1, 'ok': True}"
+    },
+    {
+      "check": "Legitimate browser EventSource stays open across \u22653 heartbeats",
+      "result": "PASS",
+      "detail": "{'method': 'chromium-EventSource+node-eventsource', 'ok': True, 'error': None, 'node_state': {'readyState': 1, 'opened': True, 'err': None}, 'chrome_state': {'readyState': 1, 'opened': True, 'err': None}}"
+    }
+  ],
+  "findings": []
+}

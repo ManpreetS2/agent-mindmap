@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "check": "Cap: 9th \u2192 503 + Retry-After",
+      "result": "PASS",
+      "detail": "{'status': 503, 'retry': '5'}"
+    },
+    {
+      "check": "QA-MM020d-1 graceful close \u2192 new stream \u22641s (heartbeat=15s)",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}"
+    },
+    {
+      "check": "QA-MM020d-1 abrupt close \u2192 new stream \u22641s",
+      "result": "PASS",
+      "detail": "{'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 7, 'active_before_rst': 7, 'target_after_rst': 6, 'method': 'raw-SO_LINGER-RST'}"
+    },
+    {
+      "check": "QA-MM020d-1 100 rapid cycles: no spurious 503, no leak, threads bounded",
+      "result": "PASS",
+      "detail": "{'fail503': 0, 'stuck': 0, 'active_end': 0, 'thr0': 3, 'thr1': 3}"
+    }
+  ],
+  "findings": []
+}

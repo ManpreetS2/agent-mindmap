@@ -1,0 +1,26 @@
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+[PASS] Cap: 9th → 503 + Retry-After — {'status': 503, 'retry': '5'}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] QA-MM020d-1 graceful close → new stream ≤1s (heartbeat=15s) — {'wait_ok': True, 'elapsed_s': 0.0, 'status': 200, 'active': 8}
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/tmp/qa-mm020d-delta3/evidence/scripts/qa_mm020d_delta_3d54153.py", line 1083, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/tmp/qa-mm020d-delta3/evidence/scripts/qa_mm020d_delta_3d54153.py", line 1027, in main
+    return run_phase(sys.argv[2])
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/qa-mm020d-delta3/evidence/scripts/qa_mm020d_delta_3d54153.py", line 1004, in run_phase
+    check_prompt_release(env)
+  File "/tmp/qa-mm020d-delta3/evidence/scripts/qa_mm020d_delta_3d54153.py", line 696, in check_prompt_release
+    assert daemon.sse_limiter.active_count() == MAX_SSE_CONNECTIONS
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

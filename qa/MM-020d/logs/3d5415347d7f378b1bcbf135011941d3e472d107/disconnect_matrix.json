@@ -1,0 +1,82 @@
+{
+  "rst_hb15": [
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    }
+  ],
+  "rst_hb0_2": [
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    }
+  ],
+  "graceful_hb15": [
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    }
+  ],
+  "shutwr_hb15": [
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    },
+    {
+      "ok_1s": true,
+      "elapsed": 0.0,
+      "ok_later": true,
+      "active": 0
+    }
+  ]
+}
