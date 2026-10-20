@@ -1,0 +1,14 @@
+OLD=50f210c965a052ed4d41b2a83f72f75c672d2d30
+NEW=0c500c1d272989bd415d14b3d6510703c44f2ce2
+main=63e1bdf515b98bb1517addcf43b4373ea248778d
+
+tree_diff_paths_only:
+  A .github/workflows/python.yml  (blob matches main 63e1bdf)
+  A requirements-dev.txt          (blob matches main 63e1bdf)
+
+MM-010 product blobs: IDENTICAL (ledger_mirror, ledger_fetch, build, tests, schema, README, web/src, ...)
+feat patch-id OLD==NEW: 226e68622bd3c10e65c0abebd52eb4f52b36ee87
+fix  patch-id OLD==NEW: 4fa977d437b7a9e01b8896c258a7a52a44f3aedc
+
+Conclusion: rebase-only. No MM-010 product code change vs 50f210c.
+Delta is solely main#9 CI files inherited from new base 63e1bdf.

@@ -1,0 +1,10 @@
+calls_scanner=True
+cli_rc=0
+cli_out={'flush': False, 'lines': [7], 'reason': 'secret_detected', 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}
+decide={'flush': False, 'reason': 'secret_detected', 'lines': [7], 'sha256': '8a5b666a5a7af18c8b15cf150118d569f77dd86709556e378153e0e59391c6c4'}
+secret_in_stdout_stderr=False
+secret_in_json_dumps_decision=False
+payload_exists=False
+state_exists=False
+lines_expected=[7]
+_looks_like_secret(dirty)=True

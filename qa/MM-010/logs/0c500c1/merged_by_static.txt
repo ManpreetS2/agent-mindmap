@@ -1,0 +1,2 @@
+            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a
+    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).

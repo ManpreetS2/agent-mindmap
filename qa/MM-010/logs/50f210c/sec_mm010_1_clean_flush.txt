@@ -1,0 +1,4 @@
+rc=0
+out={'flush': True, 'payload': '/tmp/tmpeb8zabqp/payload.md', 'reason': 'state_change', 'sha256': '13acf035fe699dbdd2833bc2e3e39c889fa2d0abd15a4c73854d58b2f851a827'}
+payload_exists=True
+payload_matches=True

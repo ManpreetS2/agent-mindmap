@@ -1,0 +1,48 @@
+
+> mindmap-web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /tmp/qa-mm010/repo/web
+
+ ✓ src/test/DetailPanel.test.tsx (4 tests) 87ms
+ ✓ src/test/States.test.tsx (10 tests) 494ms
+ ✓ src/test/KeyboardNav.test.tsx (10 tests) 741ms
+ ✓ src/test/GraphView.test.tsx (5 tests) 509ms
+ ✓ src/test/eventGlyph.test.ts (3 tests) 2ms
+ ✓ src/test/Timeline.test.tsx (4 tests) 542ms
+ ✓ src/test/sourceUrl.test.ts (2 tests) 2ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > list view has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > graph view shell has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm010/repo/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm010/repo/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/A11y.test.tsx (2 tests) 684ms
+   ✓ Accessibility (axe) > list view has no serious or critical axe violations 437ms
+
+ Test Files  8 passed (8)
+      Tests  40 passed (40)
+   Start at  07:33:19
+   Duration  3.43s (transform 437ms, setup 817ms, collect 1.52s, tests 3.06s, environment 2.23s, prepare 340ms)
+
