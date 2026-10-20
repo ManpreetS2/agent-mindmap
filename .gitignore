@@ -5,8 +5,5 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .env
-<<<<<<< HEAD
 web/tsconfig.tsbuildinfo
-=======
 ingest/.cache/
->>>>>>> 8ee2c1c (feat(MM-003): GitHub poller via gh api with ETag cache and signatures)

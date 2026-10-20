@@ -14,6 +14,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 from .attribute import (
     attribute_from_body,
@@ -30,7 +31,8 @@ ALLOWED_REPOS = frozenset(
 )
 DEFAULT_REPOS = ("ManpreetS2/fencepost", "ManpreetS2/agent-mindmap")
 RATE_LIMIT_FLOOR = 50
-MAX_PRS = 50
+PER_PAGE = 100
+LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
 
 
 def _repo_root() -> Path:
@@ -39,6 +41,26 @@ def _repo_root() -> Path:
 
 def event_id(source: str, locator: str) -> str:
     return hashlib.sha1(f"{source}{locator}".encode("utf-8")).hexdigest()
+
+
+def _api_path_from_link(url: str) -> str:
+    """Turn an absolute GitHub API URL into a `gh api` path (+ query)."""
+    parsed = urlparse(url)
+    path = parsed.path.lstrip("/")
+    if path.startswith("api.github.com/"):
+        path = path[len("api.github.com/") :]
+    if parsed.query:
+        return f"{path}?{parsed.query}"
+    return path
+
+
+def next_link_path(link_header: str | None) -> str | None:
+    if not link_header:
+        return None
+    m = LINK_NEXT_RE.search(link_header)
+    if not m:
+        return None
+    return _api_path_from_link(m.group(1))
 
 
 @dataclass
@@ -52,7 +74,7 @@ class GhResponse:
 @dataclass
 class GitHubPollResult:
     events: list[dict[str, Any]] = field(default_factory=list)
-    meta_github: str = "ok"  # ok | error | skipped
+    meta_github: str = "ok"  # ok | error | skipped | rate_limited
     status_304_count: int = 0
     request_count: int = 0
     errors: list[str] = field(default_factory=list)
@@ -105,7 +127,6 @@ def _parse_gh_include(raw: str) -> GhResponse:
     if not text.strip():
         return GhResponse(status=0, headers={}, body="")
 
-    # May include multiple header blocks (redirects); take the last.
     parts = re.split(r"\n(?=HTTP/\d)", text)
     blocks = [p for p in parts if p.strip()]
     block = blocks[-1] if blocks else text
@@ -135,8 +156,6 @@ def default_gh_runner(args: list[str], *, timeout: float = 60.0) -> GhResponse:
     Relies on the existing `gh` login on the host.
     """
     cmd = ["gh", "api", "--include", *args]
-    # Do not pass GITHUB_TOKEN / GH_TOKEN into the child beyond the ambient
-    # environment gh already uses; we never read or print those vars.
     proc = subprocess.run(
         cmd,
         capture_output=True,
@@ -144,11 +163,8 @@ def default_gh_runner(args: list[str], *, timeout: float = 60.0) -> GhResponse:
         timeout=timeout,
         check=False,
     )
-    # gh may put the include payload on stdout even when exit != 0 (e.g. 404).
     combined = proc.stdout or ""
     if not combined and proc.stderr:
-        # Hard failure (auth/network) — surface as status 0 with stderr body
-        # but never echo credentials (stderr is kept only for error classification).
         err = proc.stderr
         if _looks_like_secret(err):
             err = "[redacted]"
@@ -168,6 +184,18 @@ def _looks_like_secret(text: str) -> bool:
             re.IGNORECASE,
         )
     )
+
+
+def _is_rate_limit_response(resp: GhResponse) -> bool:
+    if resp.status == 429:
+        return True
+    if resp.status != 403:
+        return False
+    remaining = resp.headers.get("x-ratelimit-remaining")
+    if remaining == "0":
+        return True
+    body = (resp.body or "").lower()
+    return "rate limit" in body or "secondary rate limit" in body
 
 
 GhRunner = Callable[..., GhResponse]
@@ -194,10 +222,13 @@ class GitHubPoller:
         self._rate_limited = False
         self._errors: list[str] = []
 
-    def _get_json(self, api_path: str) -> Any | None:
-        """GET api_path with ETag cache. Returns parsed JSON or None on failure."""
+    def _request(self, api_path: str) -> tuple[GhResponse | None, Any | None]:
+        """
+        One cached GET. Returns (response|None, body_json|None).
+        On 304, response status is 304 and body_json is the cached payload.
+        """
         if self._rate_limited:
-            return self.cache.get(api_path)[1]
+            return None, self.cache.get(api_path)[1]
 
         etag, cached_body = self.cache.get(api_path)
         headers = ["Accept: application/vnd.github+json"]
@@ -214,7 +245,7 @@ class GitHubPoller:
             resp = self.runner(args)
         except (OSError, subprocess.TimeoutExpired) as exc:
             self._errors.append(f"gh spawn failed for {api_path}: {type(exc).__name__}")
-            return cached_body
+            return None, cached_body
 
         remaining = resp.headers.get("x-ratelimit-remaining")
         if remaining is not None:
@@ -224,27 +255,86 @@ class GitHubPoller:
             except ValueError:
                 pass
 
+        if _is_rate_limit_response(resp):
+            self._rate_limited = True
+            self._errors.append(f"gh api {api_path} -> HTTP {resp.status} (rate limited)")
+            return resp, cached_body
+
         new_etag = resp.headers.get("etag")
 
         if resp.status == 304:
             self.status_304_count += 1
-            return cached_body
+            return resp, cached_body
+
+        if resp.status >= 500:
+            self._errors.append(f"gh api {api_path} -> HTTP {resp.status}")
+            return resp, cached_body
 
         if resp.status == 0 or resp.status >= 400:
             self._errors.append(f"gh api {api_path} -> HTTP {resp.status}")
-            return cached_body
+            return resp, cached_body
 
         if not resp.body:
-            return cached_body
+            return resp, cached_body
 
         try:
             data = json.loads(resp.body)
         except json.JSONDecodeError:
             self._errors.append(f"invalid JSON for {api_path}")
-            return cached_body
+            return resp, cached_body
 
         self.cache.put(api_path, new_etag or etag, data)
+        return resp, data
+
+    def _get_json(self, api_path: str) -> Any | None:
+        _resp, data = self._request(api_path)
         return data
+
+    def _get_json_list(self, api_path: str) -> list[Any]:
+        """
+        Paginated list GET (per_page=100, follow Link rel=next).
+        Returns concatenated items; empty list on total failure.
+        """
+        items: list[Any] = []
+        path = api_path
+        if "per_page=" not in path:
+            sep = "&" if "?" in path else "?"
+            path = f"{path}{sep}per_page={PER_PAGE}"
+
+        seen_paths: set[str] = set()
+        while path and path not in seen_paths:
+            seen_paths.add(path)
+            resp, data = self._request(path)
+            if isinstance(data, list):
+                items.extend(data)
+            elif data is not None:
+                self._errors.append(f"unexpected list payload for {path}")
+                break
+
+            if self._rate_limited:
+                break
+            if resp is None:
+                break
+            if resp.status >= 500 or resp.status == 0 or (
+                resp.status >= 400 and resp.status != 304
+            ):
+                break
+
+            path_next = next_link_path(resp.headers.get("link"))
+            if not path_next:
+                break
+            path = path_next
+
+        return items
+
+    def _meta(self, events: list[dict[str, Any]]) -> str:
+        if self._rate_limited:
+            return "rate_limited"
+        if self._errors:
+            return "error"
+        if not events and self.request_count > 0 and self._errors:
+            return "error"
+        return "ok"
 
     def poll(self) -> GitHubPollResult:
         events: list[dict[str, Any]] = []
@@ -253,26 +343,12 @@ class GitHubPoller:
         try:
             for repo in self.repos:
                 events.extend(self._poll_repo(repo, seen))
-        except Exception as exc:  # noqa: BLE001 — surface as meta.error
+        except Exception as exc:  # noqa: BLE001
             self._errors.append(f"poll crashed: {type(exc).__name__}")
-
-        if self._errors and not events:
-            meta = "error"
-        elif self._errors and events:
-            # Partial: still usable; treat hard transport failures as error
-            meta = "error" if any("spawn failed" in e or "-> HTTP 0" in e for e in self._errors) else "ok"
-        elif self._rate_limited and not events:
-            meta = "error"
-        else:
-            meta = "ok"
-
-        # If the very first pulls call failed with no cache, mark error.
-        if self.request_count > 0 and not events and self._errors:
-            meta = "error"
 
         return GitHubPollResult(
             events=events,
-            meta_github=meta,
+            meta_github=self._meta(events),
             status_304_count=self.status_304_count,
             request_count=self.request_count,
             errors=list(self._errors),
@@ -280,15 +356,13 @@ class GitHubPoller:
 
     def _poll_repo(self, repo: str, seen: set[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        pulls = self._get_json(f"repos/{repo}/pulls?state=all&per_page={MAX_PRS}")
-        if pulls is None:
-            return out
-        if not isinstance(pulls, list):
-            self._errors.append(f"unexpected pulls payload for {repo}")
-            return out
-
-        for pr in pulls[:MAX_PRS]:
+        pulls = self._get_json_list(f"repos/{repo}/pulls?state=all")
+        for pr in pulls:
+            if not isinstance(pr, dict):
+                continue
             out.extend(self._events_for_pr(repo, pr, seen))
+            if self._rate_limited:
+                break
         return out
 
     def _events_for_pr(
@@ -306,7 +380,6 @@ class GitHubPoller:
         task_id = extract_task_id(head_ref, title, body)
         created = pr.get("created_at") or pr.get("updated_at")
 
-        # PR opened
         actor, method = attribute_from_body(body, self.bots)
         opened = _event(
             locator=f"{repo}#pr{number}:opened",
@@ -321,13 +394,9 @@ class GitHubPoller:
         )
         _append_unique(events, seen, opened)
 
-        # Merged
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
-            if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha):
-                sha_val: str | None = sha
-            else:
-                sha_val = None
+            sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
             merged = _event(
                 locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
                 etype="merged",
@@ -340,33 +409,31 @@ class GitHubPoller:
                 attribution=method if actor else "unknown",
                 raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
             )
-            # Prefer merge-message attribution from commits if present later.
             _append_unique(events, seen, merged)
 
-        # Reviews
-        reviews = self._get_json(f"repos/{repo}/pulls/{number}/reviews")
-        if isinstance(reviews, list):
-            for rev in reviews:
+        reviews = self._get_json_list(f"repos/{repo}/pulls/{number}/reviews")
+        for rev in reviews:
+            if isinstance(rev, dict):
                 events.extend(self._review_events(repo, number, html, task_id, rev, seen))
 
-        # Review comments (line comments)
-        review_comments = self._get_json(f"repos/{repo}/pulls/{number}/comments")
-        if isinstance(review_comments, list):
-            for c in review_comments:
-                events.extend(self._comment_events(repo, number, task_id, c, seen, kind="review_comment"))
+        review_comments = self._get_json_list(f"repos/{repo}/pulls/{number}/comments")
+        for c in review_comments:
+            if isinstance(c, dict):
+                events.extend(
+                    self._comment_events(repo, number, task_id, c, seen, kind="review_comment")
+                )
 
-        # Issue comments (conversation)
-        issue_comments = self._get_json(f"repos/{repo}/issues/{number}/comments")
-        if isinstance(issue_comments, list):
-            for c in issue_comments:
-                events.extend(self._comment_events(repo, number, task_id, c, seen, kind="issue_comment"))
+        issue_comments = self._get_json_list(f"repos/{repo}/issues/{number}/comments")
+        for c in issue_comments:
+            if isinstance(c, dict):
+                events.extend(
+                    self._comment_events(repo, number, task_id, c, seen, kind="issue_comment")
+                )
 
-        # Commits (optional enrichment; merge sha confirmation)
-        commits = self._get_json(f"repos/{repo}/pulls/{number}/commits")
-        if isinstance(commits, list) and commits:
+        commits = self._get_json_list(f"repos/{repo}/pulls/{number}/commits")
+        if commits:
             head_sha = (commits[-1].get("sha") or "")[:40].lower()
             if pr.get("merged_at") and head_sha:
-                # check-runs on head
                 self._get_json(f"repos/{repo}/commits/{head_sha}/check-runs")
 
         return events
