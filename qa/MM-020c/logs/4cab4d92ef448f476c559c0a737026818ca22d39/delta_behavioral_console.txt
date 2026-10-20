@@ -1,0 +1,20 @@
+{"flush": true, "payload": "/tmp/tmpezpar6il/out/events.jsonl", "reason": "force", "sha256": "e3687f679112b2a8c5cfa524ad3c99cc3aec96eb08cf934013b3c9ed3352ddde"}
+test_atomic_write_replace_no_partial_dest (__main__.TestAtomicPayloadWrite.test_atomic_write_replace_no_partial_dest) ... ok
+test_cli_payload_uses_atomic_helper (__main__.TestAtomicPayloadWrite.test_cli_payload_uses_atomic_helper) ... ok
+test_full_set_refused_on_every_surface (__main__.TestFullPatternSetAndNewFalsePositives.test_full_set_refused_on_every_surface) ... ok
+test_new_false_positives_email_and_base64 (__main__.TestFullPatternSetAndNewFalsePositives.test_new_false_positives_email_and_base64)
+Document whether ordinary emails / base64 trip the scanner. ... ok
+test_benign_words_pass_all_surfaces (__main__.TestNoSkFalsePositives.test_benign_words_pass_all_surfaces) ... ok
+test_real_sk_keys_refused_including_near_min_length (__main__.TestNoSkFalsePositives.test_real_sk_keys_refused_including_near_min_length) ... ok
+test_gh_still_read_only (__main__.TestRegressionsPriorChecks.test_gh_still_read_only) ... ok
+test_idempotent_flush (__main__.TestRegressionsPriorChecks.test_idempotent_flush) ... ok
+test_retention_boundary_still_ok (__main__.TestRegressionsPriorChecks.test_retention_boundary_still_ok) ... ok
+test_all_surfaces_same_function (__main__.TestSingleSourceSecretScan.test_all_surfaces_same_function) ... ok
+test_no_leftover_local_denylist_copies (__main__.TestSingleSourceSecretScan.test_no_leftover_local_denylist_copies)
+Behavioral: ripgrep for old local regex owners outside secret_scan.py. ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.017s
+
+OK
+

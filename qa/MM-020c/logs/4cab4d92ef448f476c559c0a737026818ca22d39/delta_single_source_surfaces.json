@@ -1,0 +1,50 @@
+{
+  "kinds": [
+    "github_token",
+    "github_pat",
+    "bearer",
+    "authorization",
+    "sk",
+    "akia",
+    "jwt",
+    "private_key",
+    "email"
+  ],
+  "rows": [
+    {
+      "probe": "ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+      "secret_scan": true,
+      "github_poller_wrapper": true,
+      "ledger": true,
+      "events_mirror_prepare_secret": true
+    },
+    {
+      "probe": "sk-xxxxxxxxxxxxxxxxxxxx",
+      "secret_scan": true,
+      "github_poller_wrapper": true,
+      "ledger": true,
+      "events_mirror_prepare_secret": true
+    },
+    {
+      "probe": "AKIAIOSFODNN7EXAMPLE",
+      "secret_scan": true,
+      "github_poller_wrapper": true,
+      "ledger": true,
+      "events_mirror_prepare_secret": true
+    },
+    {
+      "probe": "task-runner",
+      "secret_scan": false,
+      "github_poller_wrapper": false,
+      "ledger": false,
+      "events_mirror_prepare_secret": false
+    },
+    {
+      "probe": "alice@example.com",
+      "secret_scan": true,
+      "github_poller_wrapper": true,
+      "ledger": true,
+      "events_mirror_prepare_secret": true
+    }
+  ]
+}

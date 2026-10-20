@@ -1,0 +1,69 @@
+{
+  "AKIA": {
+    "secret_scan": true,
+    "kinds": [
+      "akia"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  },
+  "JWT": {
+    "secret_scan": true,
+    "kinds": [
+      "jwt"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  },
+  "PEM": {
+    "secret_scan": true,
+    "kinds": [
+      "private_key"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  },
+  "email": {
+    "secret_scan": true,
+    "kinds": [
+      "email"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  },
+  "ghp_": {
+    "secret_scan": true,
+    "kinds": [
+      "github_token"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  },
+  "Bearer": {
+    "secret_scan": true,
+    "kinds": [
+      "bearer",
+      "authorization"
+    ],
+    "wrapper": true,
+    "ledger_lines": [
+      1
+    ],
+    "mirror_secrets_seen": true
+  }
+}

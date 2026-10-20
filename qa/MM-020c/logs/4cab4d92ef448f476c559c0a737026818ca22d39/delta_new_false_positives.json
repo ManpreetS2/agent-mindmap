@@ -1,0 +1,38 @@
+{
+  "docs_email": {
+    "looks_like_secret": true,
+    "kinds": [
+      "email"
+    ],
+    "len": 40
+  },
+  "short_email": {
+    "looks_like_secret": true,
+    "kinds": [
+      "email"
+    ],
+    "len": 6
+  },
+  "base64_lorem": {
+    "looks_like_secret": false,
+    "kinds": [],
+    "len": 296
+  },
+  "base64_jsonish": {
+    "looks_like_secret": false,
+    "kinds": [],
+    "len": 36
+  },
+  "base64_starts_eyJ_three_segments": {
+    "looks_like_secret": true,
+    "kinds": [
+      "jwt"
+    ],
+    "len": 40
+  },
+  "plain_sentence": {
+    "looks_like_secret": false,
+    "kinds": [],
+    "len": 48
+  }
+}

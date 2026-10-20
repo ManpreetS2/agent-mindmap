@@ -1,0 +1,93 @@
+[
+  {
+    "word": "task-runner",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "risk-based",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "ask-me",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "desk-top",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "Mask-RCNN",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "Tasks",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "sketch-pad",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "SK-PROJ-SHOULD-NOT-MATCH-CASE",
+    "looks_like_secret": false,
+    "_looks_like_secret_wrapper": false,
+    "ledger_secret_lines": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "cli_rc": 0,
+    "cli_decision": {
+      "flush": true,
+      "payload": "/tmp/tmpjs9opmk2/payload.jsonl",
+      "reason": "force",
+      "sha256": "7537611863cc82e017c1318d3a81f4555a94364ec47a11d351902df54a396485"
+    },
+    "cli_stderr": "",
+    "payload_exists": true
+  }
+]

@@ -1,0 +1,63 @@
+{
+  "sk_19_below_min": {
+    "token_len_after_sk": 19,
+    "looks_like_secret": false,
+    "kinds": [],
+    "prepare_secrets_seen": false,
+    "retained": 1,
+    "ledger_lines": [],
+    "expect_refuse": false
+  },
+  "sk_20_min": {
+    "token_len_after_sk": 20,
+    "looks_like_secret": true,
+    "kinds": [
+      "sk"
+    ],
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "ledger_lines": [
+      1
+    ],
+    "expect_refuse": true
+  },
+  "sk_21": {
+    "token_len_after_sk": 21,
+    "looks_like_secret": true,
+    "kinds": [
+      "sk"
+    ],
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "ledger_lines": [
+      1
+    ],
+    "expect_refuse": true
+  },
+  "sk_proj": {
+    "token_len_after_sk": 35,
+    "looks_like_secret": true,
+    "kinds": [
+      "sk"
+    ],
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "ledger_lines": [
+      1
+    ],
+    "expect_refuse": true
+  },
+  "sk_ant": {
+    "token_len_after_sk": 34,
+    "looks_like_secret": true,
+    "kinds": [
+      "sk"
+    ],
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "ledger_lines": [
+      1
+    ],
+    "expect_refuse": true
+  }
+}

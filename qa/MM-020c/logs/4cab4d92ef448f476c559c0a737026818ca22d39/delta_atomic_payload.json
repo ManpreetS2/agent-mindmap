@@ -1,0 +1,9 @@
+{
+  "rc": 0,
+  "replaces": [
+    [
+      "/tmp/tmpezpar6il/out/events.jsonl.tmp",
+      "/tmp/tmpezpar6il/out/events.jsonl"
+    ]
+  ]
+}
