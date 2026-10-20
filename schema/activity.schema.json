@@ -106,6 +106,19 @@
         }
       }
     },
+    "taskId": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?$"
+        },
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{2,}-[A-Z]{2}[0-9]{3}(-[0-9]+)?$",
+          "description": "Backlog ids with embedded task key, e.g. QA-RP004-1"
+        }
+      ]
+    },
     "layout": {
       "type": "object",
       "additionalProperties": false,
@@ -150,10 +163,7 @@
         "source_url"
       ],
       "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^RP-\\d{3}[A-Z]?$"
-        },
+        "id": { "$ref": "#/$defs/taskId" },
         "title": { "type": "string" },
         "project": { "type": "string" },
         "owner": { "type": "string" },
@@ -194,8 +204,7 @@
           "type": ["string", "null"]
         },
         "task_id": {
-          "type": ["string", "null"],
-          "pattern": "^RP-\\d{3}[A-Z]?$"
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/taskId" }]
         },
         "pr": { "type": "integer", "minimum": 1 },
         "sha": {

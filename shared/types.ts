@@ -51,8 +51,15 @@ export interface Node {
   layout: Layout;
 }
 
+/**
+ * Ledger / backlog task id.
+ * Pattern: `^[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?$`
+ * (e.g. `RP-005D`, `MM-001`, `QA-RP004-1`).
+ */
+export type TaskId = string;
+
 export interface Task {
-  id: string;
+  id: TaskId;
   title: string;
   project: string;
   owner: string;
@@ -67,7 +74,8 @@ export interface Event {
   type: EventType;
   actor: string | null;
   target: string | null;
-  task_id: string | null;
+  /** Same pattern as {@link TaskId}. */
+  task_id: TaskId | null;
   pr?: number;
   sha?: string;
   verdict?: Verdict | null;
