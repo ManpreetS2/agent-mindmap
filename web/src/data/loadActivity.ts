@@ -11,8 +11,11 @@ export class LedgerLoadError extends Error {
   }
 }
 
-export async function loadActivity(url = ACTIVITY_URL): Promise<Activity> {
-  const res = await fetch(url);
+export async function loadActivity(
+  url = ACTIVITY_URL,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Activity> {
+  const res = await fetchImpl(url);
   if (res.status === 404 || res.status === 422) {
     throw new LedgerLoadError();
   }

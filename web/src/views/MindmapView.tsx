@@ -60,6 +60,8 @@ export interface MindmapViewProps {
   nowMs?: number;
   /** Force list/graph mode (tests). */
   initialListView?: boolean;
+  /** Node ids whose status just changed (pulse animation). */
+  statusPulseNodeIds?: ReadonlySet<string>;
 }
 
 export function MindmapView({
@@ -67,6 +69,7 @@ export function MindmapView({
   onRefresh,
   nowMs = Date.now(),
   initialListView,
+  statusPulseNodeIds,
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -332,6 +335,8 @@ export function MindmapView({
                 onClearNodeDetail={onClearNodeDetail}
                 lifecycleNodeIds={lifecycleNodeIds}
                 lifecycleEdgeIds={lifecycleEdgeIds}
+                statusPulseNodeIds={statusPulseNodeIds}
+                nowMs={nowMs}
               />
               <EdgeLegend />
             </section>
@@ -367,6 +372,7 @@ export function MindmapView({
             highlightedEventIds={highlightedEventIds}
             onTaskIdClick={onTaskIdClick}
             focusedEventId={focusedTimelineEventId}
+            nowMs={nowMs}
           />
         </section>
 

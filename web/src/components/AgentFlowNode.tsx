@@ -6,6 +6,13 @@ export function AgentFlowNode({ data }: NodeProps) {
   return (
     <div className="agent-flow-node">
       <Handle type="target" position={Position.Left} className="agent-handle" />
+      <div
+        className="agent-node-drag-handle"
+        title="Drag to reposition"
+        aria-hidden="true"
+      >
+        ⋮⋮
+      </div>
       <AgentNodeCard data={cardData} />
       <Handle type="source" position={Position.Right} className="agent-handle" />
     </div>

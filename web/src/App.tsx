@@ -1,38 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Activity } from "@shared/types";
-import { LedgerLoadError, loadActivity } from "./data/loadActivity";
+import { useMemo } from "react";
+import { LedgerLoadError } from "./data/loadActivity";
+import { createPollTransport } from "./data/activityTransport";
 import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
 import { CommandCenterShell } from "./components/CommandCenterShell";
 import { MindmapView } from "./views/MindmapView";
+import { useActivityFeed } from "./hooks/useActivityFeed";
+
+const POLL_MS = Number(
+  (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
+    ?.VITE_ACTIVITY_POLL_MS ?? 10_000,
+);
 
 export function App() {
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [retryToken, setRetryToken] = useState(0);
-
-  const reload = useCallback(() => {
-    setError(null);
-    setActivity(null);
-    setRetryToken((t) => t + 1);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadActivity()
-      .then((data) => {
-        if (!cancelled) setActivity(data);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e : new Error("Failed to load data"));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [retryToken]);
+  const transport = useMemo(
+    () => createPollTransport({ intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000 }),
+    [],
+  );
+  const { activity, error, statusPulseNodeIds, reload } =
+    useActivityFeed(transport);
 
   if (error instanceof LedgerLoadError) {
     return (
@@ -49,7 +36,9 @@ export function App() {
         <SkipLink />
         <div className="app-error" role="alert">
           {error.message}
-          <button type="button" onClick={reload}>Retry</button>
+          <button type="button" onClick={reload}>
+            Retry
+          </button>
         </div>
       </CommandCenterShell>
     );
@@ -67,7 +56,11 @@ export function App() {
   return (
     <CommandCenterShell>
       <SkipLink />
-      <MindmapView activity={activity} onRefresh={reload} />
+      <MindmapView
+        activity={activity}
+        onRefresh={reload}
+        statusPulseNodeIds={statusPulseNodeIds}
+      />
     </CommandCenterShell>
   );
 }

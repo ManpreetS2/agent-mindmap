@@ -183,7 +183,97 @@
 }
 
 .agent-node-card.is-lifecycle-highlight {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, hsl(187 92% 55%) 75%, transparent),
+    0 0 20px color-mix(in srgb, hsl(262 83% 62%) 45%, transparent);
+}
+
+.agent-node-card.is-status-pulse {
+  z-index: 2;
+}
+
+.agent-minimap {
+  background: color-mix(in srgb, var(--bg-panel) 80%, transparent) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-card);
+}
+
+.edge-tooltip-label {
+  position: absolute;
+  pointer-events: all;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-card) 90%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  cursor: help;
+}
+
+.edge-particle {
+  pointer-events: none;
+}
+
+.timeline-zoom-controls {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-3) var(--space-1);
+}
+
+.timeline-zoom-btn {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.timeline-zoom-btn:hover {
+  color: var(--text-primary);
+  border-color: hsl(187 92% 55%);
+}
+
+.timeline-now-stroke {
+  stroke: hsl(187 92% 55%);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  opacity: 0.85;
+}
+
+.timeline-now-label {
+  fill: hsl(187 92% 55%);
+  font-size: 9px;
+  font-family: var(--font-mono);
+}
+
+.timeline-brush {
+  display: block;
+  margin-top: 2px;
+}
+
+.timeline-brush-track {
+  fill: color-mix(in srgb, var(--border-subtle) 55%, transparent);
+  cursor: crosshair;
+}
+
+.timeline-brush-window {
+  fill: color-mix(in srgb, hsl(187 92% 55%) 35%, transparent);
+  stroke: hsl(187 92% 55%);
+  stroke-width: 1;
+  cursor: grab;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-particle,
+  .agent-node-card.is-status-pulse {
+    animation: none !important;
+  }
+
+  .edge-particle {
+    display: none;
+  }
 }
 
 .graph-region {
@@ -227,6 +317,30 @@
 
 .agent-flow-node {
   width: 180px;
+  position: relative;
+}
+
+.agent-node-drag-handle {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: grab;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  user-select: none;
+}
+
+.agent-node-drag-handle:active {
+  cursor: grabbing;
 }
 
 .agent-handle {
