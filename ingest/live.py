@@ -8,10 +8,14 @@ and serves web/dist plus /activity.json on 127.0.0.1 only.
 from __future__ import annotations
 
 import argparse
+import errno
+import fcntl
 import hashlib
 import json
 import os
+import select
 import signal
+import socket
 import sys
 import threading
 import time
@@ -21,7 +25,7 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Iterable, Literal
 from urllib.parse import unquote, urlparse
 
 from .attribute import load_bots
@@ -34,6 +38,7 @@ from .build import (
 )
 from .edges import derive_edges
 from .github_poller import GhRunner, GitHubPollResult, poll_github
+from .events_fetch import EVENTS_REF, EVENTS_SOURCE_URL, EventsFetcher
 from .ledger_fetch import LEDGER_SOURCE_URL, fetch_ledger_from_gh
 from .ledger_parser import (
     LedgerParseResult,
@@ -52,8 +57,15 @@ BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
+DEFAULT_EVENTS_POLL_SEC = 30.0
+DEFAULT_SSE_HEARTBEAT_SEC = 15.0
+MAX_SSE_CONNECTIONS = 8
+SSE_RETRY_AFTER_SEC = 5
+PROCESS_LOCK_MODE = 0o600
+PROCESS_LOCK_BASENAME = ".mindmap-live.lock"
 MIN_PYTHON_VERSION = (3, 12)
 LedgerSource = Literal["path", "gh"]
+EventsSource = Literal["gh", "off"]
 
 Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
@@ -87,6 +99,108 @@ def ensure_python_version(
     return 0
 
 
+class SingletonLockError(OSError):
+    """Another live daemon holds the process lock."""
+
+
+def process_lock_path(activity_path: Path) -> Path:
+    """QA-MM011-2: lock file adjacent to activity.json output."""
+    return activity_path.parent / PROCESS_LOCK_BASENAME
+
+
+class ProcessSingletonLock:
+    """
+    QA-MM011-2: exclusive non-blocking flock on a lock file (O_NOFOLLOW, 0o600).
+
+    Held for the process lifetime; released when the fd is closed.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._fd: int | None = None
+
+    def acquire(self) -> None:
+        if self.path.is_symlink():
+            raise SingletonLockError(
+                errno.ELOOP,
+                f"refusing symlink lock path: {self.path}",
+            )
+        flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
+        try:
+            fd = os.open(self.path, flags, PROCESS_LOCK_MODE)
+        except OSError as exc:
+            if exc.errno in (errno.ELOOP, errno.EMLINK):
+                raise SingletonLockError(
+                    errno.ELOOP,
+                    f"refusing symlink lock path: {self.path}",
+                ) from exc
+            raise
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            os.close(fd)
+            raise SingletonLockError(
+                errno.EAGAIN,
+                f"another mindmap live instance holds {self.path}",
+            ) from exc
+        self._fd = fd
+
+    def release(self) -> None:
+        if self._fd is None:
+            return
+        try:
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
+        finally:
+            os.close(self._fd)
+            self._fd = None
+
+    def __enter__(self) -> ProcessSingletonLock:
+        self.acquire()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.release()
+
+
+class SseConnectionLimiter:
+    """SEC-MM020d-1: cap concurrent open /events SSE streams."""
+
+    def __init__(self, max_connections: int = MAX_SSE_CONNECTIONS) -> None:
+        self._max = max_connections
+        self._lock = threading.Lock()
+        self._cond = threading.Condition(self._lock)
+        self._active = 0
+
+    def try_acquire(self) -> bool:
+        with self._lock:
+            if self._active >= self._max:
+                return False
+            self._active += 1
+            return True
+
+    def release(self) -> None:
+        with self._lock:
+            self._active = max(0, self._active - 1)
+            self._cond.notify_all()
+
+    def active_count(self) -> int:
+        with self._lock:
+            return self._active
+
+    def wait_until_active_at_most(
+        self, limit: int, *, timeout: float = 2.0
+    ) -> bool:
+        """Block until ``active_count <= limit`` (for tests; no time.sleep polling)."""
+        with self._cond:
+            deadline = time.monotonic() + timeout
+            while self._active > limit:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._cond.wait(timeout=remaining)
+            return True
+
+
 def refuse_public_bind(host: str) -> None:
     """AC1: never bind all interfaces; localhost only."""
     normalized = host.strip().lower()
@@ -96,20 +210,96 @@ def refuse_public_bind(host: str) -> None:
         raise ValueError(f"only 127.0.0.1 is supported (got {host!r})")
 
 
+def _host_from_header(value: str | None) -> str | None:
+    if not value:
+        return None
+    host = value.strip()
+    if host.startswith("["):
+        return None
+    return host.split(":", 1)[0].lower()
+
+
+def host_header_allowed(value: str | None) -> bool:
+    """SEC-MM011-1: Host must be 127.0.0.1 or localhost (port optional)."""
+    parsed = _host_from_header(value)
+    return parsed in {"127.0.0.1", "localhost"}
+
+
+def origin_header_allowed(value: str | None) -> bool:
+    """SEC-MM011-1: missing Origin ok; literal ``null`` and foreign origins → deny."""
+    if value is None:
+        return True
+    raw = value.strip()
+    if not raw:
+        return True
+    if raw.lower() == "null":
+        return False
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = (parsed.hostname or "").lower()
+    return hostname in {"127.0.0.1", "localhost"}
+
+
+def localhost_request_allowed(headers: Any) -> bool:
+    """SEC-MM011-1 gate for every HTTP route (incl. SSE)."""
+    if not host_header_allowed(headers.get("Host")):
+        return False
+    return origin_header_allowed(headers.get("Origin"))
+
+
+class NetworkEventLog:
+    """In-memory NetworkEvent stream with dedupe by ``id`` (insertion order)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._events: list[dict[str, Any]] = []
+        self._ids: set[str] = set()
+
+    def append_many(self, events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+        added: list[dict[str, Any]] = []
+        with self._lock:
+            for evt in events:
+                eid = evt.get("id")
+                if not isinstance(eid, str) or not eid or eid in self._ids:
+                    continue
+                self._ids.add(eid)
+                self._events.append(dict(evt))
+                added.append(self._events[-1])
+        return added
+
+    def events_after(self, last_id: str | None) -> list[dict[str, Any]]:
+        with self._lock:
+            if not last_id:
+                return list(self._events)
+            for idx, evt in enumerate(self._events):
+                if evt.get("id") == last_id:
+                    return list(self._events[idx + 1 :])
+            return list(self._events)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._events)
+
+
 @dataclass
 class HealthState:
     last_ledger_poll: str | None = None
     last_gh_poll: str | None = None
+    last_events_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    network_event_count: int = 0
     errors: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
             "last_ledger_poll": self.last_ledger_poll,
             "last_gh_poll": self.last_gh_poll,
+            "last_events_poll": self.last_events_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "network_event_count": self.network_event_count,
             "errors": list(self.errors),
         }
 
@@ -174,6 +364,8 @@ class LiveDaemon:
     ledger_source_url: str = "build/task-ledger.md"
     ledger_poll_sec: float = DEFAULT_LEDGER_POLL_SEC
     gh_poll_sec: float = DEFAULT_GH_POLL_SEC
+    events_source: EventsSource = "gh"
+    events_poll_sec: float = DEFAULT_EVENTS_POLL_SEC
     github_runner: GhRunner | None = None
     clock: Clock = time.time
     sleeper: Sleeper = time.sleep
@@ -195,14 +387,20 @@ class LiveDaemon:
     _gh_backoff_until: float = field(default=0.0, init=False)
     _poll_thread: threading.Thread | None = field(default=None, init=False)
     _rate_limit_reset: int | None = field(default=None, init=False)
+    _event_log: NetworkEventLog = field(default_factory=NetworkEventLog, init=False)
+    sse_limiter: SseConnectionLimiter = field(
+        default_factory=SseConnectionLimiter, init=False
+    )
 
     def health(self) -> HealthState:
         with self._lock:
             return HealthState(
                 last_ledger_poll=self._health.last_ledger_poll,
                 last_gh_poll=self._health.last_gh_poll,
+                last_events_poll=self._health.last_events_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                network_event_count=self._event_log.count(),
                 errors=list(self._health.errors),
             )
 
@@ -365,12 +563,42 @@ class LiveDaemon:
                 self._last_good_gh = gh
         return changed
 
+    def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
+        return self._event_log.append_many(events)
+
+    def network_events_after(self, last_id: str | None) -> list[dict[str, Any]]:
+        return self._event_log.events_after(last_id)
+
+    def poll_events_once(self) -> bool:
+        """Fetch data/events via gh; return True if new event ids were ingested."""
+        now = _iso_now(self.clock)
+        with self._lock:
+            self._health.last_events_poll = now
+
+        if self.events_source == "off":
+            return False
+
+        result = EventsFetcher(
+            cache_dir=self.cache_dir / "events",
+            runner=self._gh_runner(),
+        ).fetch()
+
+        if result.meta_events == "error":
+            for err in result.errors:
+                self._append_error(err)
+            return False
+
+        added = self._event_log.append_many(result.events)
+        return bool(added)
+
     def maybe_rebuild(self, *, force: bool = False) -> bool:
         return _maybe_rebuild(self, force=force)
 
     def run_poll_cycle(self) -> None:
         ledger_changed = self.poll_ledger_once()
         gh_changed = self.poll_github_once()
+        self.poll_events_once()
         if ledger_changed or gh_changed or self._activity_bytes is None:
             self.maybe_rebuild()
 
@@ -381,6 +609,7 @@ class LiveDaemon:
         def loop() -> None:
             next_ledger = self.clock()
             next_gh = self.clock()
+            next_events = self.clock()
             while not self._stop.is_set():
                 now = self.clock()
                 if now >= next_ledger:
@@ -393,11 +622,15 @@ class LiveDaemon:
                     next_gh = now + self.gh_poll_sec
                     if changed:
                         self.maybe_rebuild()
+                if now >= next_events:
+                    self.poll_events_once()
+                    next_events = now + self.events_poll_sec
                 if self._activity_bytes is None and self._ledger is not None:
                     self.maybe_rebuild()
                 wait = min(
                     max(0.0, next_ledger - self.clock()),
                     max(0.0, next_gh - self.clock()),
+                    max(0.0, next_events - self.clock()),
                     1.0,
                 )
                 if self._stop.wait(timeout=wait):
@@ -446,6 +679,8 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
             generated_at=_iso_now(daemon.clock),
             meta_ledger=meta_ledger,
         )
+        if daemon.events_source != "off":
+            activity["meta"]["events_source"] = EVENTS_SOURCE_URL
         write_activity(activity, daemon.activity_path)
     except Exception as exc:  # noqa: BLE001
         daemon._append_error(f"build failed: {type(exc).__name__}")
@@ -492,6 +727,7 @@ def _safe_static_path(static_root: Path, url_path: str) -> Path | None:
 class MindmapHandler(BaseHTTPRequestHandler):
     daemon: LiveDaemon
     static_dir: Path
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC
 
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
@@ -529,9 +765,149 @@ class MindmapHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:  # noqa: N802
         self._handle_get_head()
 
+    def _reject_unless_localhost(self) -> bool:
+        if localhost_request_allowed(self.headers):
+            return False
+        self.send_error(HTTPStatus.FORBIDDEN)
+        return True
+
+    def _write_sse_frame(self, *, event_id: str | None, data: str | None, comment: str | None) -> None:
+        if event_id is not None:
+            self.wfile.write(f"id: {event_id}\n".encode("utf-8"))
+        if data is not None:
+            for line in data.splitlines() or [""]:
+                self.wfile.write(f"data: {line}\n".encode("utf-8"))
+            self.wfile.write(b"\n")
+        if comment is not None:
+            self.wfile.write(f": {comment}\n\n".encode("utf-8"))
+        self.wfile.flush()
+
+    def _drain_client_socket(self, conn: socket.socket) -> None:
+        """Discard unexpected client bytes so a later close is visible as EOF."""
+        was_blocking = conn.getblocking()
+        try:
+            conn.setblocking(False)
+            while True:
+                try:
+                    chunk = conn.recv(4096)
+                except BlockingIOError:
+                    break
+                if not chunk:
+                    break
+        finally:
+            conn.setblocking(was_blocking)
+
+    def _client_read_should_end_sse(self, conn: socket.socket) -> bool:
+        """True when the SSE stream must end (EOF, unexpected data, or socket error)."""
+        try:
+            readable, _, _ = select.select([conn], [], [], 0)
+            if not readable:
+                return False
+            peek = conn.recv(1, socket.MSG_PEEK)
+            if peek == b"":
+                return True
+            self._drain_client_socket(conn)
+            return True
+        except BlockingIOError:
+            return False
+        except OSError as exc:
+            if exc.errno in (
+                errno.EBADF,
+                errno.ENOTCONN,
+                errno.ECONNRESET,
+                errno.EPIPE,
+                errno.ESHUTDOWN,
+            ):
+                return True
+            return True
+
+    def _push_sse_events(
+        self,
+        *,
+        last_id: str | None,
+        sent: set[str],
+    ) -> str | None:
+        for evt in self.daemon.network_events_after(last_id):
+            eid = str(evt.get("id") or "")
+            if not eid or eid in sent:
+                continue
+            payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
+            self._write_sse_frame(event_id=eid, data=payload, comment=None)
+            sent.add(eid)
+            last_id = eid
+        return last_id
+
+    def _handle_sse(self) -> None:
+        if self.command == "HEAD":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            return
+
+        if not self.daemon.sse_limiter.try_acquire():
+            self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+            self.send_header("Retry-After", str(SSE_RETRY_AFTER_SEC))
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(b"SSE connection limit reached\n")
+            return
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+
+        try:
+            last_id = self.headers.get("Last-Event-ID")
+            if last_id is not None:
+                last_id = last_id.strip() or None
+
+            sent: set[str] = set()
+            last_id = self._push_sse_events(last_id=last_id, sent=sent)
+
+            heartbeat = max(0.05, float(self.sse_heartbeat_sec))
+            conn = self.connection
+            while conn is not None:
+                if self._client_read_should_end_sse(conn):
+                    break
+                try:
+                    last_id = self._push_sse_events(last_id=last_id, sent=sent)
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    break
+
+                readable, _, _ = select.select([conn], [], [], heartbeat)
+                if readable and self._client_read_should_end_sse(conn):
+                    break
+
+                if not readable:
+                    try:
+                        self._write_sse_frame(
+                            event_id=None, data=None, comment="heartbeat"
+                        )
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        break
+        finally:
+            if conn is not None:
+                try:
+                    conn.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            self.daemon.sse_limiter.release()
+
     def _handle_get_head(self) -> None:
+        if self._reject_unless_localhost():
+            return
+
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path == "/events":
+            self._handle_sse()
+            return
 
         if path == "/healthz":
             self._send_json(HTTPStatus.OK, self.daemon.health().to_json())
@@ -596,12 +972,18 @@ class MindmapHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
 
 
-def make_handler_class(daemon: LiveDaemon, static_dir: Path) -> type[MindmapHandler]:
+def make_handler_class(
+    daemon: LiveDaemon,
+    static_dir: Path,
+    *,
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC,
+) -> type[MindmapHandler]:
     class Handler(MindmapHandler):
         pass
 
     Handler.daemon = daemon
     Handler.static_dir = static_dir
+    Handler.sse_heartbeat_sec = sse_heartbeat_sec
     return Handler
 
 
@@ -611,10 +993,11 @@ def create_http_server(
     host: str = BIND_HOST,
     port: int = DEFAULT_PORT,
     static_dir: Path | None = None,
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC,
 ) -> ThreadingHTTPServer:
     refuse_public_bind(host)
     static = static_dir or daemon.static_dir
-    handler = make_handler_class(daemon, static)
+    handler = make_handler_class(daemon, static, sse_heartbeat_sec=sse_heartbeat_sec)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     return httpd
@@ -673,6 +1056,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help=f"GitHub poll interval (default {DEFAULT_GH_POLL_SEC}, env MINDMAP_GH_POLL_SEC)",
     )
+    parser.add_argument(
+        "--events-source",
+        choices=("gh", "off"),
+        default="gh",
+        help="gh (data/events via gh api) or off",
+    )
+    parser.add_argument(
+        "--events-poll-sec",
+        type=float,
+        default=None,
+        help=(
+            f"Events poll interval (default {DEFAULT_EVENTS_POLL_SEC}, "
+            "env MINDMAP_EVENTS_POLL_SEC)"
+        ),
+    )
     return parser
 
 
@@ -689,6 +1087,9 @@ def main(argv: list[str] | None = None) -> int:
     gh_poll = args.gh_poll_sec
     if gh_poll is None:
         gh_poll = _env_float("MINDMAP_GH_POLL_SEC", DEFAULT_GH_POLL_SEC)
+    events_poll = args.events_poll_sec
+    if events_poll is None:
+        events_poll = _env_float("MINDMAP_EVENTS_POLL_SEC", DEFAULT_EVENTS_POLL_SEC)
 
     try:
         source, ledger_path, ledger_url = resolve_live_ledger(
@@ -706,6 +1107,17 @@ def main(argv: list[str] | None = None) -> int:
     with args.bots.open(encoding="utf-8") as f:
         bots = json.load(f)["bots"]
 
+    lock_path = process_lock_path(args.activity_out)
+    try:
+        process_lock = ProcessSingletonLock(lock_path)
+        process_lock.acquire()
+    except SingletonLockError:
+        print(
+            f"error: another mindmap live instance is already running (lock: {lock_path})",
+            file=sys.stderr,
+        )
+        return 1
+
     daemon = LiveDaemon(
         ledger_source=source,
         ledger_path=ledger_path,
@@ -716,6 +1128,8 @@ def main(argv: list[str] | None = None) -> int:
         bots=bots,
         ledger_poll_sec=ledger_poll,
         gh_poll_sec=gh_poll,
+        events_source=args.events_source,
+        events_poll_sec=events_poll,
     )
     daemon._load_activity_from_disk()
     daemon.run_poll_cycle()
@@ -736,12 +1150,18 @@ def main(argv: list[str] | None = None) -> int:
 
     host, port = httpd.server_address
     ledger_desc = ledger_path if ledger_path else "gh:data/ledger"
-    print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
+    events_desc = "gh:data/events" if args.events_source == "gh" else "off"
+    print(
+        f"mindmap live on http://{host}:{port} "
+        f"(ledger={ledger_desc}, events={events_desc})",
+        file=sys.stderr,
+    )
     try:
         httpd.serve_forever(poll_interval=0.5)
     finally:
         daemon.stop_polling()
         httpd.server_close()
+        process_lock.release()
     return 0
 
 

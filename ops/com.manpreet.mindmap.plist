@@ -16,6 +16,8 @@
 	<dict>
 		<key>MINDMAP_LEDGER</key>
 		<string>REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md</string>
+		<key>MINDMAP_EVENTS_SOURCE</key>
+		<string>gh</string>
 		<key>PYTHONPATH</key>
 		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT</string>
 	</dict>
