@@ -15,7 +15,11 @@ Flush is true only when:
 Idempotent: the same content sha256 never flushes twice.
 State is updated only via `--mark-flushed <sha256>`.
 
-Stdlib only.
+SEC-MM010-1: before any flush, scan with ingest.github_poller._looks_like_secret.
+Secrets refuse the flush (reason=secret_detected, line numbers only); --force
+cannot bypass. Matched secret text is never printed.
+
+Stdlib only (+ reuse of existing ingest secret scanner; no new deps).
 """
 
 from __future__ import annotations
@@ -28,6 +32,12 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do not duplicate
 
 FLUSH_MIN_INTERVAL_S = 180
 
@@ -48,6 +58,15 @@ STATE_CHANGE_RE = re.compile(
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def secret_line_numbers(content: str) -> list[int]:
+    """1-based line numbers that match `_looks_like_secret` (never return text)."""
+    hits: list[int] = []
+    for i, line in enumerate(content.splitlines(), start=1):
+        if _looks_like_secret(line):
+            hits.append(i)
+    return hits
 
 
 def state_change_fingerprints(text: str) -> list[str]:
@@ -114,6 +133,17 @@ def decide_flush(
             "sha256": digest,
             "reason": "unchanged",
             "new_state_change_count": 0,
+        }
+
+    # SEC-MM010-1: refuse flush if secrets present; --force must not bypass.
+    secret_lines = secret_line_numbers(content)
+    if secret_lines:
+        return {
+            "flush": False,
+            "sha256": digest,
+            "reason": "secret_detected",
+            "lines": secret_lines,
+            "new_state_change_count": len(new_fps),
         }
 
     if force:
@@ -263,6 +293,9 @@ def main(argv: list[str] | None = None) -> int:
         "sha256": decision["sha256"],
         "reason": decision["reason"],
     }
+    if decision.get("reason") == "secret_detected":
+        # Line numbers only — never echo matched secret text.
+        out["lines"] = list(decision.get("lines") or [])
     if decision["flush"]:
         payload_path = args.payload
         if payload_path is None:
