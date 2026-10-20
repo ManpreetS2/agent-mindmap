@@ -354,6 +354,42 @@ def test_sec_mm020d_2_origin_null_rejected(live_http: tuple[LiveDaemon, str, int
         assert status == HTTPStatus.FORBIDDEN
 
 
+def test_sec_mm020d_2_sse_garbage_client_bytes_no_cpu_spin(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    """Unexpected post-request bytes must not busy-spin; slot frees promptly."""
+    daemon, host, port = live_http
+    sock = socket.create_connection((host, port), timeout=5)
+    try:
+        request = (
+            f"GET /events HTTP/1.1\r\n"
+            f"Host: {host}:{port}\r\n"
+            f"Accept: text/event-stream\r\n"
+            f"Connection: keep-alive\r\n\r\n"
+        ).encode("ascii")
+        sock.sendall(request)
+        buf = b""
+        while b"\r\n\r\n" not in buf:
+            chunk = sock.recv(4096)
+            assert chunk, "server closed before headers"
+            buf += chunk
+        assert b" 200 " in buf.split(b"\r\n", 1)[0]
+        assert daemon.sse_limiter.active_count() == 1
+
+        cpu_before = time.process_time()
+        wall_before = time.monotonic()
+        sock.sendall(b"GARBAGE_BYTES_NOT_HTTP\r\n" * 20)
+        assert daemon.sse_limiter.wait_until_active_at_most(0, timeout=1.0)
+
+        # Handler must exit quickly; sampling window should not burn CPU.
+        while time.monotonic() - wall_before < 0.4:
+            time.sleep(0.05)
+        cpu_delta = time.process_time() - cpu_before
+        assert cpu_delta < 0.25, f"process_time grew by {cpu_delta:.3f}s"
+    finally:
+        sock.close()
+
+
 def test_sec_mm020d_2_missing_origin_allowed_for_get(
     live_http: tuple[LiveDaemon, str, int],
 ) -> None:

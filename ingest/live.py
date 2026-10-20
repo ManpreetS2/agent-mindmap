@@ -782,17 +782,32 @@ class MindmapHandler(BaseHTTPRequestHandler):
             self.wfile.write(f": {comment}\n\n".encode("utf-8"))
         self.wfile.flush()
 
-    def _peer_closed(self) -> bool:
-        """True when the client half-closed the TCP connection (EOF on read)."""
-        conn = self.connection
-        if conn is None:
-            return True
+    def _drain_client_socket(self, conn: socket.socket) -> None:
+        """Discard unexpected client bytes so a later close is visible as EOF."""
+        was_blocking = conn.getblocking()
+        try:
+            conn.setblocking(False)
+            while True:
+                try:
+                    chunk = conn.recv(4096)
+                except BlockingIOError:
+                    break
+                if not chunk:
+                    break
+        finally:
+            conn.setblocking(was_blocking)
+
+    def _client_read_should_end_sse(self, conn: socket.socket) -> bool:
+        """True when the SSE stream must end (EOF, unexpected data, or socket error)."""
         try:
             readable, _, _ = select.select([conn], [], [], 0)
             if not readable:
                 return False
             peek = conn.recv(1, socket.MSG_PEEK)
-            return peek == b""
+            if peek == b"":
+                return True
+            self._drain_client_socket(conn)
+            return True
         except BlockingIOError:
             return False
         except OSError as exc:
@@ -804,7 +819,7 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 errno.ESHUTDOWN,
             ):
                 return True
-            return False
+            return True
 
     def _push_sse_events(
         self,
@@ -857,7 +872,7 @@ class MindmapHandler(BaseHTTPRequestHandler):
             heartbeat = max(0.05, float(self.sse_heartbeat_sec))
             conn = self.connection
             while conn is not None:
-                if self._peer_closed():
+                if self._client_read_should_end_sse(conn):
                     break
                 try:
                     last_id = self._push_sse_events(last_id=last_id, sent=sent)
@@ -865,16 +880,22 @@ class MindmapHandler(BaseHTTPRequestHandler):
                     break
 
                 readable, _, _ = select.select([conn], [], [], heartbeat)
-                if readable:
-                    if self._peer_closed():
-                        break
-                    continue
-
-                try:
-                    self._write_sse_frame(event_id=None, data=None, comment="heartbeat")
-                except (BrokenPipeError, ConnectionResetError, OSError):
+                if readable and self._client_read_should_end_sse(conn):
                     break
+
+                if not readable:
+                    try:
+                        self._write_sse_frame(
+                            event_id=None, data=None, comment="heartbeat"
+                        )
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        break
         finally:
+            if conn is not None:
+                try:
+                    conn.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
             self.daemon.sse_limiter.release()
 
     def _handle_get_head(self) -> None:
