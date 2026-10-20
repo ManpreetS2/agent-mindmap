@@ -1,0 +1,42 @@
+import type { Activity, ActivityMeta } from "@shared/types";
+
+export const STALE_THRESHOLD_MS = 10 * 60 * 1000;
+
+export const LEDGER_ERROR_PATH = "build/task-ledger.md";
+
+export function isActivityEmpty(activity: Activity): boolean {
+  return (
+    activity.events.length === 0 &&
+    activity.tasks.length === 0 &&
+    activity.unparsed.length === 0
+  );
+}
+
+export function isStaleGeneratedAt(
+  generatedAt: string,
+  nowMs = Date.now(),
+): boolean {
+  const t = new Date(generatedAt).getTime();
+  if (Number.isNaN(t)) return false;
+  return nowMs - t > STALE_THRESHOLD_MS;
+}
+
+export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
+  const mins = Math.round((nowMs - new Date(generatedAt).getTime()) / 60_000);
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours} hours ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}
+
+export function partialGithubBanner(meta: ActivityMeta): string | null {
+  const status = meta.github as string;
+  if (status === "ok") return null;
+  const sourceName =
+    status === "rate_limited"
+      ? "GitHub (rate limited)"
+      : status === "skipped"
+        ? "GitHub (skipped)"
+        : "GitHub (error)";
+  return `${sourceName} — showing ledger only. Retry refresh.`;
+}

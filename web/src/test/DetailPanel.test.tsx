@@ -32,7 +32,7 @@ function renderPanel(node: Node, activity: Activity) {
 }
 
 describe("DetailPanel fact sources (QA-MM005-1)", () => {
-  it("links current task via latest event when task is missing from tasks[]", () => {
+  it("shows unsourced for ledger event when task is missing from tasks[]", () => {
     const events: Event[] = [
       {
         id: "evt-rp-orphan",
@@ -50,11 +50,36 @@ describe("DetailPanel fact sources (QA-MM005-1)", () => {
     renderPanel(node, { ...emptyActivity, events });
 
     const panel = screen.getByRole("complementary");
-    const taskLink = within(panel).getByRole("link", { name: "RP-009" });
-    expect(taskLink).toHaveAttribute("href", "build/task-ledger.md#line-42");
+    expect(within(panel).getByText("RP-009")).toBeInTheDocument();
+    expect(
+      within(panel).queryByRole("link", { name: "RP-009" }),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getAllByLabelText("Unsourced fact").length).toBeGreaterThan(0);
   });
 
-  it("links last_activity_ts fallback to matching event source_url", () => {
+  it("links current task when event source is https", () => {
+    const events: Event[] = [
+      {
+        id: "evt-pr",
+        type: "pr_opened",
+        actor: "test-bot",
+        target: null,
+        task_id: "RP-009",
+        attribution: { method: "signature" },
+        source_url: "https://github.com/o/r/pull/9",
+        source_time: "2026-10-19T21:20:00-07:00",
+        raw: "pr opened",
+      },
+    ];
+    const node = baseNode({ id: "test-bot", current_task: "RP-009" });
+    renderPanel(node, { ...emptyActivity, events });
+
+    const panel = screen.getByRole("complementary");
+    const taskLink = within(panel).getByRole("link", { name: "RP-009" });
+    expect(taskLink).toHaveAttribute("href", "https://github.com/o/r/pull/9");
+  });
+
+  it("shows unsourced for ledger-backed last_activity_ts fallback", () => {
     const events: Event[] = [
       {
         id: "evt-ts-only",
@@ -76,11 +101,10 @@ describe("DetailPanel fact sources (QA-MM005-1)", () => {
     renderPanel(node, { ...emptyActivity, events });
 
     const panel = screen.getByRole("complementary");
-    const link = within(panel).getByRole("link", {
-      name: /node snapshot/i,
-    });
-    expect(link).toHaveAttribute("href", "build/task-ledger.md#note-7");
-    expect(within(panel).getAllByLabelText("Unsourced fact")).toHaveLength(1);
+    expect(
+      within(panel).queryByRole("link", { name: /node snapshot/i }),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getAllByLabelText("Unsourced fact").length).toBeGreaterThan(0);
   });
 
   it("shows unsourced tag when no task row and no events exist", () => {

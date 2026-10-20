@@ -33,11 +33,11 @@ describe("Mindmap graph view", () => {
 
     const panel = screen.getByRole("complementary", { name: /DEV 1/i });
     expect(within(panel).getByText("Current task")).toBeInTheDocument();
-    const taskLinks = within(panel).getAllByRole("link", { name: "RP-004" });
-    expect(taskLinks[0]).toHaveAttribute(
-      "href",
-      "build/task-ledger.md#RP-004",
-    );
+    expect(within(panel).getAllByText("RP-004").length).toBeGreaterThan(0);
+    expect(
+      within(panel).queryByRole("link", { name: "RP-004" }),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getAllByLabelText("Unsourced fact").length).toBeGreaterThan(0);
     expect(within(panel).getAllByText(/attribution:/i).length).toBeGreaterThan(
       0,
     );

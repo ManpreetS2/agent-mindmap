@@ -13,7 +13,7 @@ export function formatAxisTime(iso: string): string {
       timeZone: LA_TZ,
       hour: "numeric",
       minute: "2-digit",
-      timeZoneName: "shortGeneric",
+      timeZoneName: "short",
     });
   } catch {
     return iso;

@@ -8,7 +8,7 @@ export interface AgentNodeData {
   deemphasized: boolean;
   lifecycleDimmed: boolean;
   lifecycleHighlighted: boolean;
-  onSelect: (id: string) => void;
+  onOpenDetail: (id: string) => void;
 }
 
 interface AgentNodeCardProps {
@@ -16,8 +16,14 @@ interface AgentNodeCardProps {
 }
 
 export function AgentNodeCard({ data }: AgentNodeCardProps) {
-  const { node, selected, deemphasized, lifecycleDimmed, lifecycleHighlighted, onSelect } =
-    data;
+  const {
+    node,
+    selected,
+    deemphasized,
+    lifecycleDimmed,
+    lifecycleHighlighted,
+    onOpenDetail,
+  } = data;
   const taskLine = node.current_task
     ? `${node.current_task}`
     : "No current task";
@@ -31,11 +37,11 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
       type="button"
       data-testid={`agent-node-${node.id}`}
       className={`agent-node-card nopan nodrag${selected ? " is-selected" : ""}${deemphasized ? " is-deemphasized" : ""}${lifecycleDimmed ? " is-lifecycle-dimmed" : ""}${lifecycleHighlighted ? " is-lifecycle-highlight" : ""}`}
-      onClick={() => onSelect(node.id)}
+      onClick={() => onOpenDetail(node.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onSelect(node.id);
+          onOpenDetail(node.id);
         }
       }}
       aria-pressed={selected}
