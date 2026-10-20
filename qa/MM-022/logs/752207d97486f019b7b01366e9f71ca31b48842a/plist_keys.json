@@ -1,0 +1,8 @@
+{
+  "ProgramArguments": [
+    "/bin/bash",
+    "/tmp/qa-mm022/repo/scripts/start-mac.sh"
+  ],
+  "ThrottleInterval": 30,
+  "MINDMAP_EVENTS_SOURCE": "gh"
+}

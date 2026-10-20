@@ -1,0 +1,14 @@
+{
+  "QA1_ops_in_python_yml": true,
+  "QA2_readme_bash_startmac": true,
+  "QA2_plist_bash_startmac": true,
+  "QA2_mm011_no_stale_python_args": true,
+  "QA3_health_check": true,
+  "QA4_events_wired": true,
+  "QA5_port_fallback": true,
+  "SEC1_require_hashes": true,
+  "SEC_LOW_ThrottleInterval": true,
+  "SEC_LOW_pinned_shellcheck": true,
+  "QA2_no_stale_venv_python_in_readme": true,
+  "QA2_note": "README documents /bin/bash \u2192 scripts/start-mac.sh; MM-011 redirects to MM-020-OPS"
+}

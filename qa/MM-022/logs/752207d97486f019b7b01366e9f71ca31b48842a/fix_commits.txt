@@ -1,0 +1,2 @@
+752207d MM-020-OPS: isolate --demo stub for MM-020i / PR #24 rebase
+fc74ddc MM-020-OPS: address QA-MM-022 and SEC-MM020OPS review findings

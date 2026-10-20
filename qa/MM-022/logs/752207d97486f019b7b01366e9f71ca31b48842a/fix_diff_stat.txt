@@ -1,0 +1,8 @@
+ .github/workflows/python.yml        |  14 ++-
+ README.md                           |  22 ++---
+ ops/com.manpreet.mindmap.plist      |   2 +
+ scripts/install-launchagent.sh      |  16 ++--
+ scripts/render_launchagent_plist.py | 104 ++++++++++++++++++++++
+ scripts/start-mac.sh                | 129 +++++++++++++++++++++------
+ tests/test_start_mac.py             | 173 ++++++++++++++++++++++++++++++++++--
+ 7 files changed, 409 insertions(+), 51 deletions(-)
