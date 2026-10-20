@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import importlib.util
+import json
 import os
 import platform
 import plistlib
@@ -96,10 +97,14 @@ def test_start_mac_help() -> None:
     assert "8787" in proc.stdout
 
 
-def test_start_mac_demo_not_supported() -> None:
-    proc = _run_start_mac("--demo")
-    assert proc.returncode == 2
-    assert "not yet supported (MM-020i)" in proc.stderr
+def test_start_mac_demo_skips_gh_auth() -> None:
+    text = START_MAC.read_text(encoding="utf-8")
+    assert "apply_demo_flag" in text
+    assert "LIVE_ARGS+=(--demo)" in text
+    assert "not yet supported (MM-020i)" not in text
+    after_apply = text.split("apply_demo_flag", 1)[1]
+    assert 'if [[ "$DEMO_MODE" != true ]]; then' in after_apply
+    assert "require_gh_auth" in after_apply
 
 
 def _path_without_python_interpreters() -> str:
@@ -190,6 +195,63 @@ def test_start_mac_wires_events_source_env() -> None:
     text = START_MAC.read_text(encoding="utf-8")
     assert "MINDMAP_EVENTS_SOURCE" in text
     assert "--events-source" in text
+    assert 'LIVE_ARGS+=(--events-source "$EVENTS_SOURCE")' in text
+
+
+def test_start_mac_demo_uses_events_source_off_not_gh() -> None:
+    text = START_MAC.read_text(encoding="utf-8")
+    assert 'if [[ "$DEMO_MODE" == true ]]; then' in text
+    assert "LIVE_ARGS+=(--events-source off)" in text
+    assert 'LIVE_ARGS+=(--events-source "$EVENTS_SOURCE")' in text
+
+
+def test_start_mac_demo_smoke_healthz(tmp_path: Path) -> None:
+    """--demo must start despite default MINDMAP_EVENTS_SOURCE=gh (ingest rejects demo+gh)."""
+    _ensure_project_venv()
+    _ensure_min_web_dist()
+    fake_gh = _fake_gh_bin(tmp_path)
+    port = 38789
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_gh}{os.pathsep}{env.get('PATH', '')}"
+    env["MINDMAP_PORT"] = str(port)
+    env["MINDMAP_EVENTS_SOURCE"] = "gh"
+
+    proc = subprocess.Popen(
+        ["/bin/bash", str(START_MAC), "--demo"],
+        cwd=ROOT,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 45.0
+        while time.monotonic() < deadline:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                    break
+            except OSError:
+                if proc.poll() is not None:
+                    stderr = proc.stderr.read() if proc.stderr else ""
+                    raise AssertionError(f"start-mac --demo exited early: {stderr}")
+                time.sleep(0.2)
+        else:
+            raise TimeoutError("demo server did not listen on 127.0.0.1")
+
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5.0)
+        conn.request("GET", "/healthz")
+        resp = conn.getresponse()
+        body = json.loads(resp.read().decode())
+        conn.close()
+        assert resp.status == 200
+        assert body.get("mode") == "demo"
+    finally:
+        proc.send_signal(15)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
 
 
 def test_python_yml_path_filters_include_ops_and_scripts() -> None:
