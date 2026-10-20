@@ -36,6 +36,31 @@ DEFAULT_OUT = ROOT / "web" / "public" / "activity.json"
 DEFAULT_BOTS = ROOT / "config" / "bots.json"
 
 
+def resolve_project_name(
+    *,
+    repo_root: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> str:
+    """MM-020-P0: app name from env or configured GitHub repo slug (not fencepost)."""
+    environ = env if env is not None else os.environ
+    override = (environ.get("MINDMAP_PROJECT") or "").strip()
+    if override:
+        return override
+    try:
+        from .ledger_fetch import LEDGER_REPO
+
+        slug = LEDGER_REPO.rsplit("/", 1)[-1].strip()
+        if slug:
+            return slug
+    except Exception:  # noqa: BLE001
+        pass
+    root = repo_root if repo_root is not None else ROOT
+    name = root.resolve().name.strip()
+    if name and name.lower() not in {"workspace", "repo", "src", "app", "."}:
+        return name
+    return "agent-mindmap"
+
+
 def _load_schema() -> dict[str, Any]:
     with SCHEMA_PATH.open(encoding="utf-8") as f:
         return json.load(f)
@@ -193,7 +218,7 @@ def build_activity(
     activity = {
         "schema_version": "1.1.0",
         "generated_at": ts,
-        "project": "fencepost",
+        "project": resolve_project_name(),
         "meta": meta,
         "nodes": nodes,
         "tasks": ledger.tasks,

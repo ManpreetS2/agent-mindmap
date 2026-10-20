@@ -292,7 +292,13 @@ def test_broken_venv_triggers_reinstall(tmp_path: Path) -> None:
             shutil.rmtree(backup)
         shutil.move(venv, backup)
     try:
-        subprocess.run([sys.executable, "-m", "venv", str(venv)], cwd=ROOT, check=True)
+        venv_python = Path(sys.executable)
+        bootstrap_py = (
+            str(venv_python)
+            if venv_python.is_file()
+            else (shutil.which("python3") or "python3")
+        )
+        subprocess.run([bootstrap_py, "-m", "venv", str(venv)], cwd=ROOT, check=True)
         port = 38786
         env = {
             "PATH": f"{fake_gh}{os.pathsep}{os.environ.get('PATH', '')}",

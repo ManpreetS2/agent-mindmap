@@ -29,7 +29,8 @@
     },
     "project": {
       "type": "string",
-      "const": "fencepost"
+      "enum": ["fencepost", "agent-mindmap"],
+      "description": "MM-020-P0: live builds use resolve_project_name() (typically agent-mindmap); demo fixtures may still use fencepost"
     },
     "meta": {
       "type": "object",
@@ -38,11 +39,11 @@
       "properties": {
         "github": {
           "type": "string",
-          "enum": ["ok", "error", "skipped", "rate_limited"]
+          "enum": ["ok", "error", "skipped", "rate_limited", "never_run"]
         },
         "ledger": {
           "type": "string",
-          "enum": ["ok", "error", "skipped", "demo"],
+          "enum": ["ok", "error", "skipped", "demo", "unavailable"],
           "description": "Ledger read status (path or gh data/ledger mirror)"
         },
         "ledger_last_entry_at": {

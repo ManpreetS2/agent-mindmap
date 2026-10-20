@@ -29,6 +29,8 @@ export interface SseTransportOptions {
   /** QA-MM020e-3: initial backoff before retrying EventSource while polling. */
   sseRetryInitialMs?: number;
   sseRetryMaxMs?: number;
+  /** MM-020-P0: false when SSE failed and poll fallback is active. */
+  onSseConnectionChange?: (connected: boolean) => void;
 }
 
 const DEFAULT_POLL_MS = 10_000;
@@ -111,6 +113,7 @@ export function createSseTransport(
   const sseRetryInitialMs =
     options.sseRetryInitialMs ?? DEFAULT_SSE_RETRY_INITIAL_MS;
   const sseRetryMaxMs = options.sseRetryMaxMs ?? DEFAULT_SSE_RETRY_MAX_MS;
+  const onSseConnectionChange = options.onSseConnectionChange;
   const EventSourceImpl =
     options.EventSourceImpl ??
     (typeof EventSource !== "undefined" ? EventSource : undefined);
@@ -178,6 +181,7 @@ export function createSseTransport(
       const startPollFallback = () => {
         if (cancelled || fellBack) return;
         fellBack = true;
+        onSseConnectionChange?.(false);
         if (source) {
           source.close();
           source = null;
@@ -225,6 +229,7 @@ export function createSseTransport(
             pollStop = null;
             clearSseRetry();
             fellBack = false;
+            onSseConnectionChange?.(true);
             sseBackoffMs = sseRetryInitialMs;
             if (pendingReconnect === es) pendingReconnect = null;
             source = es;

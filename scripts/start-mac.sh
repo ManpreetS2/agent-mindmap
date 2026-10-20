@@ -110,8 +110,22 @@ ensure_venv_python() {
   echo "$py"
 }
 
+web_sources_newer_than_dist() {
+  local dist="$REPO_ROOT/web/dist/index.html"
+  [[ ! -f "$dist" ]] && return 0
+  if find "$REPO_ROOT/web/src" -type f -newer "$dist" -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
+  for f in "$REPO_ROOT/web/index.html" "$REPO_ROOT/web/vite.config.ts" "$REPO_ROOT/web/package.json"; do
+    if [[ -f "$f" && "$f" -nt "$dist" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 ensure_web_dist() {
-  if [[ "$REBUILD" == true ]] || [[ ! -f "$REPO_ROOT/web/dist/index.html" ]]; then
+  if [[ "$REBUILD" == true ]] || [[ ! -f "$REPO_ROOT/web/dist/index.html" ]] || web_sources_newer_than_dist; then
     if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
       echo "error: Node.js and npm are required to build web/dist (install Node 20+)." >&2
       exit 1

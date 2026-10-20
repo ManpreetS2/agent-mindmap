@@ -51,21 +51,26 @@ def empty_live_activity_bytes(
     bots: list[dict[str, Any]],
     *,
     generated_at: str,
+    meta_github: str = "never_run",
+    meta_ledger: str = "unavailable",
 ) -> bytes:
     """Minimal live-mode snapshot when rebuild cannot run (no demo mixing)."""
-    from .build import build_nodes
+    from .build import build_nodes, resolve_project_name
 
+    nodes = build_nodes(bots, [], [])
+    for node in nodes:
+        node["status"] = "UNKNOWN"
     doc = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": "fencepost",
+        "project": resolve_project_name(),
         "meta": {
             "mode": "live",
-            "github": "skipped",
-            "ledger": "error",
+            "github": meta_github,
+            "ledger": meta_ledger,
             "ledger_last_entry_at": None,
         },
-        "nodes": build_nodes(bots, [], []),
+        "nodes": nodes,
         "tasks": [],
         "events": [],
         "edges": [],

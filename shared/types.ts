@@ -152,9 +152,14 @@ export interface Edge {
   event_ids: string[];
 }
 
-export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
+export type GitHubMetaStatus =
+  | "ok"
+  | "error"
+  | "skipped"
+  | "rate_limited"
+  | "never_run";
 
-export type LedgerMetaStatus = "ok" | "error" | "skipped";
+export type LedgerMetaStatus = "ok" | "error" | "skipped" | "unavailable";
 
 export interface ActivityMeta {
   github: GitHubMetaStatus;
@@ -172,7 +177,7 @@ export type ActivitySchemaVersion = "1.0.0" | "1.1.0";
 export interface Activity {
   schema_version: ActivitySchemaVersion;
   generated_at: string;
-  project: "fencepost";
+  project: "fencepost" | "agent-mindmap";
   meta: ActivityMeta;
   nodes: Node[];
   tasks: Task[];
