@@ -194,8 +194,13 @@ LIVE_ARGS=(
   -m ingest.live
   --port "$PORT"
   --static-dir "$REPO_ROOT/web/dist"
-  --events-source "$EVENTS_SOURCE"
 )
+
+if [[ "$DEMO_MODE" == true ]]; then
+  LIVE_ARGS+=(--events-source off)
+else
+  LIVE_ARGS+=(--events-source "$EVENTS_SOURCE")
+fi
 
 if [[ -n "${MINDMAP_LEDGER:-}" ]]; then
   if [[ ! -f "$MINDMAP_LEDGER" ]]; then
