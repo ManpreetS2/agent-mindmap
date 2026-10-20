@@ -1,0 +1,9 @@
+[
+  {
+    "sha": "aaa1111bbbbbbbccccccccdddddddddeeeeeeee",
+    "commit": {
+      "message": "feat(RP-005): ingest hardening",
+      "author": { "date": "2026-10-19T21:34:00-07:00" }
+    }
+  }
+]
