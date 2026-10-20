@@ -1,0 +1,7 @@
+{
+  "returncode": 0,
+  "summary_line": "123 passed, 1 skipped in 3.70s",
+  "passed": 123,
+  "skipped": 1,
+  "claim_123_passed": true
+}

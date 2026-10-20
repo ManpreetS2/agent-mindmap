@@ -1,0 +1,16 @@
+{
+  "testsRun": 9,
+  "failures": [
+    [
+      "test_preexisting_file_mode_handled (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_file_mode_handled)",
+      "Traceback (most recent call last):\n  File \"/tmp/qa-mm020b-r2/evidence/test_sec_mm020b_behavioral.py\", line 141, in test_preexisting_file_mode_handled\n    self.assertEqual(\nAssertionError: 420 != 384 : pre-existing 0o644 not tightened; after=0o644\n"
+    ],
+    [
+      "test_preexisting_world_writable_tightened_or_refused (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_world_writable_tightened_or_refused)",
+      "Traceback (most recent call last):\n  File \"/tmp/qa-mm020b-r2/evidence/test_sec_mm020b_behavioral.py\", line 160, in test_preexisting_world_writable_tightened_or_refused\n    self.assertEqual(\nAssertionError: 438 != 384 : pre-existing 0o666 not handled; after=0o666\n"
+    ]
+  ],
+  "errors": [],
+  "skipped": [],
+  "wasSuccessful": false
+}

@@ -1,0 +1,35 @@
+test_new_file_created_mode_0o600 (__main__.TestSecMm020b1SymlinkAndMode.test_new_file_created_mode_0o600) ... ok
+test_o_nofollow_via_sys_audit_open_flags (__main__.TestSecMm020b1SymlinkAndMode.test_o_nofollow_via_sys_audit_open_flags)
+Confirm os open flags include O_NOFOLLOW via sys.audit (no source read). ... ok
+test_preexisting_file_mode_handled (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_file_mode_handled)
+Document/assert behavior when JSONL already exists with a looser mode. ... FAIL
+test_preexisting_world_writable_tightened_or_refused (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_world_writable_tightened_or_refused) ... FAIL
+test_symlinked_target_is_refused (__main__.TestSecMm020b1SymlinkAndMode.test_symlinked_target_is_refused) ... ok
+test_docstring_states_240_contract (__main__.TestSecMm020b2SummaryCap.test_docstring_states_240_contract) ... ok
+test_multibyte_and_emoji_cap (__main__.TestSecMm020b2SummaryCap.test_multibyte_and_emoji_cap) ... ok
+test_refuse_not_redact_nothing_written (__main__.TestSecMm020b2SummaryCap.test_refuse_not_redact_nothing_written) ... ok
+test_summary_len_239_240_241 (__main__.TestSecMm020b2SummaryCap.test_summary_len_239_240_241) ... ok
+
+======================================================================
+FAIL: test_preexisting_file_mode_handled (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_file_mode_handled)
+Document/assert behavior when JSONL already exists with a looser mode.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/qa-mm020b-r2/evidence/test_sec_mm020b_behavioral.py", line 141, in test_preexisting_file_mode_handled
+    self.assertEqual(
+AssertionError: 420 != 384 : pre-existing 0o644 not tightened; after=0o644
+
+======================================================================
+FAIL: test_preexisting_world_writable_tightened_or_refused (__main__.TestSecMm020b1SymlinkAndMode.test_preexisting_world_writable_tightened_or_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/qa-mm020b-r2/evidence/test_sec_mm020b_behavioral.py", line 160, in test_preexisting_world_writable_tightened_or_refused
+    self.assertEqual(
+AssertionError: 438 != 384 : pre-existing 0o666 not handled; after=0o666
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.004s
+
+FAILED (failures=2)
+
+WROTE /tmp/qa-mm020b-r2/evidence/sec_behavioral_results.json

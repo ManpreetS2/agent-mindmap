@@ -1,0 +1,16 @@
+{
+  "open_events": [
+    [
+      "/tmp/tmpxoh8xr1q/events.jsonl",
+      null,
+      "0xa0441"
+    ]
+  ],
+  "flags_hex": "0xa0441",
+  "O_NOFOLLOW": true,
+  "O_APPEND": true,
+  "O_CREAT": true,
+  "new_file_mode": "0o600"
+}
+symlink: REFUSED
+PASS

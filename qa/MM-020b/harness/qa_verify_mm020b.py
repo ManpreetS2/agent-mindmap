@@ -14,7 +14,7 @@ import threading
 import traceback
 from pathlib import Path
 
-ROOT = Path("/tmp/qa-mm020b/checkout")
+ROOT = Path("/tmp/qa-mm020b-r2/checkout")
 sys.path.insert(0, str(ROOT))
 
 from ingest.github_poller import _looks_like_secret  # noqa: E402
@@ -33,7 +33,7 @@ from tools.event_emit import (  # noqa: E402
     validate_network_event,
 )
 
-EVIDENCE = Path("/tmp/qa-mm020b/evidence")
+EVIDENCE = Path("/tmp/qa-mm020b-r2/evidence")
 EVIDENCE.mkdir(parents=True, exist_ok=True)
 results: list[dict] = []
 

@@ -1,0 +1,23 @@
+MODULE_DOC:
+ 
+MM-020b: opt-in NetworkEvent JSONL emitter (stdlib only).
+
+Appends one sanitized JSON line per event with a single O_APPEND write (≤ PIPE_BUF).
+Opens the JSONL path with O_NOFOLLOW (refuses symlinks) and creates new files mode 0o600.
+
+Summary contract: **short sanitized summary** only — never raw transcripts. Whitespace is
+collapsed, secrets are refused (MM-010 scan), and text is capped at SUMMARY_MAX_CHARS (240)
+before emit. Longer input is truncated with a trailing ellipsis character.
+
+No network; no token reads. Secret scan reuses ingest.github_poller._looks_like_secret.
+
+SANITIZE_DOC:
+ 
+    Short sanitized summary: normalize whitespace, cap length, refuse secrets.
+
+    Raises SecretRefusedError if the text looks like a credential or banned key name.
+    
+EMIT_DOC:
+ Build agent-reported message event, append to path, return the event.
+HAS_240_IN_MODULE True
+HAS_240_IN_SANITIZE False

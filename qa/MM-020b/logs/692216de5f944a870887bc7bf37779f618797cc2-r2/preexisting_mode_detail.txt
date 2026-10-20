@@ -1,0 +1,4 @@
+before 0o644
+after_644 0o644 size 177
+after_666 0o666
+new_file 0o600
