@@ -76,7 +76,7 @@ DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
 DEFAULT_EVENTS_POLL_SEC = 30.0
 DEFAULT_SSE_HEARTBEAT_SEC = 15.0
-REFRESH_MIN_INTERVAL_SEC = 5.0
+REFRESH_MIN_INTERVAL_FLOOR_SEC = 30.0
 MAX_SSE_CONNECTIONS = 8
 SSE_RETRY_AFTER_SEC = 5
 PROCESS_LOCK_MODE = 0o600
@@ -882,6 +882,10 @@ class LiveDaemon:
         """True when a queued POST /refresh is waiting on the poll thread."""
         return self._refresh_pending.is_set()
 
+    def refresh_min_interval_sec(self) -> float:
+        """SEC: manual refresh quota tracks GitHub poll cadence (floor 30s)."""
+        return max(REFRESH_MIN_INTERVAL_FLOOR_SEC, self.gh_poll_sec)
+
     def try_refresh(self) -> tuple[bool, str, float]:
         """
         MM-020-P0: queue poll + forced rebuild on the poll thread (POST /refresh).
@@ -891,10 +895,11 @@ class LiveDaemon:
         if self.demo_mode:
             return False, "demo", 0.0
         now = self.clock()
+        min_interval = self.refresh_min_interval_sec()
         with self._refresh_lock:
             elapsed = now - self._last_refresh_at
-            if elapsed < REFRESH_MIN_INTERVAL_SEC:
-                retry = max(1.0, REFRESH_MIN_INTERVAL_SEC - elapsed)
+            if elapsed < min_interval:
+                retry = max(1.0, min_interval - elapsed)
                 return False, "rate_limited", retry
             self._last_refresh_at = now
         self._refresh_pending.set()
@@ -1306,12 +1311,50 @@ class MindmapHandler(BaseHTTPRequestHandler):
             content_type = "application/json; charset=utf-8"
         self._send_bytes(HTTPStatus.OK, data, content_type=content_type)
 
+    def _refresh_request_has_body(self) -> bool:
+        if self.headers.get("Transfer-Encoding"):
+            return True
+        raw_len = self.headers.get("Content-Length")
+        if raw_len is None:
+            return False
+        try:
+            return int(raw_len) > 0
+        except ValueError:
+            return True
+
+    def _send_413_close_no_body(self) -> None:
+        """Reject POST /refresh bodies; close so stray bytes are not pipelined."""
+        body = json.dumps({"error": "payload_not_allowed"}).encode("utf-8")
+        self.send_response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+        try:
+            raw_len = self.headers.get("Content-Length")
+            if raw_len:
+                remaining = int(raw_len)
+                if remaining > 0:
+                    self.rfile.read(remaining)
+        except (ValueError, OSError):
+            pass
+        conn = getattr(self, "connection", None)
+        if conn is not None:
+            try:
+                conn.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
     def do_POST(self) -> None:  # noqa: N802
         if self._reject_unless_localhost():
             return
         parsed = urlparse(self.path)
         if parsed.path != "/refresh":
             self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
+            return
+        if self._refresh_request_has_body():
+            self._send_413_close_no_body()
             return
         ok, reason, retry_after = self.daemon.try_refresh()
         if not ok and reason == "rate_limited":

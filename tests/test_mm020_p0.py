@@ -126,10 +126,32 @@ def _refresh_server(daemon: LiveDaemon) -> tuple:
     return httpd, thread, host, port
 
 
+def test_refresh_post_rejects_non_empty_body_with_413_close(live_env: dict) -> None:
+    daemon = _daemon(live_env, events_source="off")
+    httpd, thread, host, port = _refresh_server(daemon)
+    url = f"http://{host}:{port}/refresh"
+    try:
+        req = urllib.request.Request(
+            url,
+            method="POST",
+            data=b"x",
+            headers={"Host": f"{host}:{port}", "Content-Length": "1"},
+        )
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(req, timeout=5)
+        assert exc.value.code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+        assert exc.value.headers.get("Connection", "").lower() == "close"
+        assert not daemon.refresh_pending()
+    finally:
+        httpd.shutdown()
+        thread.join(timeout=3)
+        httpd.server_close()
+
+
 def test_refresh_post_gated_rate_limited_and_polls(live_env: dict) -> None:
     daemon = _daemon(live_env, events_source="off")
     daemon.ledger_poll_sec = 3600.0
-    daemon.gh_poll_sec = 3600.0
+    daemon.gh_poll_sec = 30.0
     daemon.events_poll_sec = 3600.0
     daemon.start_polling()
     httpd, thread, host, port = _refresh_server(daemon)
@@ -159,7 +181,7 @@ def test_refresh_post_gated_rate_limited_and_polls(live_env: dict) -> None:
         status, body = post({"Host": f"{host}:{port}"})
         assert status == HTTPStatus.TOO_MANY_REQUESTS
         payload = json.loads(body.decode())
-        assert payload["retry_after_s"] >= 1
+        assert payload["retry_after_s"] >= 30
     finally:
         daemon.stop_polling()
         httpd.shutdown()
@@ -244,7 +266,7 @@ def test_try_refresh_queues_poll_thread_work(live_env: dict) -> None:
 def test_refresh_flood_rate_limited_no_pileup(live_env: dict) -> None:
     daemon = _daemon(live_env, events_source="off")
     daemon.ledger_poll_sec = 3600.0
-    daemon.gh_poll_sec = 3600.0
+    daemon.gh_poll_sec = 30.0
     daemon.events_poll_sec = 3600.0
     daemon.start_polling()
     httpd, thread, host, port = _refresh_server(daemon)

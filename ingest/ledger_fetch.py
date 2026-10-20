@@ -128,7 +128,7 @@ class LedgerFetcher:
                 text=None,
                 meta_ledger="error",
                 status=resp.status,
-                errors=[f"decode failed: {type(exc).__name__}: {exc}"],
+                errors=[f"decode failed: {type(exc).__name__}"],
             )
 
         new_etag = resp.headers.get("etag") or etag
