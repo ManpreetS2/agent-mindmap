@@ -1,0 +1,37 @@
+[
+  {
+    "id": "QA-MM020i-1",
+    "result": "PASS",
+    "detail": "pre-poll healthz=live activity.meta.mode=live"
+  },
+  {
+    "id": "QA-MM020i-2",
+    "result": "PASS",
+    "detail": "fail-ledger healthz=live activity.meta={'mode': 'live', 'github': 'skipped', 'ledger': 'error', 'ledger_last_entry_at': None}"
+  },
+  {
+    "id": "QA-MM020i-3",
+    "result": "PASS",
+    "detail": "always_render=True loading=True unknown=True initial=loading:True"
+  },
+  {
+    "id": "QA-MM020i-4",
+    "result": "PASS",
+    "detail": "parseHealthzMode_strict=True no_default_live=True"
+  },
+  {
+    "id": "QA-MM020i-5",
+    "result": "PASS",
+    "detail": "backoff=True unknown_on_error=True"
+  },
+  {
+    "id": "QA-MM020i-6",
+    "result": "PASS",
+    "detail": "rc=2 proc_rc=2 stderr=error: --demo cannot be used with --events-source gh (demo never polls GitHub)"
+  },
+  {
+    "id": "DELTA-no-new-issues-smoke",
+    "result": "PASS",
+    "detail": "no_markers=True assemble_mode_live=True demo_serve=True"
+  }
+]

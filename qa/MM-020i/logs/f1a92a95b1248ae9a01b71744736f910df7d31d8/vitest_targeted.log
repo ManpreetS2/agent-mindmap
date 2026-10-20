@@ -1,0 +1,16 @@
+
+> mindmap-web@0.1.0 test
+> vitest run --run src/test/ModeBanner.test.tsx src/test/useServerMode.test.ts
+
+
+ RUN  v2.1.9 /tmp/qa-mm020i-delta/checkout/web
+
+ ✓ src/test/ModeBanner.test.tsx (4 tests) 50ms
+ ✓ src/test/useServerMode.test.ts (3 tests) 620ms
+   ✓ useServerMode > retries after fetch failure and recovers 506ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  21:33:21
+   Duration  1.23s (transform 61ms, setup 203ms, collect 48ms, tests 670ms, environment 520ms, prepare 206ms)
+

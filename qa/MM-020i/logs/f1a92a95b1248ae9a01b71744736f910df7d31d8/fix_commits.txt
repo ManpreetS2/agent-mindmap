@@ -1,0 +1,24 @@
+5e3677f6148e1466ef9def5eb3b29ab7e98b8c36
+f1a92a95b1248ae9a01b71744736f910df7d31d8
+1c01d472abc0f5a3a42352ac2d58ff9f8146ef40
+477326926d24190478890bee1c855186d7647618
+5e3677f6148e1466ef9def5eb3b29ab7e98b8c36 fix(MM-020i): QA mode isolation, banner contract, demo CLI guards
+
+ ingest/demo_mode.py                | 54 ++++++++++++++++++++++++++
+ ingest/live.py                     | 73 ++++++++++++++++++++++++++++--------
+ schema/activity.schema.json        |  7 +++-
+ scripts/start-mac.sh               | 53 ++------------------------
+ tests/test_demo_mode.py            | 75 ++++++++++++++++++++++++++++++-------
+ tests/test_start_mac.py            | 21 +++++++++--
+ web/src/App.tsx                    |  5 +--
+ web/src/components/ModeBanner.tsx  | 37 +++++++++++-------
+ web/src/hooks/useServerMode.ts     | 77 +++++++++++++++++++++++++-------------
+ web/src/test/ModeBanner.test.tsx   | 16 +++++++-
+ web/src/test/useServerMode.test.ts | 53 ++++++++++++++++++++++++++
+ 11 files changed, 345 insertions(+), 126 deletions(-)
+f1a92a95b1248ae9a01b71744736f910df7d31d8 test(MM-020i): static start-mac demo/gh-auth checks (no long-running --demo)
+
+ scripts/start-mac.sh    | 16 +++-------------
+ tests/test_demo_mode.py | 23 ++++-------------------
+ tests/test_start_mac.py | 21 ++++++---------------
+ 3 files changed, 13 insertions(+), 47 deletions(-)

@@ -1,0 +1,14 @@
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[PASS] QA-MM020i-1: pre-poll healthz=live activity.meta.mode=live
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[PASS] QA-MM020i-2: fail-ledger healthz=live activity.meta={'mode': 'live', 'github': 'skipped', 'ledger': 'error', 'ledger_last_entry_at': None}
+[PASS] QA-MM020i-3: always_render=True loading=True unknown=True initial=loading:True
+[PASS] QA-MM020i-4: parseHealthzMode_strict=True no_default_live=True
+[PASS] QA-MM020i-5: backoff=True unknown_on_error=True
+error: --demo cannot be used with --events-source gh (demo never polls GitHub)
+[PASS] QA-MM020i-6: rc=2 proc_rc=2 stderr=error: --demo cannot be used with --events-source gh (demo never polls GitHub)
+[PASS] DELTA-no-new-issues-smoke: no_markers=True assemble_mode_live=True demo_serve=True
+
+PASS 7 FAIL 0

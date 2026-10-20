@@ -1,0 +1,10 @@
+........................................................................ [ 30%]
+........................................................................ [ 60%]
+.................s...................................................... [ 90%]
+..................F..s.                                                  [100%]
+=================================== FAILURES ===================================
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/qa-mm020i-delta/checkout/.venv/bin/python'
+/usr/lib/python3.12/subprocess.py:1955: FileNotFoundError: [Errno 2] No such file or directory: '/tmp/qa-mm020i-delta/checkout/.venv/bin/python'
+=========================== short test summary info ============================
+FAILED tests/test_start_mac.py::test_broken_venv_triggers_reinstall - FileNot...
+1 failed, 236 passed, 2 skipped in 18.01s
