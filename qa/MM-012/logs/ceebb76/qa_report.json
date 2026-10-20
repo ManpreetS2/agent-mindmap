@@ -1,0 +1,31 @@
+{
+  "task": "MM-012",
+  "pr": 14,
+  "sha": "ceebb76030cf7b0ada835edd7df1069190b6afb5",
+  "verdict": "PASS",
+  "branch": "qa/MM-012",
+  "checks": {
+    "pytest": "69 passed",
+    "vitest": "56 passed",
+    "typecheck": "clean",
+    "build": "success",
+    "ci_web": "success 39389743872",
+    "bind_127_0_0_1": "PASS",
+    "playwright_amended_pass": 28,
+    "playwright_amended_fail": 1
+  },
+  "findings": [
+    {
+      "id": "QA-MM012-1",
+      "component": "loadActivity + Vite SPA host",
+      "expected": "Missing activity.json returns 404/422 and LedgerErrorView (\"Can't read \u2026\") with Retry",
+      "actual": "Under `vite`/`vite preview`, missing /activity.json is SPA-fallbacked as HTML 200; UI shows \"Unexpected token '<', \\\"<!doctype \\\"... is not valid JSON\" + Retry",
+      "repro": "rm web/public/activity.json; curl -i http://127.0.0.1:5173/activity.json; reload UI",
+      "evidence": "screenshots/06-missing-activity.png, screenshots/13-missing-activity-detail.png, playwright_followup.txt",
+      "environment": "Linux, Vite 5.4.21, Playwright chromium, PR head ceebb76",
+      "severity": "medium",
+      "confidence": "high",
+      "notes": "Pre-existing Vite SPA fallback behavior; MM-012 did not introduce LedgerLoadError. Empty + malformed paths are OK."
+    }
+  ]
+}

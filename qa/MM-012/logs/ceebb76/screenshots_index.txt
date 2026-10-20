@@ -1,0 +1,19 @@
+total 2336
+drwxr-xr-x 2 ubuntu ubuntu   4096 Oct 20 08:04 .
+drwxr-xr-x 4 ubuntu ubuntu   4096 Oct 20 08:05 ..
+-rw-r--r-- 1 ubuntu ubuntu 190433 Oct 20 08:03 01-demo-graph.png
+-rw-r--r-- 1 ubuntu ubuntu 195512 Oct 20 08:03 03-detail-panel.png
+-rw-r--r-- 1 ubuntu ubuntu 151701 Oct 20 08:03 04-verdict-fallbacks.png
+-rw-r--r-- 1 ubuntu ubuntu 150368 Oct 20 08:03 05-empty-state.png
+-rw-r--r-- 1 ubuntu ubuntu  46987 Oct 20 08:03 06-missing-activity.png
+-rw-r--r-- 1 ubuntu ubuntu  47802 Oct 20 08:03 07-malformed-activity.png
+-rw-r--r-- 1 ubuntu ubuntu 154283 Oct 20 08:03 08-partial-error.png
+-rw-r--r-- 1 ubuntu ubuntu 155230 Oct 20 08:03 08-partial-skipped.png
+-rw-r--r-- 1 ubuntu ubuntu 158139 Oct 20 08:03 08-stale.png
+-rw-r--r-- 1 ubuntu ubuntu 169666 Oct 20 08:03 08-unparsed-debug-open.png
+-rw-r--r-- 1 ubuntu ubuntu 157756 Oct 20 08:03 08-unparsed.png
+-rw-r--r-- 1 ubuntu ubuntu 188903 Oct 20 08:03 09-xss-payload.png
+-rw-r--r-- 1 ubuntu ubuntu 156536 Oct 20 08:03 10-self-loop-injected.png
+-rw-r--r-- 1 ubuntu ubuntu 222861 Oct 20 08:04 11-list-view.png
+-rw-r--r-- 1 ubuntu ubuntu 157819 Oct 20 08:04 12-now-line.png
+-rw-r--r-- 1 ubuntu ubuntu  46987 Oct 20 08:04 13-missing-activity-detail.png

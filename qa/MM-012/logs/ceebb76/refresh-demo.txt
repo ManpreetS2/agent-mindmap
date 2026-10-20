@@ -1,0 +1,5 @@
+python3 -m ingest \
+	--ledger "/tmp/qa-mm012-checkout/tests/fixtures/ledger-sample.md" \
+	--out "/tmp/qa-mm012-checkout/web/public/activity.json" \
+	--skip-github
+wrote /tmp/qa-mm012-checkout/web/public/activity.json (github=skipped)

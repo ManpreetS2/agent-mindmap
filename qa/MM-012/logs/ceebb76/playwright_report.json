@@ -1,0 +1,331 @@
+{
+  "sha": "ceebb76030cf7b0ada835edd7df1069190b6afb5",
+  "checks": [
+    {
+      "check": "UI loads demo activity (graph+timeline+legend)",
+      "result": "PASS",
+      "detail": "graph=1 timeline=1 legend=1"
+    },
+    {
+      "check": "MiniMap present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Timeline brush present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Timeline now-line present",
+      "result": "FAIL",
+      "detail": ""
+    },
+    {
+      "check": "Timeline zoom toolbar present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Drag handle exists (hover-only CSS)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Edge legend top-right of graph",
+      "result": "PASS",
+      "detail": "legend=(1148,109) mid=(720,345)"
+    },
+    {
+      "check": "List view toggle",
+      "result": "FAIL",
+      "detail": "button not found"
+    },
+    {
+      "check": "Keyboard focus reaches skip link on first Tab",
+      "result": "PASS",
+      "detail": "{\"tag\":\"A\",\"className\":\"skip-link\",\"text\":\"Skip to main content\",\"href\":\"#main-content\"}"
+    },
+    {
+      "check": "Detail panel opens on node click",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Contrast spot-check .status-pill",
+      "result": "PASS",
+      "detail": "ratio=9.28 fg=rgb(240, 242, 245) bg=rgb(58, 64, 76)"
+    },
+    {
+      "check": "Contrast spot-check body",
+      "result": "PASS",
+      "detail": "ratio=15.90 fg=rgb(232, 236, 241) bg=rgb(15, 17, 23)"
+    },
+    {
+      "check": "No console errors on demo load",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Known widened verdicts render (COND/BLK/INC)",
+      "result": "PASS",
+      "detail": "cond=true blk=true inc=true crashed=false"
+    },
+    {
+      "check": "Unknown verdict tokens fall back to VER",
+      "result": "PASS",
+      "detail": "ver=true"
+    },
+    {
+      "check": "Empty activity.json renders gracefully",
+      "result": "PASS",
+      "detail": "Skip to main content\nMINDMAPProject: Fencepost\nList view\nHandoffs 0\nUpdated Oct 20, 4:58 AM PDT\nSource: ledger + GitHub "
+    },
+    {
+      "check": "Missing activity.json shows error UI",
+      "result": "FAIL",
+      "detail": "Unexpected token '<', \"<!doctype \"... is not valid JSON\nRetry"
+    },
+    {
+      "check": "Malformed activity.json shows error (no silent success)",
+      "result": "PASS",
+      "detail": "alert=true pretendOk=false text=Skip to main content\nExpected property name or '}' in JSON at position 1 (line 1 column 2)\nRetry"
+    },
+    {
+      "check": "Fixture state partial-skipped renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state partial-error renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state unparsed renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Debug drawer toggle present (unparsed)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state stale renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "XSS payload from fixture text does not execute",
+      "result": "PASS",
+      "detail": "xssFlag=false scripts=0 imgOnerror=0 escapedVisible=true"
+    },
+    {
+      "check": "No self-loop edges in demo + sample fixtures",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "UI tolerates injected self-loop edge without crash",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "PR-related events carry repo identity (repo field or github URL)",
+      "result": "PASS",
+      "detail": "prEvents=4 withRepo=4"
+    },
+    {
+      "check": "No automatic outbound network beyond localhost on load",
+      "result": "PASS",
+      "detail": " (agent_link_anchors=0)"
+    },
+    {
+      "check": "A11y labels present (skip/graph/timeline/legend)",
+      "result": "PASS",
+      "detail": "{\"skip\":true,\"graph\":true,\"timeline\":true,\"legend\":true,\"filters\":true}"
+    }
+  ],
+  "findings": [
+    {
+      "component": "loadActivity / LedgerErrorView",
+      "expected": "404/missing activity.json shows ledger error or load failure with Retry",
+      "actual": "Unexpected token '<', \"<!doctype \"... is not valid JSON\nRetry",
+      "repro": "rm web/public/activity.json; reload UI",
+      "evidence": "screenshots/06-missing-activity.png",
+      "environment": "Playwright chromium headless @ ceebb76",
+      "severity": "high",
+      "confidence": "high"
+    }
+  ],
+  "console_errors_last": [],
+  "outbound_last": [],
+  "followup": {
+    "list_view_button": "PASS (selector is \"List view\", not \"List\")",
+    "now_line": "PASS when domain includes Date.now(); hidden on historical demo domain",
+    "missing_activity": "Vite SPA fallback returns HTML 200 for missing /activity.json \u2192 JSON parse error UI, not LedgerErrorView"
+  },
+  "checks_amended": [
+    {
+      "check": "UI loads demo activity (graph+timeline+legend)",
+      "result": "PASS",
+      "detail": "graph=1 timeline=1 legend=1"
+    },
+    {
+      "check": "MiniMap present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Timeline brush present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Timeline now-line present",
+      "result": "PASS",
+      "detail": "follow-up: present when domain includes now; demo domain ends before now"
+    },
+    {
+      "check": "Timeline zoom toolbar present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Drag handle exists (hover-only CSS)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Edge legend top-right of graph",
+      "result": "PASS",
+      "detail": "legend=(1148,109) mid=(720,345)"
+    },
+    {
+      "check": "List view toggle",
+      "result": "PASS",
+      "detail": "follow-up: button labeled \"List view\" works"
+    },
+    {
+      "check": "Keyboard focus reaches skip link on first Tab",
+      "result": "PASS",
+      "detail": "{\"tag\":\"A\",\"className\":\"skip-link\",\"text\":\"Skip to main content\",\"href\":\"#main-content\"}"
+    },
+    {
+      "check": "Detail panel opens on node click",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Contrast spot-check .status-pill",
+      "result": "PASS",
+      "detail": "ratio=9.28 fg=rgb(240, 242, 245) bg=rgb(58, 64, 76)"
+    },
+    {
+      "check": "Contrast spot-check body",
+      "result": "PASS",
+      "detail": "ratio=15.90 fg=rgb(232, 236, 241) bg=rgb(15, 17, 23)"
+    },
+    {
+      "check": "No console errors on demo load",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Known widened verdicts render (COND/BLK/INC)",
+      "result": "PASS",
+      "detail": "cond=true blk=true inc=true crashed=false"
+    },
+    {
+      "check": "Unknown verdict tokens fall back to VER",
+      "result": "PASS",
+      "detail": "ver=true"
+    },
+    {
+      "check": "Empty activity.json renders gracefully",
+      "result": "PASS",
+      "detail": "Skip to main content\nMINDMAPProject: Fencepost\nList view\nHandoffs 0\nUpdated Oct 20, 4:58 AM PDT\nSource: ledger + GitHub "
+    },
+    {
+      "check": "Missing activity.json shows error UI",
+      "result": "FAIL",
+      "detail": "shows alert+Retry but JSON parse of index.html, not LedgerErrorView"
+    },
+    {
+      "check": "Malformed activity.json shows error (no silent success)",
+      "result": "PASS",
+      "detail": "alert=true pretendOk=false text=Skip to main content\nExpected property name or '}' in JSON at position 1 (line 1 column 2)\nRetry"
+    },
+    {
+      "check": "Fixture state partial-skipped renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state partial-error renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state unparsed renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Debug drawer toggle present (unparsed)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Fixture state stale renders",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "XSS payload from fixture text does not execute",
+      "result": "PASS",
+      "detail": "xssFlag=false scripts=0 imgOnerror=0 escapedVisible=true"
+    },
+    {
+      "check": "No self-loop edges in demo + sample fixtures",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "UI tolerates injected self-loop edge without crash",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "PR-related events carry repo identity (repo field or github URL)",
+      "result": "PASS",
+      "detail": "prEvents=4 withRepo=4"
+    },
+    {
+      "check": "No automatic outbound network beyond localhost on load",
+      "result": "PASS",
+      "detail": " (agent_link_anchors=0)"
+    },
+    {
+      "check": "A11y labels present (skip/graph/timeline/legend)",
+      "result": "PASS",
+      "detail": "{\"skip\":true,\"graph\":true,\"timeline\":true,\"legend\":true,\"filters\":true}"
+    }
+  ],
+  "verdict_suggestion": "PASS",
+  "findings_final": [
+    {
+      "id": "QA-MM012-1",
+      "component": "loadActivity + Vite SPA host",
+      "expected": "Missing activity.json returns 404/422 and LedgerErrorView (\"Can't read \u2026\") with Retry",
+      "actual": "Under `vite`/`vite preview`, missing /activity.json is SPA-fallbacked as HTML 200; UI shows \"Unexpected token '<', \\\"<!doctype \\\"... is not valid JSON\" + Retry",
+      "repro": "rm web/public/activity.json; curl -i http://127.0.0.1:5173/activity.json; reload UI",
+      "evidence": "screenshots/06-missing-activity.png, screenshots/13-missing-activity-detail.png, playwright_followup.txt",
+      "environment": "Linux, Vite 5.4.21, Playwright chromium, PR head ceebb76",
+      "severity": "medium",
+      "confidence": "high",
+      "notes": "Pre-existing Vite SPA fallback behavior; MM-012 did not introduce LedgerLoadError. Empty + malformed paths are OK."
+    }
+  ]
+}

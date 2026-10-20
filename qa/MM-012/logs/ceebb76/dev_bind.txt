@@ -1,0 +1,4 @@
+tcp        0      0 127.0.0.1:5173          0.0.0.0:*               LISTEN      4055/node           
+external IP connect:
+http://172.30.0.2:5173/ -> 000
+http://172.30.0.2:5173/ -> connection_failed

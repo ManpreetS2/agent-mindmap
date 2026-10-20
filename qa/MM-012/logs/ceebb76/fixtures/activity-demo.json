@@ -1,0 +1,1060 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-20T08:00:11.763959+00:00",
+  "project": "fencepost",
+  "meta": {
+    "github": "skipped"
+  },
+  "nodes": [
+    {
+      "id": "manpreet",
+      "label": "Manpreet",
+      "group": "owner",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 0
+      }
+    },
+    {
+      "id": "director",
+      "label": "Director",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 72
+      },
+      "last_activity_ts": "2026-10-19T22:47:00-07:00"
+    },
+    {
+      "id": "architect",
+      "label": "Architect",
+      "group": "build",
+      "status": "DONE",
+      "agent_links": [
+        "bc-6c5db6e1"
+      ],
+      "layout": {
+        "x": 400,
+        "y": 144
+      },
+      "current_task": "RP-002",
+      "last_activity_ts": "2026-10-19T23:01:00-07:00"
+    },
+    {
+      "id": "dev-1",
+      "label": "DEV 1",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 256
+      },
+      "current_task": "RP-007"
+    },
+    {
+      "id": "dev-2",
+      "label": "DEV 2",
+      "group": "build",
+      "status": "IN_REVIEW",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 256
+      },
+      "current_task": "RP-003",
+      "last_activity_ts": "2026-10-19T21:33:00-07:00"
+    },
+    {
+      "id": "ui-ux-maker",
+      "label": "UI/UX Maker",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 256
+      }
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 256
+      },
+      "current_task": "RP-008"
+    },
+    {
+      "id": "qa-verifier",
+      "label": "QA / Verifier",
+      "group": "qr",
+      "status": "DONE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 176
+      },
+      "current_task": "QR-000"
+    },
+    {
+      "id": "security-engineer",
+      "label": "Security Engineer",
+      "group": "qr",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 256
+      },
+      "last_activity_ts": "2026-10-19T23:01:00-07:00"
+    },
+    {
+      "id": "devops-release",
+      "label": "DevOps / Release",
+      "group": "qr",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 336
+      }
+    },
+    {
+      "id": "scout",
+      "label": "Scout",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 384
+      }
+    },
+    {
+      "id": "skeptic",
+      "label": "Skeptic",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 384
+      }
+    },
+    {
+      "id": "nomen",
+      "label": "NOMEN",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 384
+      }
+    },
+    {
+      "id": "bug-fixer",
+      "label": "Bug fixer",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 384
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "BD-000",
+      "title": "setup handoff test",
+      "project": "build",
+      "owner": "DEV 1",
+      "status_raw": "DONE (ack received)",
+      "status": "DONE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#BD-000"
+    },
+    {
+      "id": "QR-000",
+      "title": "Q&R handoff test",
+      "project": "qr",
+      "owner": "QA, Security, DevOps",
+      "status_raw": "DONE (all 3 acked)",
+      "status": "DONE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#QR-000"
+    },
+    {
+      "id": "RP-001",
+      "title": "FENCEPOST: repo scaffold (dirs, hash-locked deps, .gitignore, CI lint+unit)",
+      "project": "fencepost",
+      "owner": "DEV 2",
+      "status_raw": "DONE (merged)",
+      "status": "DONE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-001"
+    },
+    {
+      "id": "RP-002",
+      "title": "FENCEPOST: contracts (manifest, result, fault hook)",
+      "project": "fencepost",
+      "owner": "Architect",
+      "status_raw": "PR #2 MERGED as bbdfc44; follow-up RP-002a PR #4 IN_REVIEW (not merged; head 24513dd; CI 39369249291 green, 9:24 PM PDT; run_id UUID pattern + optional invalid_reason; same chat, composer-2.5)",
+      "status": "DONE",
+      "prs": [
+        2,
+        4
+      ],
+      "source_url": "build/task-ledger.md#RP-002"
+    },
+    {
+      "id": "RP-003",
+      "title": "FENCEPOST: compose stack PG17.11/Kafka4.3 KRaft/Connect4.3.1+Dbz3.7.0 & 3.6.3",
+      "project": "fencepost",
+      "owner": "DEV 2",
+      "status_raw": "IN_REVIEW",
+      "status": "IN_REVIEW",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-003"
+    },
+    {
+      "id": "RP-004",
+      "title": "FENCEPOST: workload generator",
+      "project": "fencepost",
+      "owner": "DEV 1",
+      "status_raw": "PLANNED",
+      "status": "IDLE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-004"
+    },
+    {
+      "id": "RP-005",
+      "title": "FENCEPOST: oracle + report",
+      "project": "fencepost",
+      "owner": "DEV 1",
+      "status_raw": "PLANNED",
+      "status": "IDLE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-005"
+    },
+    {
+      "id": "RP-006",
+      "title": "FENCEPOST: fault hook kill Connect after N",
+      "project": "fencepost",
+      "owner": "DEV 2",
+      "status_raw": "PLANNED",
+      "status": "IDLE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-006"
+    },
+    {
+      "id": "RP-007",
+      "title": "FENCEPOST: dbz#2889 repro (2-week checkpoint)",
+      "project": "fencepost",
+      "owner": "DEV 1",
+      "status_raw": "PLANNED",
+      "status": "IDLE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-007"
+    },
+    {
+      "id": "RP-008",
+      "title": "FENCEPOST: README repro steps (after RP-007)",
+      "project": "fencepost",
+      "owner": "Documentation",
+      "status_raw": "PLANNED",
+      "status": "IDLE",
+      "prs": [],
+      "source_url": "build/task-ledger.md#RP-008"
+    }
+  ],
+  "events": [
+    {
+      "id": "3d007b2fc536bbc7255022823901d502f90db82b",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] Shared by BUILD DIVISION and QUALITY & RELEASE. Owner: Director."
+    },
+    {
+      "id": "c903a056858b698692c01b260ccc24f77039d8b9",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] Active coding workers: 0 of 2. Cloud sessions: 0 of 1. Usage: UNKNOWN."
+    },
+    {
+      "id": "3e3f479e688931b235bfa9006c3d163bbd80b895",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": "RP-001",
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] FENCEPOST repo: ManpreetS2/fencepost (approved, CREATED (ManpreetS2/fencepost, private; bootstrap 07eda25)). Sequencing: max 2 active coding workers; RP-001 + RP-002 first, then RP-003/RP-004, then RP-005/RP-006, then RP-007, then RP-008."
+    },
+    {
+      "id": "3718a988859ad0358ff6f7e7e238e1355b4b8e06",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] - UI/UX Maker: approved backup coder and co-lead for DEV 1 and DEV 2. Codes only when a slot is free (2-worker cap) and only on tasks Architect assigns. Specs win over chat direction."
+    },
+    {
+      "id": "1b894a17e814af32ea70b7d748fd2fbadadac84e",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] - Repo ManpreetS2/fencepost created (private, empty), Oct 19 2026."
+    },
+    {
+      "id": "1f19aa8ff1731380db7b23e8d44705f9c7e0fbf8",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] - Models: Composer 2.5 Standard for simple tasks, Grok 4.5 High (non-Fast) for complex ones. Never Fast or Auto."
+    },
+    {
+      "id": "9173570fdd9b72c341a12f351ede41a761beae4e",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] - One Cursor chat per bot per project, kept end to end. Never start a new one."
+    },
+    {
+      "id": "e0a6c897878ea56d7dbb4fb98702c1b03ecf5fe9",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "[undated_or_prose] - UPDATE 8:41 PM PDT (Manpreet): the 2-coder cap covers the developers (DEV 1, DEV 2). UI/UX Maker sits outside the cap as the backup coder for UI work, so at most 3 can code at once."
+    },
+    {
+      "id": "30d7acf12d81b4035a8bafea50574e78a02134ca",
+      "type": "note",
+      "actor": "director",
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:45:00-07:00",
+      "raw": "- 2026-10-19 8:45 PM PDT Director: one-time exception approved. DEV 2 may push a single bootstrap commit to main in ManpreetS2/fencepost (README.md \"# fencepost\" only), because the repo is empty and PRs need a base branch. All later work goes through PRs, with no pushes to main."
+    },
+    {
+      "id": "011ce53799402cf191cf7db7137ca7f752585f36",
+      "type": "note",
+      "actor": "dev-2",
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:49:00-07:00",
+      "raw": "- 2026-10-19 8:49 PM PDT DEV 2 project Cursor chat ID: ec3b93be-26b7-4cd6-8ff5-03dd423dafd2 (resume for all DEV 2 tasks). Bootstrap commit 07eda25 pushed to main (README \"# fencepost\" only)."
+    },
+    {
+      "id": "28b2386d489defb18408e5c556fe1ddf84f76acb",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": "RP-001",
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:49:00-07:00",
+      "raw": "- 2026-10-19 8:49 PM PDT: RP-001 PR #1 is open with CI green. Architect review PASS. DevOps review QR-RP001-DEVOPS is pending. DEV 2 chat ec3b93be-26b7-4cd6-8ff5-03dd423dafd2. Merge is waiting on the owner.",
+      "pr": 1,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "5df91e0d0561c266698fbd2f30cc61dfe82dcad4",
+      "type": "blocker",
+      "actor": "dev-2",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:59:00-07:00",
+      "raw": "- 2026-10-19 8:59 PM PDT DEV 2: RP-003 GO received; MacBook-Pro-2.local unreachable on 4 tries over ~2.5 min (desktop app offline). Nothing started: no branch, no agent call. RP-003 BLOCKED_CONNECTION."
+    },
+    {
+      "id": "9c1aca59052c1fbde0336e6f838e146632529e70",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:58:00-07:00",
+      "raw": "- 2026-10-19 8:58 PM PDT, Architect: AUTHORIZED in writing to run RP-003 on `cursor-grok-4.5-high` (non-fast). This replaces Composer 2.5 for RP-003 because it's a complex Docker and Compose task. If the CLI doesn't have that exact ID, fall back to `composer-2.5`. Never use -fast or auto."
+    },
+    {
+      "id": "3d6c2350bf2000bd2737227cb491ea06f958fe64",
+      "type": "blocker",
+      "actor": "director",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T20:58:00-07:00",
+      "raw": "- 2026-10-19 8:58 PM PDT Director: Written authorization for RP-003 (Compose stack, complex) to run on cursor-grok-4.5-high, never the Fast variant. RP-001 is DONE (squash 06ec61c, Apache-2.0). RP-003 is BLOCKED_CONNECTION: the Mac went offline about 8:55 PM PDT, and the owner was notified."
+    },
+    {
+      "id": "9a52584e06af9941b278fca15a70ddbf479acef0",
+      "type": "blocker",
+      "actor": "dev-2",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:13:00-07:00",
+      "raw": "- 2026-10-19 9:13 PM PDT DEV 2: BLOCKED_CONNECTION cleared; RP-003 IN_PROGRESS on branch feat/RP-003-compose-stack from 06ec61c, model --model cursor-grok-4.5-high, chat ec3b93be-26b7-4cd6-8ff5-03dd423dafd2."
+    },
+    {
+      "id": "abab2ea097fc6e115497d9541084bf870219c3a0",
+      "type": "note",
+      "actor": "dev-2",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:20:00-07:00",
+      "raw": "- 2026-10-19 9:20 PM PDT DEV 2: RP-003 IN_REVIEW, PR #3 (3c32671), model --model cursor-grok-4.5-high, REMOTE_CONTROL. Pushed before 9:45 deadline; no WIP checkpoint needed.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "6466b7e47647cbd6b2222c88ca9b1af3ef85b478",
+      "type": "merged",
+      "actor": "architect",
+      "target": "architect",
+      "task_id": "RP-002",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:20:00-07:00",
+      "raw": "- 2026-10-19 9:20 PM PDT, Architect: RP-002 is DONE and LOCKED. PR #2 was squash-merged as bbdfc44 after Architect and QA (QR-RP002-QA) both passed it. Contracts v1.0.0 are locked; the canonical array name is `transactions` (the `txns` in contracts-plan.md is outdated). QA-RP002-1 (run_id isn't enforced as a UUID) is ACCEPTED LOW: RP-004 generates UUID4 values, and RP-005 validates with a FormatChecker. QA-RP002-2 (extra files) is SIGNED OFF.",
+      "pr": 2,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "bbdfc44"
+    },
+    {
+      "id": "e325332e3d75fa5dc17aba666550401dab0cb1da",
+      "type": "assigned",
+      "actor": "director",
+      "target": "ui-ux-maker",
+      "task_id": "RP-009",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:20:00-07:00",
+      "raw": "- 2026-10-19 9:20 PM PDT Director: RP-009 (run-report spec) is assigned to UI/UX Maker. The deliverable is docs/design/run-report.md in the repo, on its own branch, spec only. RP-003 is IN_REVIEW as PR #3 (3c32671) and needs an independent Q&R cold-start rerun. The 9:50 cloud switch is ON HOLD until the owner decides on billing.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "201734572ebb58b719d51ca7ab3e7ae6d3b8f2ff",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:21:00-07:00",
+      "raw": "- 2026-10-19 9:21 PM PDT, Architect CORRECTION: the canonical array name is `txns` (as in the merged schema and the plan), not `transactions`. RP-004 and RP-005 build against `txns`. QA-RP002-1 is being fixed in RP-002a (UUID pattern), and the contracts lock waits on RP-002a merging."
+    },
+    {
+      "id": "89f83b36dac0839cba5d5cf0ee5144e2c3cc48d2",
+      "type": "note",
+      "actor": "director",
+      "target": null,
+      "task_id": "RP-005D",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:21:00-07:00",
+      "raw": "- 2026-10-19 9:21 PM PDT Director: The run-report spec task ID is RP-005D (Architect). RP-009 is withdrawn. Branch docs/RP-005D-run-report-spec."
+    },
+    {
+      "id": "1761f45e37076facf29239320c986abf733fa1da",
+      "type": "assigned",
+      "actor": "architect",
+      "target": "dev-1",
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:22:00-07:00",
+      "raw": "- 2026-10-19 9:22 PM PDT, Architect: RP-004 is GO for DEV 1 on CLOUD from 9:50 PM, on branch feat/RP-004-workload-generator. AUTHORIZED in writing for cursor-grok-4.5-high (non-fast), because of the seeded determinism and txid/LSN capture."
+    },
+    {
+      "id": "4f8010e7275bf34f2c83ae8da95991337d45521b",
+      "type": "merged",
+      "actor": "architect",
+      "target": "architect",
+      "task_id": "RP-002a",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:25:00-07:00",
+      "raw": "- 2026-10-19 9:25 PM PDT, Architect: RP-002a DONE. PR #4 was squash-merged as c2ac9fe after QA passed it (QR-RP002a-QA). CONTRACTS v1.0.0 are LOCKED at c2ac9fe, and this is the lock SHA. invalid_reason stays optional in the schema, but RP-005 must set it whenever the verdict is INVALID.",
+      "pr": 4,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "c2ac9fe"
+    },
+    {
+      "id": "2b9bd752c2a97a7a1bf38eacc310869f108aead8",
+      "type": "note",
+      "actor": "dev-2",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:33:00-07:00",
+      "raw": "- 2026-10-19 9:33 PM PDT DEV 2: RP-003 PR #3 new head c50cda2 (broker 4.3.1, SEC-RP003-1 random password, Kafka EXTERNAL listener 127.0.0.1:${KAFKA_PORT}, README Limitations). CI run 39370111665 green, 1 run. Stack down -v, Mac clean for QA cold-start rerun. Still LOCAL / REMOTE_CONTROL.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "5be10b6614edb57c08daa7a2ba4e353c274fe900",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:33:00-07:00",
+      "raw": "- 2026-10-19 9:33 PM PDT, Architect: README.md added to RP-003's allowed files (Limitations note). PR #3 head is c50cda2 and is waiting on the QA cold rerun plus the Security/DevOps re-verifies.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "2c59ea29722e377ea4d086ee319c3111a86e77a1",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:35:00-07:00",
+      "raw": "- 2026-10-19 21:35 PDT: CLOUD SWITCH executed early per Manpreet directive. All bots on Cursor Cloud, one cloud chat per bot, composer-2.5 / cursor-grok-4.5-high only (no Fast/Auto). All prior limits retained. 9:50 routine deleted. Verification pending."
+    },
+    {
+      "id": "ad999c4f3697bdcecef5808710723157791a8d4f",
+      "type": "note",
+      "actor": null,
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:36:00-07:00",
+      "raw": "- 2026-10-19 21:36 PDT: Cloud switch VERIFIED. DEV1 bc-9f84dbdb grok-4.5-high (RP-004); UI/UX bc-38cbaa23 composer-2.5 (RP-009); all others idle cloud-ready. QA RP-003 cold rerun stays on Mac (Docker exception)."
+    },
+    {
+      "id": "eab664aaf8f04931637ab29b2dd92fb4e0eb60e3",
+      "type": "merged",
+      "actor": "architect",
+      "target": "architect",
+      "task_id": "RP-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:37:00-07:00",
+      "raw": "- 2026-10-19 9:37 PM PDT, Architect: RP-003 DONE. PR #3 was squash-merged as cedbc2c after Architect, QA (cold start, both profiles, consume from the Mac itself), DevOps and Security all passed it. Backlog: QA-RP003-1 (stack-up.sh falls back to docker --network host when kcat is missing; replace with a consumer on the Mac itself), QA-RP003-2 (INFO), SEC-RP003-3 (least-privilege replication role). RP-006 (DEV 2) is now unblocked.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "cedbc2c"
+    },
+    {
+      "id": "22aae10acd34725b8b1e0c346d9346188d337776",
+      "type": "merged",
+      "actor": "architect",
+      "target": "architect",
+      "task_id": "RP-009",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:39:00-07:00",
+      "raw": "- 2026-10-19 9:39 PM PDT, Architect: RP-009 DONE. PR #5 was squash-merged as 693ebc7 after Architect and QA passed it. Note for RP-005: the spec example's arithmetic is off; the correct relation is event_count = ground_truth - gaps + duplicates (49824 in the example).",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "693ebc7"
+    },
+    {
+      "id": "6d50f5e13bdff167b697667caa6026b43c0962db",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:40:00-07:00",
+      "raw": "- 2026-10-19 9:40 PM PDT, Architect: CORRECTION to the RP-005 count rule, per QA. Phantom events (in Kafka with no ground-truth row) also add to the count: event_count = ground_truth_count - gaps + duplicates + phantoms."
+    },
+    {
+      "id": "84b47e13d1f7691904a7aee11e30fbd0cfb9e6dd",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "RP-006",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:51:00-07:00",
+      "raw": "- 2026-10-19 9:51 PM PDT, Architect: PR #7 (RP-006) at f476f14 has passed Architect review, Security and DevOps, and is waiting on QA's Mac run. Backlog OPS-RP006-1 (LOW): without .venv, stack-up step (f) falls back to python3, which lacks kafka-python and fails with a misleading 'marker not found' error. Fix: pre-check the import and give a clear error. Owner: DEV 2, as a follow-up.",
+      "pr": 7,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "26446fc66f58d8a3a6f2d35fe65872fb1bcfb960",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:58:00-07:00",
+      "raw": "- 2026-10-19 21:58 PDT, Architect: MINDMAP \u00a710 rulings recorded in build/mindmap/architecture.md (gh api read-only, structured notes adopted, one ledger line per handoff)."
+    },
+    {
+      "id": "72d1bc3068ad279a07aeece2d086a326b0d2f83b",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-001",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T21:59:00-07:00",
+      "raw": "- 2026-10-19 21:59 PDT, Architect: MM-001 IN_PROGRESS (schema, types, bots config, fixture), cloud bc-6c5db6e1-a95b-5e8e-abbf-34b1bf7f0965, composer-2.5, branch feat/MM-001-schema. This is Architect's single MINDMAP cloud chat, to be reused for MM-002 through MM-004."
+    },
+    {
+      "id": "06d2b2afc6ef9510c7bc3f0963afd9b3d4b04a35",
+      "type": "verdict",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-001",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:11:00-07:00",
+      "raw": "- 2026-10-19 22:11 PDT, Architect: MM-001 (agent-mindmap PR #1 at 5e8f8b6) is READY_TO_MERGE: Architect, QA and Security all PASS. The merge is blocked because the approval card can't be shown in a group room, so Manpreet's approval in the 1:1 is needed. Backlog SEC-MM001-1 (LOW): hash-lock the Python dev extras.",
+      "pr": 1,
+      "repo": "ManpreetS2/agent-mindmap",
+      "verdict": "PASS"
+    },
+    {
+      "id": "36e71c1d5ee5c172f395ca693fc051c7168bd5a6",
+      "type": "verdict",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-005",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:15:00-07:00",
+      "raw": "- 2026-10-19 22:15 PDT, Architect: MM-005 (agent-mindmap PR #2 at bab0058): DevOps PASS on config. Backlog OPS-MM005-1 (LOW): add 'permissions: contents: read' to web.yml. Before merging, wait for CI to be green plus the QA and Security verdicts.",
+      "pr": 2,
+      "repo": "ManpreetS2/agent-mindmap",
+      "verdict": "PASS"
+    },
+    {
+      "id": "3389bf9dbec6b536454242fd22eb0e613138ad37",
+      "type": "verdict",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-005",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:15:00-07:00",
+      "raw": "- 2026-10-19 22:15 PDT, Architect: MM-005: Security CONDITIONAL (non-blocking), accepted. Backlog SEC-MM005-1 (MEDIUM), owner UI/UX Maker, to be done right after MM-005 merges: upgrade dev tooling to vite 8 and vitest 4 (current versions have high/critical npm audit findings, dev-only, mitigated by the 127.0.0.1 bind).",
+      "verdict": "CONDITIONAL"
+    },
+    {
+      "id": "f4991c60dabaa96309ca47701933ef1cbe7700a7",
+      "type": "verdict",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-005",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:20:00-07:00",
+      "raw": "- 2026-10-19 22:20 PDT, Architect: MM-005 (agent-mindmap PR #2 at 0e5a60e) has passed Architect, QA, Security (CONDITIONAL) and DevOps, and CI is green. It is READY_TO_MERGE once PR #1 merges (it's stacked on PR #1 and needs Manpreet's approval). AC3 clarified to allow the unsourced tag.",
+      "pr": 2,
+      "repo": "ManpreetS2/agent-mindmap",
+      "verdict": "CONDITIONAL"
+    },
+    {
+      "id": "01a45c49409f5b4bfbaa1ed4fe26343fe20f23c4",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-002",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:47:00-07:00",
+      "raw": "- 2026-10-19 22:47 PDT, Architect: MM-002 IN_PROGRESS (ledger parser) on cloud bc-6c5db6e1, grok-4.5 (effort high, fast off; the id 'cursor-grok-4.5-high' doesn't exist), branch feat/MM-002-ledger-parser. MM-003 and MM-004 follow in sequence."
+    },
+    {
+      "id": "8c0946e995d4e4683fe0f6f6221b42ebd82a76d7",
+      "type": "merged",
+      "actor": "director",
+      "target": "director",
+      "task_id": "MM-001",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:47:00-07:00",
+      "raw": "- 2026-10-19 22:47 PDT, Director: MM-001 DONE, agent-mindmap PR #1 merged as 0c0dd6e.",
+      "pr": 1,
+      "repo": "ManpreetS2/agent-mindmap",
+      "sha": "0c0dd6e"
+    },
+    {
+      "id": "606902815cb7b1b6fffe294a7e159b74fbf7d5ee",
+      "type": "note",
+      "actor": "architect",
+      "target": null,
+      "task_id": "MM-006",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:50:00-07:00",
+      "raw": "- 2026-10-19 22:50 PDT, Architect: MM-006 PR #3 462e68d CHANGES_REQUESTED (ARCH-MM006-1 MEDIUM: role=img wraps interactive controls; ARCH-MM006-2/3 LOW: lane-label title, marker aria-label). Owner UI/UX Maker. Reviews: QA only.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "2f46c545a6fcd2fdca4be324dc143546d0b9aa6b",
+      "type": "handoff",
+      "actor": "architect",
+      "target": "qa-verifier",
+      "task_id": "MM-002",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:52:00-07:00",
+      "raw": "- 2026-10-19 22:52 PDT | Architect | handoff | MM-002 | IN_REVIEW PR #4 14b5831 -> QA. MM-003 started in bc-6c5db6e1.",
+      "pr": 4,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "580887266b43445347dd16e8707edb60ec982fc1",
+      "type": "verdict",
+      "actor": "architect",
+      "target": "security-engineer",
+      "task_id": "MM-006",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:56:00-07:00",
+      "raw": "- 2026-10-19 22:56 PDT | Architect | verdict | MM-006 | PR #3 3de7d9a: ARCH-MM006-1..3 fixed; BLOCKED on base/rebase/CI. MM-007 PR #5 48a2f11 CHANGES_REQUESTED: ARCH-MM007-2 MEDIUM keyboard nav, -3 MEDIUM unsourced task link, -4 MEDIUM edges table, -5..7 LOW; -1 new devDeps -> Security. Owner UI/UX Maker.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "24774f957f97322e90ccc3d78c4dd5ae7c9da451",
+      "type": "verdict",
+      "actor": "security-engineer",
+      "target": null,
+      "task_id": "MM-007",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T22:55:00-07:00",
+      "raw": "- 2026-10-19 22:55 PDT | Security Engineer | verdict | MM-007 | PR #5 48a2f11 SEC PASS (devDeps vetted).",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "verdict": "PASS"
+    },
+    {
+      "id": "afeeae43b5213c2ca55f72369bf4e4b4059baada",
+      "type": "verdict",
+      "actor": "architect",
+      "target": "qa-verifier",
+      "task_id": "MM-006",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T23:00:00-07:00",
+      "raw": "- 2026-10-19 23:00 PDT | Architect | verdict | MM-006/MM-007 | PR #3 19e7a88 PASS; PR #5 1f2100b PASS (ARCH-MM007-8 LOW: tighten Tab-order test, follow-up). -> QA.",
+      "pr": 3,
+      "repo": "ManpreetS2/fencepost",
+      "verdict": "PASS"
+    },
+    {
+      "id": "1f9f6487183569f1ae4c63daa078580955c81a9d",
+      "type": "handoff",
+      "actor": "architect",
+      "target": "qa-verifier",
+      "task_id": "MM-002",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T23:01:00-07:00",
+      "raw": "- 2026-10-19 23:01 PDT | Architect | handoff | MM-002/MM-003 | PR #4 031a242 fixes -> QA retest; MM-003 PR #6 8ee2c1c -> QA + Security. MM-004 waits for #4/#6 merge.",
+      "pr": 4,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "68c98358142bae0abc3d94d77d7de68ca92131ea",
+      "type": "verdict",
+      "actor": "security-engineer",
+      "target": null,
+      "task_id": "MM-003",
+      "attribution": {
+        "method": "ledger_owner"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "2026-10-19T23:01:00-07:00",
+      "raw": "- 2026-10-19 23:01 PDT | Security Engineer | verdict | MM-003 | PR #6 8ee2c1c SEC PASS; MM-007 PR #5 SEC PASS carried to 1f2100b.",
+      "pr": 6,
+      "repo": "ManpreetS2/fencepost",
+      "verdict": "PASS"
+    }
+  ],
+  "edges": [
+    {
+      "id": "79d71b6109a61ad98f94012d45210c5b377083b0",
+      "source": "architect",
+      "target": "dev-1",
+      "type": "handoff",
+      "count": 1,
+      "event_ids": [
+        "1761f45e37076facf29239320c986abf733fa1da"
+      ]
+    },
+    {
+      "id": "ba411f1c4349d0d848a6876dfb7276c8c7a2974f",
+      "source": "architect",
+      "target": "qa-verifier",
+      "type": "handoff",
+      "count": 2,
+      "event_ids": [
+        "2f46c545a6fcd2fdca4be324dc143546d0b9aa6b",
+        "1f9f6487183569f1ae4c63daa078580955c81a9d"
+      ]
+    },
+    {
+      "id": "7d67a3b4c2b27c662900f7e9a5e9af2441c4aba3",
+      "source": "director",
+      "target": "ui-ux-maker",
+      "type": "handoff",
+      "count": 1,
+      "event_ids": [
+        "e325332e3d75fa5dc17aba666550401dab0cb1da"
+      ]
+    }
+  ],
+  "unparsed": [
+    {
+      "id": "6267830c9757883b70afe93ae278a619ba44c8c7",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "Shared by BUILD DIVISION and QUALITY & RELEASE. Owner: Director."
+    },
+    {
+      "id": "ab1ecaa8428a6f37fe696966ac5d45a475457ee5",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "Active coding workers: 0 of 2. Cloud sessions: 0 of 1. Usage: UNKNOWN."
+    },
+    {
+      "id": "91d7d6ec9fa5c688ff2c004573975c59c850a473",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": "RP-001",
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "FENCEPOST repo: ManpreetS2/fencepost (approved, CREATED (ManpreetS2/fencepost, private; bootstrap 07eda25)). Sequencing: max 2 active coding workers; RP-001 + RP-002 first, then RP-003/RP-004, then RP-005/RP-006, then RP-007, then RP-008."
+    },
+    {
+      "id": "09bd1c32b85496914ed5e2a0b603abd26b0aa0ff",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "- UI/UX Maker: approved backup coder and co-lead for DEV 1 and DEV 2. Codes only when a slot is free (2-worker cap) and only on tasks Architect assigns. Specs win over chat direction."
+    },
+    {
+      "id": "babf721829c8c7ec80ae1c7ad11086dbd35cbf50",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "- Repo ManpreetS2/fencepost created (private, empty), Oct 19 2026."
+    },
+    {
+      "id": "5b3e7489b577901bdb755d98707f1b044ca655f3",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "- Models: Composer 2.5 Standard for simple tasks, Grok 4.5 High (non-Fast) for complex ones. Never Fast or Auto."
+    },
+    {
+      "id": "427253e6626589d2c7fd8f3c06128a565e9edb5d",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "- One Cursor chat per bot per project, kept end to end. Never start a new one."
+    },
+    {
+      "id": "6348eaf7c7c94ebb61000dd487dc6d2e03a735c8",
+      "type": "unparsed",
+      "actor": null,
+      "target": null,
+      "task_id": null,
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "build/task-ledger.md",
+      "source_time": "1970-01-01T00:00:00-08:00",
+      "raw": "- UPDATE 8:41 PM PDT (Manpreet): the 2-coder cap covers the developers (DEV 1, DEV 2). UI/UX Maker sits outside the cap as the backup coder for UI work, so at most 3 can code at once."
+    }
+  ]
+}

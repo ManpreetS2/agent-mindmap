@@ -1,0 +1,1 @@
+architecture file build/mindmap/architecture.md not in repo; AC from PR #14 body/comments + README hard constraints + prior QA notes

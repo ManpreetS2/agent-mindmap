@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: /tmp/qa-mm012-checkout
+configfile: pyproject.toml
+collected 14 items / 10 deselected / 4 selected
+
+tests/test_build.py ....                                                 [100%]
+
+======================= 4 passed, 10 deselected in 0.05s =======================
+.                                                                        [100%]
+1 passed, 68 deselected in 0.06s

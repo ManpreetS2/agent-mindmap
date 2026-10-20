@@ -1,0 +1,13 @@
+
+ RUN  v2.1.9 /tmp/qa-mm012-checkout/web
+
+ ✓ src/test/activityDiff.test.ts (4 tests) 4ms
+ ✓ src/test/graphLayout.test.ts (2 tests) 4ms
+ ✓ src/test/activityTransport.test.ts (2 tests) 6ms
+ ✓ src/test/timelineBrush.test.ts (3 tests) 2ms
+
+ Test Files  4 passed (4)
+      Tests  11 passed (11)
+   Start at  08:05:07
+   Duration  1.17s (transform 132ms, setup 420ms, collect 174ms, tests 15ms, environment 1.15s, prepare 175ms)
+

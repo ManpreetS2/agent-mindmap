@@ -1,0 +1,43 @@
+[PASS] UI loads demo activity (graph+timeline+legend) — graph=1 timeline=1 legend=1
+[PASS] MiniMap present
+[PASS] Timeline brush present
+[FAIL] Timeline now-line present
+[PASS] Timeline zoom toolbar present
+[PASS] Drag handle exists (hover-only CSS)
+[PASS] Edge legend top-right of graph — legend=(1148,109) mid=(720,345)
+[FAIL] List view toggle — button not found
+[PASS] Keyboard focus reaches skip link on first Tab — {"tag":"A","className":"skip-link","text":"Skip to main content","href":"#main-content"}
+[PASS] Detail panel opens on node click
+[PASS] Contrast spot-check .status-pill — ratio=9.28 fg=rgb(240, 242, 245) bg=rgb(58, 64, 76)
+[PASS] Contrast spot-check body — ratio=15.90 fg=rgb(232, 236, 241) bg=rgb(15, 17, 23)
+[PASS] No console errors on demo load
+[PASS] Known widened verdicts render (COND/BLK/INC) — cond=true blk=true inc=true crashed=false
+[PASS] Unknown verdict tokens fall back to VER — ver=true
+[PASS] Empty activity.json renders gracefully — Skip to main content
+MINDMAPProject: Fencepost
+List view
+Handoffs 0
+Updated Oct 20, 4:58 AM PDT
+Source: ledger + GitHub 
+[FAIL] Missing activity.json shows error UI — Unexpected token '<', "<!doctype "... is not valid JSON
+Retry
+[FINDING:high] loadActivity / LedgerErrorView: Unexpected token '<', "<!doctype "... is not valid JSON
+Retry
+[PASS] Malformed activity.json shows error (no silent success) — alert=true pretendOk=false text=Skip to main content
+Expected property name or '}' in JSON at position 1 (line 1 column 2)
+Retry
+[PASS] Fixture state partial-skipped renders
+[PASS] Fixture state partial-error renders
+[PASS] Fixture state unparsed renders
+[PASS] Debug drawer toggle present (unparsed)
+[PASS] Fixture state stale renders
+[PASS] XSS payload from fixture text does not execute — xssFlag=false scripts=0 imgOnerror=0 escapedVisible=true
+[PASS] No self-loop edges in demo + sample fixtures — []
+[PASS] UI tolerates injected self-loop edge without crash
+[PASS] PR-related events carry repo identity (repo field or github URL) — prEvents=4 withRepo=4
+[PASS] No automatic outbound network beyond localhost on load —  (agent_link_anchors=0)
+[PASS] A11y labels present (skip/graph/timeline/legend) — {"skip":true,"graph":true,"timeline":true,"legend":true,"filters":true}
+
+=== SUMMARY ===
+PASS 26 FAIL 3 WARN 0
+Findings: 1
