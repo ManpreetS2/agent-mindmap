@@ -29,8 +29,8 @@
     },
     "project": {
       "type": "string",
-      "enum": ["fencepost", "agent-mindmap"],
-      "description": "MM-020-P0: live builds use resolve_project_name() (typically agent-mindmap); demo fixtures may still use fencepost"
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "description": "MM-020-P0: live builds use resolve_project_name(); demo fixtures may use fencepost"
     },
     "meta": {
       "type": "object",
@@ -63,6 +63,11 @@
           "type": "string",
           "enum": ["demo", "live"],
           "description": "MM-020i: server mode when snapshot was produced (demo fixtures vs live ingest)"
+        },
+        "project": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$",
+          "description": "MM-020-P0: same as top-level project; UI reads meta.project first"
         }
       }
     },

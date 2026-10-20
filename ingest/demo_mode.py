@@ -61,12 +61,14 @@ def empty_live_activity_bytes(
     nodes = build_nodes(bots, [], [])
     for node in nodes:
         node["status"] = "UNKNOWN"
+    project = resolve_project_name()
     doc = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": resolve_project_name(),
+        "project": project,
         "meta": {
             "mode": "live",
+            "project": project,
             "github": meta_github,
             "ledger": meta_ledger,
             "ledger_last_entry_at": None,

@@ -135,6 +135,14 @@ def test_gh_ledger_error_sets_meta_ledger_error(tmp_path: Path) -> None:
     assert result.meta_ledger == "error"
     assert result.text is None
 
+
+def test_gh_ledger_404_is_not_found(tmp_path: Path) -> None:
+    runner = LedgerMockGh(status=404, body="not found")
+    result = fetch_ledger_from_gh(cache_dir=tmp_path / "cache", runner=runner)
+    assert result.meta_ledger == "not_found"
+    assert result.status == 404
+    assert result.text is None
+
     # build.py error path: activity still written with meta.ledger=error
     from ingest.build import main
 

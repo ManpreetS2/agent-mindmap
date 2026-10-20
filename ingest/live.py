@@ -287,6 +287,9 @@ class NetworkEventLog:
         eid = evt.get("id")
         if not isinstance(eid, str) or not eid.strip():
             return None
+        ts = evt.get("ts")
+        if not isinstance(ts, str) or not ts.strip():
+            return None
         if "summary" not in evt:
             return None
         safe_summary = sanitize_pr_summary(str(evt.get("summary") or ""))
@@ -386,6 +389,9 @@ def network_event_to_activity_event(
     summary = ne.get("summary")
     if not isinstance(summary, str) or not summary.strip():
         return None
+    ts = ne.get("ts")
+    if not isinstance(ts, str) or not ts.strip():
+        return None
     actor = resolve_network_sender(ne, bots=bots)
     prov = ne.get("provenance")
     if prov not in {"observed", "agent-reported", "github-verified"}:
@@ -404,7 +410,7 @@ def network_event_to_activity_event(
         "task_id": ne.get("task_id"),
         "attribution": {"method": attribution_method},
         "source_url": "live:network-events",
-        "source_time": str(ne.get("ts") or "1970-01-01T00:00:00Z"),
+        "source_time": ts.strip(),
         "raw": summary,
         "provenance": prov,
     }
@@ -452,12 +458,14 @@ def assemble_activity(
         bots, ledger.tasks, events, membership=membership_index()
     )
     gh_status = meta_github if meta_github is not None else gh.meta_github
+    project = resolve_project_name()
     activity = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": resolve_project_name(),
+        "project": project,
         "meta": {
             "mode": "live",
+            "project": project,
             "github": gh_status,
             "ledger": meta_ledger,
             "ledger_last_entry_at": ledger_last_entry_at(ledger),
@@ -506,6 +514,7 @@ class LiveDaemon:
     _ledger_error: str | None = field(default=None, init=False)
     _last_refresh_at: float = field(default=0.0, init=False)
     _refresh_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _refresh_pending: threading.Event = field(default_factory=threading.Event, init=False)
     _gh_fp: str | None = field(default=None, init=False)
     _gh: GitHubPollResult | None = field(default=None, init=False)
     _last_good_gh: GitHubPollResult | None = field(default=None, init=False)
@@ -647,11 +656,13 @@ class LiveDaemon:
     def _poll_ledger_from_path(self, now: str) -> bool:
         path = self.ledger_path
         if path is None or not path.is_file():
-            self._append_error(f"ledger not found: {path}")
+            msg = f"ledger not found: {path}"
+            self._append_error(msg)
             with self._lock:
                 self._health.last_ledger_poll = now
                 self._health.ledger_status = "unavailable"
                 self._meta_ledger = "unavailable"
+                self._ledger_error = msg
             return False
         try:
             fp = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -661,11 +672,13 @@ class LiveDaemon:
                 bots=self.bots,
             )
         except OSError as exc:
-            self._append_error(f"ledger read failed: {type(exc).__name__}")
+            msg = f"ledger read failed: {type(exc).__name__}"
+            self._append_error(msg)
             with self._lock:
                 self._health.last_ledger_poll = now
                 self._health.ledger_status = "error"
                 self._meta_ledger = "error"
+                self._ledger_error = msg
             return False
 
         changed = fp != self._ledger_fp
@@ -674,6 +687,7 @@ class LiveDaemon:
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
             self._health.ledger_status = "ok"
             self._meta_ledger = "ok"
+            self._ledger_error = None
             if changed:
                 self._ledger_fp = fp
                 self._ledger = parsed
@@ -690,24 +704,33 @@ class LiveDaemon:
         if fetched.meta_ledger != "ok" or fetched.text is None:
             for err in fetched.errors:
                 self._append_error(err)
-            status = "unavailable"
-            joined = " ".join(fetched.errors).lower()
-            if "404" in joined or "not found" in joined:
+            if fetched.meta_ledger == "not_found":
                 status = "unavailable"
+                ledger_error = (
+                    fetched.errors[0]
+                    if fetched.errors
+                    else "ledger not found at data/ledger"
+                )
                 self._append_error(
                     "ledger unavailable: data/ledger branch or ledger.md missing (MM-010)"
                 )
             elif fetched.meta_ledger == "error":
                 status = "error"
+                ledger_error = (
+                    fetched.errors[0] if fetched.errors else "ledger fetch failed"
+                )
                 self._append_error("ledger fetch failed")
-            with self._lock:
-                self._health.ledger_status = status
-                self._meta_ledger = status
-                self._ledger_error = (
+            else:
+                status = "unavailable"
+                ledger_error = (
                     fetched.errors[0]
                     if fetched.errors
                     else "ledger unavailable (MM-010)"
                 )
+            with self._lock:
+                self._health.ledger_status = status
+                self._meta_ledger = status
+                self._ledger_error = ledger_error
             return False
 
         fp = _fingerprint_text(fetched.text)
@@ -803,7 +826,15 @@ class LiveDaemon:
         """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
         if self.demo_mode:
             return []
-        return self._event_log.append_many(events)
+        accepted: list[dict[str, Any]] = []
+        for evt in events:
+            ts = evt.get("ts")
+            if not isinstance(ts, str) or not ts.strip():
+                eid = evt.get("id") if isinstance(evt.get("id"), str) else "?"
+                self._append_error(f"network event {eid}: missing ts")
+                continue
+            accepted.append(evt)
+        return self._event_log.append_many(accepted)
 
     def network_events_after(self, last_id: str | None) -> list[dict[str, Any]]:
         return self._event_log.events_after(last_id)
@@ -847,9 +878,13 @@ class LiveDaemon:
         ):
             self.maybe_rebuild()
 
+    def refresh_pending(self) -> bool:
+        """True when a queued POST /refresh is waiting on the poll thread."""
+        return self._refresh_pending.is_set()
+
     def try_refresh(self) -> tuple[bool, str, float]:
         """
-        MM-020-P0: manual poll + forced rebuild (POST /refresh).
+        MM-020-P0: queue poll + forced rebuild on the poll thread (POST /refresh).
 
         Returns (ok, reason, retry_after_s). reason is ``rate_limited`` when throttled.
         """
@@ -862,9 +897,18 @@ class LiveDaemon:
                 retry = max(1.0, REFRESH_MIN_INTERVAL_SEC - elapsed)
                 return False, "rate_limited", retry
             self._last_refresh_at = now
+        self._refresh_pending.set()
+        return True, "", 0.0
+
+    def _drain_refresh_wake(self) -> None:
+        self._refresh_pending.clear()
+        while self._refresh_pending.is_set():
+            self._refresh_pending.clear()
+
+    def _run_refresh_cycle(self) -> None:
+        """Poll-thread only: full poll cycle + forced rebuild."""
         self.run_poll_cycle()
         self.maybe_rebuild(force=True)
-        return True, "", 0.0
 
     def start_polling(self) -> None:
         if self.demo_mode:
@@ -901,14 +945,28 @@ class LiveDaemon:
                     max(0.0, next_events - self.clock()),
                     1.0,
                 )
-                if self._stop.wait(timeout=wait):
+                deadline = self.clock() + wait
+                woke_refresh = False
+                while not self._stop.is_set():
+                    remaining = deadline - self.clock()
+                    if remaining <= 0:
+                        break
+                    if self._refresh_pending.wait(timeout=remaining):
+                        woke_refresh = True
+                        break
+                if self._stop.is_set():
                     break
+                if woke_refresh:
+                    self._drain_refresh_wake()
+                    self._run_refresh_cycle()
+                    continue
 
         self._poll_thread = threading.Thread(target=loop, name="mindmap-poll", daemon=True)
         self._poll_thread.start()
 
     def stop_polling(self) -> None:
         self._stop.set()
+        self._refresh_pending.set()
         if self._poll_thread:
             self._poll_thread.join(timeout=5.0)
 

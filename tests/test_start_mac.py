@@ -183,6 +183,12 @@ def test_plist_invokes_start_mac_script() -> None:
     assert "ThrottleInterval" in text
 
 
+def test_start_mac_web_dist_checks_shared_and_tsconfig() -> None:
+    text = START_MAC.read_text(encoding="utf-8")
+    assert 'REPO_ROOT/shared' in text
+    assert "tsconfig" in text
+
+
 def test_start_mac_uses_hash_locked_venv_install() -> None:
     text = START_MAC.read_text(encoding="utf-8")
     assert "--require-hashes" in text

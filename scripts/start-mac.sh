@@ -116,7 +116,15 @@ web_sources_newer_than_dist() {
   if find "$REPO_ROOT/web/src" -type f -newer "$dist" -print -quit 2>/dev/null | grep -q .; then
     return 0
   fi
+  if find "$REPO_ROOT/shared" -type f -newer "$dist" -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
   for f in "$REPO_ROOT/web/index.html" "$REPO_ROOT/web/vite.config.ts" "$REPO_ROOT/web/package.json" "$REPO_ROOT/web/package-lock.json"; do
+    if [[ -f "$f" && "$f" -nt "$dist" ]]; then
+      return 0
+    fi
+  done
+  for f in "$REPO_ROOT"/web/tsconfig*.json; do
     if [[ -f "$f" && "$f" -nt "$dist" ]]; then
       return 0
     fi

@@ -163,6 +163,8 @@ export type LedgerMetaStatus = "ok" | "error" | "skipped" | "unavailable";
 
 export interface ActivityMeta {
   github: GitHubMetaStatus;
+  /** MM-020-P0: preferred project label for UI (matches top-level project). */
+  project?: string;
   /** Present when ingest reports ledger read status (MM-010). */
   ledger?: LedgerMetaStatus;
   /** Latest dated ledger entry; preferred for the stale banner (MM-010). */
@@ -179,7 +181,7 @@ export type ActivitySchemaVersion = "1.0.0" | "1.1.0";
 export interface Activity {
   schema_version: ActivitySchemaVersion;
   generated_at: string;
-  project: "fencepost" | "agent-mindmap";
+  project: string;
   meta: ActivityMeta;
   nodes: Node[];
   tasks: Task[];

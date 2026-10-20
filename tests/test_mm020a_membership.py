@@ -124,7 +124,8 @@ def test_qa_mm020a_2_unknown_members_parked_not_indexed() -> None:
     assert "parking" in warn.getvalue().lower() or "QA-MM020a-2" in warn.getvalue()
 
 
-def test_message_edge_untargeted_is_sender_to_group() -> None:
+def test_message_edge_untargeted_group_only_has_no_edge() -> None:
+    """MM-020-P0: message edges require explicit recipients (no group fallback)."""
     events = [
         {
             "id": "msg-1",
@@ -140,11 +141,7 @@ def test_message_edge_untargeted_is_sender_to_group() -> None:
             "provenance": "agent-reported",
         }
     ]
-    edges = derive_edges(events)
-    assert len(edges) == 1
-    assert edges[0]["type"] == "message"
-    assert edges[0]["source"] == "director"
-    assert edges[0]["target"] == group_target_id("build")
+    assert derive_edges(events) == []
 
 
 def test_message_edge_explicit_recipients_only() -> None:

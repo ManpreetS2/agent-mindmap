@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -35,30 +37,52 @@ SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
 DEFAULT_OUT = ROOT / "web" / "public" / "activity.json"
 DEFAULT_BOTS = ROOT / "config" / "bots.json"
 
+# Keep in sync with schema/activity.schema.json ``project`` / ``meta.project``.
+PROJECT_NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+
+
+def _default_project_slug(
+    *,
+    repo_root: Path | None = None,
+) -> str:
+    try:
+        from .ledger_fetch import LEDGER_REPO
+
+        slug = LEDGER_REPO.rsplit("/", 1)[-1].strip()
+        if slug and PROJECT_NAME_RE.match(slug):
+            return slug
+    except Exception:  # noqa: BLE001
+        pass
+    root = repo_root if repo_root is not None else ROOT
+    name = root.resolve().name.strip().lower()
+    if name and PROJECT_NAME_RE.match(name) and name not in {
+        "workspace",
+        "repo",
+        "src",
+        "app",
+        ".",
+    }:
+        return name
+    return "agent-mindmap"
+
 
 def resolve_project_name(
     *,
     repo_root: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> str:
-    """MM-020-P0: app name from env or configured GitHub repo slug (not fencepost)."""
+    """MM-020-P0: app name from env or repo slug; invalid overrides fall back."""
     environ = env if env is not None else os.environ
     override = (environ.get("MINDMAP_PROJECT") or "").strip()
     if override:
-        return override
-    try:
-        from .ledger_fetch import LEDGER_REPO
-
-        slug = LEDGER_REPO.rsplit("/", 1)[-1].strip()
-        if slug:
-            return slug
-    except Exception:  # noqa: BLE001
-        pass
-    root = repo_root if repo_root is not None else ROOT
-    name = root.resolve().name.strip()
-    if name and name.lower() not in {"workspace", "repo", "src", "app", "."}:
-        return name
-    return "agent-mindmap"
+        if PROJECT_NAME_RE.match(override):
+            return override
+        logging.warning(
+            "MINDMAP_PROJECT=%r invalid (must match %s); using default",
+            override,
+            PROJECT_NAME_RE.pattern,
+        )
+    return _default_project_slug(repo_root=repo_root)
 
 
 def _load_schema() -> dict[str, Any]:
@@ -209,16 +233,18 @@ def build_activity(
     nodes = build_nodes(bot_list, ledger.tasks, events)
     ts = generated_at or datetime.now(timezone.utc).isoformat()
 
+    project = resolve_project_name()
     meta: dict[str, Any] = {
         "github": gh.meta_github,
         "ledger": meta_ledger,
         "ledger_last_entry_at": ledger_last_entry_at(ledger),
+        "project": project,
     }
 
     activity = {
         "schema_version": "1.1.0",
         "generated_at": ts,
-        "project": resolve_project_name(),
+        "project": project,
         "meta": meta,
         "nodes": nodes,
         "tasks": ledger.tasks,
@@ -300,6 +326,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.ledger_source == "gh":
         fetched: LedgerFetchResult = fetch_ledger_from_gh(cache_dir=args.cache_dir)
         meta_ledger = fetched.meta_ledger
+        if meta_ledger == "not_found":
+            meta_ledger = "unavailable"
         ledger_url = LEDGER_SOURCE_URL
         if fetched.text is None:
             # Ledger error: still emit a snapshot if we can skip (empty ledger)
