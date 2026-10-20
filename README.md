@@ -183,10 +183,10 @@ python3 tools/ledger_mirror.py \
 
 Reasons: `unchanged` | `no_state_change` | `under_180s` | `state_change` | `force` | `marked` | `secret_detected`.
 
-**SEC-MM010-1:** before any flush, the payload is scanned with the same
-`_looks_like_secret` helper used by the GitHub poller. A match refuses the flush
-(`reason: secret_detected`, **line numbers only** — never the matched text),
-leaves the state file untouched, and **`--force` cannot bypass** it.
+**SEC-MM010-1 / SEC-MM020c-2:** before any flush, the payload is scanned with
+`tools.secret_scan.looks_like_secret` (shared denylist). A match refuses the
+flush (`reason: secret_detected`, **line numbers only** — never the matched
+text), leaves the state file untouched, and **`--force` cannot bypass** it.
 
 ### Ingest side
 
@@ -194,6 +194,41 @@ leaves the state file untouched, and **`--force` cannot bypass** it.
 - `--ledger-source gh` — mirrored `ledger.md` @ `data/ledger` via `gh api`
 - `activity.json` `meta.ledger`: `ok` | `error` | `skipped`
 - `meta.ledger_last_entry_at` — latest dated ledger entry (UI stale banner)
+
+---
+
+## Events mirror contract (MM-020c)
+
+Shared box JSONL of sanitized `NetworkEvent` lines (see `docs/MM-020-audit.md` §6.1)
+is mirrored as one overwritten `events.jsonl` on branch **`data/events`**
+(**never `main`**), with **7-day retention**, dedupe by `id`, and the same
+flush / SEC-MM010-1 secret rules as MM-010.
+
+### Flush helper (`tools/events_mirror.py`, stdlib only)
+
+```bash
+python3 tools/events_mirror.py \
+  --events /workspace/events.jsonl \
+  --state /path/to/events-mirror-state.json \
+  --payload /tmp/events.jsonl
+
+# → JSON: {"flush": bool, "sha256": "...", "reason": "...", "payload": "...?"}
+#
+# Invalid lines are dropped with a warning. Path default: MINDMAP_EVENTS or
+# /workspace/events.jsonl.
+
+# After a successful push to data/events:
+python3 tools/events_mirror.py \
+  --mark-flushed <sha256> \
+  --state /path/to/events-mirror-state.json \
+  --events /workspace/events.jsonl
+```
+
+### Mac fetch (`ingest/events_fetch.py`)
+
+Allowlisted read-only `gh api` contents fetch of `events.jsonl` @ `data/events`
+(ETag / sha cache). Missing branch → empty list. Entry point for the live
+daemon: `fetch_events_from_gh(repo, branch="data/events") -> list[dict]`.
 
 ---
 
@@ -208,7 +243,8 @@ npm run typecheck && cd web && npm run typecheck
 ```
 
 MM-008 integration: `tests/test_integration.py`.  
-MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.
+MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.  
+MM-020c: `tests/test_events_mirror.py`, `tests/test_events_fetch.py`.
 
 ---
 
