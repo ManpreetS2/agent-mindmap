@@ -1,5 +1,12 @@
 # QA Report — MM-020a / PR #16
 
+> **Delta re-verify @ `82f2066`:** **PASS** — see [`DELTA_REPORT.md`](DELTA_REPORT.md) and [`logs/82f20667ea2a2336701ed549a7caaa77fc0c2249/DELTA_REPORT.md`](logs/82f20667ea2a2336701ed549a7caaa77fc0c2249/DELTA_REPORT.md).  
+> Prior FAIL at `b1fe594` remains below as historical baseline.
+
+---
+
+# QA Report — MM-020a / PR #16 (baseline FAIL @ b1fe594)
+
 | Field | Value |
 |-------|-------|
 | **Verdict** | **FAIL** |

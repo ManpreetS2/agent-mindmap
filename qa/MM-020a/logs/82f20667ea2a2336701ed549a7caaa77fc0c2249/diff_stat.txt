@@ -1,0 +1,19 @@
+ ingest/build.py                     |   5 +-
+ ingest/live.py                      |   4 +-
+ ingest/membership.py                |  88 +++++++++++++++++--
+ ingest/migrate.py                   |  83 +++++++++++++++--
+ schema/activity.schema.json         |  34 ++++++-
+ shared/types.ts                     |   8 +-
+ tests/test_mm020a_membership.py     | 171 +++++++++++++++++++++++++++++++++++-
+ web/src/test/A11y.test.tsx          |   2 +-
+ web/src/test/DetailPanel.test.tsx   |   3 +
+ web/src/test/GraphView.test.tsx     |   2 +-
+ web/src/test/KeyboardNav.test.tsx   |   2 +-
+ web/src/test/States.test.tsx        |  16 ++--
+ web/src/test/Timeline.test.tsx      |   2 +-
+ web/src/test/UnparsedPanel.test.tsx |   1 +
+ web/src/test/activityDiff.test.ts   |   2 +
+ web/src/test/eventGlyph.test.ts     |   1 +
+ web/src/test/eventTime.test.ts      |   3 +-
+ web/src/test/graphLayout.test.ts    |   2 +-
+ 18 files changed, 392 insertions(+), 37 deletions(-)

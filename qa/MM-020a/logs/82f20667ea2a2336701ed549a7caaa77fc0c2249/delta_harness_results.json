@@ -1,0 +1,158 @@
+[
+  {
+    "check": "QA-MM020a-1.dedupe_within_and_across_groups",
+    "ok": true,
+    "detail": "director=['build', 'qr', 'radar'] architect=['build', 'qr', 'radar']",
+    "actual": {
+      "director": [
+        "build",
+        "qr",
+        "radar"
+      ],
+      "architect": [
+        "build",
+        "qr",
+        "radar"
+      ]
+    }
+  },
+  {
+    "check": "QA-MM020a-2.unknown_parked_with_warning",
+    "ok": true,
+    "detail": "unknown=[{'bot_id': 'ghost-bot', 'group_id': 'build'}, {'bot_id': 'ghost-bot', 'group_id': 'qr'}]; warn=\"warning: groups.json member 'ghost-bot' in group 'build' is not in bots.json; parking (QA-MM020a-2)\\nwarning: groups.json member 'ghost-bot' in group 'qr' is not in bots.json; parking (QA-MM020a-2)\"; index={'director': ['build', 'qr'], 'architect': ['build']}",
+    "actual": {
+      "unknown": [
+        {
+          "bot_id": "ghost-bot",
+          "group_id": "build"
+        },
+        {
+          "bot_id": "ghost-bot",
+          "group_id": "qr"
+        }
+      ],
+      "warn": "warning: groups.json member 'ghost-bot' in group 'build' is not in bots.json; parking (QA-MM020a-2)\nwarning: groups.json member 'ghost-bot' in group 'qr' is not in bots.json; parking (QA-MM020a-2)\n",
+      "index": {
+        "director": [
+          "build",
+          "qr"
+        ],
+        "architect": [
+          "build"
+        ]
+      }
+    }
+  },
+  {
+    "check": "provenance.1_1_missing_rejected",
+    "ok": true,
+    "detail": "'provenance' is a required property"
+  },
+  {
+    "check": "provenance.1_1_invalid_rejected",
+    "ok": true,
+    "detail": "'ledger-claimed' is not one of ['observed', 'agent-reported', 'github-verified']"
+  },
+  {
+    "check": "provenance.1_1_valid_accepted",
+    "ok": true,
+    "detail": "observed ok"
+  },
+  {
+    "check": "provenance.1_0_optional",
+    "ok": true,
+    "detail": "1.0.0 without provenance validates"
+  },
+  {
+    "check": "migration.no_bump_leaves_10",
+    "ok": true,
+    "detail": "version=1.0.0"
+  },
+  {
+    "check": "migration.fill_by_source_rules",
+    "ok": true,
+    "detail": "all_have=True mismatches=[]",
+    "sample_counts": {
+      "agent-reported": 4,
+      "github-verified": 1
+    }
+  },
+  {
+    "check": "migration.bumped_validates_110",
+    "ok": true,
+    "detail": "ok"
+  },
+  {
+    "check": "migration.idempotent",
+    "ok": true,
+    "detail": "p1==p2==p3 (5 events)"
+  },
+  {
+    "check": "migration.github_vs_ledger_vs_signature",
+    "ok": true,
+    "detail": "provs=['github-verified', 'agent-reported', 'agent-reported']"
+  },
+  {
+    "check": "migration.reject_0.9.0",
+    "ok": true,
+    "detail": "unsupported schema_version: '0.9.0'"
+  },
+  {
+    "check": "migration.reject_2.0.0",
+    "ok": true,
+    "detail": "unsupported schema_version: '2.0.0'"
+  },
+  {
+    "check": "regression.multi_membership",
+    "ok": true,
+    "detail": "director=['build', 'qr', 'radar']"
+  },
+  {
+    "check": "regression.message_untargeted",
+    "ok": true,
+    "detail": "{'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 1, 'event_ids': ['e1']}"
+  },
+  {
+    "check": "regression.message_explicit",
+    "ok": true,
+    "detail": "{('architect', 'dev-2', 'message'), ('architect', 'dev-1', 'message')}"
+  },
+  {
+    "check": "regression.message_no_self_loop",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "check": "regression.message_never_invent",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "check": "regression.merge_no_self_loop",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "check": "regression.build_emits_provenance_110",
+    "ok": true,
+    "detail": "schema_ok=True prov_ok=True n_events=45 err=",
+    "sample_prov": [
+      "agent-reported"
+    ]
+  },
+  {
+    "check": "regression.secrets_fixtures_clean",
+    "ok": true,
+    "detail": "leaked=[]"
+  },
+  {
+    "check": "regression.provenance_not_spoofed_by_ledger_text",
+    "ok": true,
+    "detail": "spoofed=0 types=['note']"
+  },
+  {
+    "check": "regression.malformed_groups_json",
+    "ok": true,
+    "detail": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+  }
+]

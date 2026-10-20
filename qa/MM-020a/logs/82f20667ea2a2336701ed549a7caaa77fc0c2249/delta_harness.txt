@@ -1,0 +1,26 @@
+ROOT=/tmp/qa-mm020a-delta/checkout HEAD=detached
+[PASS] QA-MM020a-1.dedupe_within_and_across_groups: director=['build', 'qr', 'radar'] architect=['build', 'qr', 'radar']
+[PASS] QA-MM020a-2.unknown_parked_with_warning: unknown=[{'bot_id': 'ghost-bot', 'group_id': 'build'}, {'bot_id': 'ghost-bot', 'group_id': 'qr'}]; warn="warning: groups.json member 'ghost-bot' in group 'build' is not in bots.json; parking (QA-MM020a-2)\nwarning: groups.json member 'ghost-bot' in group 'qr' is not in bots.json; parking (QA-MM020a-2)"; index={'director': ['build', 'qr'], 'architect': ['build']}
+[PASS] provenance.1_1_missing_rejected: 'provenance' is a required property
+[PASS] provenance.1_1_invalid_rejected: 'ledger-claimed' is not one of ['observed', 'agent-reported', 'github-verified']
+[PASS] provenance.1_1_valid_accepted: observed ok
+[PASS] provenance.1_0_optional: 1.0.0 without provenance validates
+[PASS] migration.no_bump_leaves_10: version=1.0.0
+[PASS] migration.fill_by_source_rules: all_have=True mismatches=[]
+[PASS] migration.bumped_validates_110: ok
+[PASS] migration.idempotent: p1==p2==p3 (5 events)
+[PASS] migration.github_vs_ledger_vs_signature: provs=['github-verified', 'agent-reported', 'agent-reported']
+[PASS] migration.reject_0.9.0: unsupported schema_version: '0.9.0'
+[PASS] migration.reject_2.0.0: unsupported schema_version: '2.0.0'
+[PASS] regression.multi_membership: director=['build', 'qr', 'radar']
+[PASS] regression.message_untargeted: {'id': '44c10b2a64bcae21a53628f8ef18c5322286f87e', 'source': 'director', 'target': 'group:build', 'type': 'message', 'count': 1, 'event_ids': ['e1']}
+[PASS] regression.message_explicit: {('architect', 'dev-2', 'message'), ('architect', 'dev-1', 'message')}
+[PASS] regression.message_no_self_loop: []
+[PASS] regression.message_never_invent: []
+[PASS] regression.merge_no_self_loop: []
+[PASS] regression.build_emits_provenance_110: schema_ok=True prov_ok=True n_events=45 err=
+[PASS] regression.secrets_fixtures_clean: leaked=[]
+[PASS] regression.provenance_not_spoofed_by_ledger_text: spoofed=0 types=['note']
+[PASS] regression.malformed_groups_json: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+
+Summary: 23/23 ok; 0 fail

@@ -1,0 +1,24 @@
+[
+  {
+    "name": "legacy-10",
+    "pass": true,
+    "xssFlag": false,
+    "scriptNodes": [],
+    "imgHandlers": [],
+    "loaded": true,
+    "consoleErrors": [],
+    "shot": "/tmp/qa-mm020a-delta/evidence/screenshots/xss-legacy-10.png",
+    "schema_version": "1.0.0"
+  },
+  {
+    "name": "message-11",
+    "pass": true,
+    "xssFlag": false,
+    "scriptNodes": [],
+    "imgHandlers": [],
+    "loaded": true,
+    "consoleErrors": [],
+    "shot": "/tmp/qa-mm020a-delta/evidence/screenshots/xss-message-11.png",
+    "schema_version": "1.1.0"
+  }
+]
