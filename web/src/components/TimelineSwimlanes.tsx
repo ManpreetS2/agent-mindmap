@@ -20,6 +20,7 @@ interface TimelineSwimlanesProps {
   highlightedTaskId: string | null;
   highlightedEventIds: ReadonlySet<string>;
   onTaskIdClick: (taskId: string) => void;
+  focusedEventId: string | null;
 }
 
 function EventMarker({
@@ -29,6 +30,7 @@ function EventMarker({
   highlighted,
   dimmed,
   onTaskIdClick,
+  focused,
 }: {
   event: Event;
   x: number;
@@ -36,6 +38,7 @@ function EventMarker({
   highlighted: boolean;
   dimmed: boolean;
   onTaskIdClick: (taskId: string) => void;
+  focused: boolean;
 }) {
   const glyph = glyphForEvent(event);
   const hasSource = Boolean(event.source_url);
@@ -69,6 +72,17 @@ function EventMarker({
 
   return (
     <g className="timeline-event-marker">
+      <foreignObject x={x - 14} y={y - 14} width={28} height={28}>
+        <button
+          type="button"
+          className="timeline-event-focus-btn"
+          data-timeline-focus={event.id}
+          tabIndex={focused ? 0 : -1}
+          aria-label={glyph.title}
+        >
+          <span className="sr-only">{glyph.label}</span>
+        </button>
+      </foreignObject>
       {hasSource ? (
         <a
           href={event.source_url}
@@ -115,6 +129,7 @@ export function TimelineSwimlanes({
   highlightedTaskId,
   highlightedEventIds,
   onTaskIdClick,
+  focusedEventId,
 }: TimelineSwimlanesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900);
@@ -225,6 +240,7 @@ export function TimelineSwimlanes({
               highlighted={highlighted}
               dimmed={dimmed}
               onTaskIdClick={onTaskIdClick}
+              focused={focusedEventId === event.id}
             />
           );
         })}

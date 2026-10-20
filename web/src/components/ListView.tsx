@@ -1,8 +1,18 @@
 import { useMemo, useState } from "react";
-import type { Activity, Event, Node, Task } from "@shared/types";
+import type { Activity, Edge, Event, Node, Task } from "@shared/types";
+import { UnsourcedTag } from "./UnsourcedTag";
 import { StatusPill } from "./StatusPill";
+import { formatSourceTime } from "../utils/format";
 
 type SortDir = "asc" | "desc";
+
+function ariaSort(
+  active: boolean,
+  dir: SortDir,
+): "ascending" | "descending" | "none" {
+  if (!active) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+}
 
 interface ListViewProps {
   activity: Activity;
@@ -23,24 +33,23 @@ function useSortState<T extends string>(defaultKey: T) {
   return { key, dir, toggle };
 }
 
-function SortButton({
+function SortableHeader({
   label,
   active,
-  onClick,
+  direction,
+  onSort,
 }: {
   label: string;
   active: boolean;
-  onClick: () => void;
+  direction: SortDir;
+  onSort: () => void;
 }) {
   return (
-    <button
-      type="button"
-      className={`list-sort-btn${active ? " is-active" : ""}`}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      {label}
-    </button>
+    <th scope="col" aria-sort={ariaSort(active, direction)}>
+      <button type="button" className="list-th-sort" onClick={onSort}>
+        {label}
+      </button>
+    </th>
   );
 }
 
@@ -52,6 +61,13 @@ export function ListView({
   const botSort = useSortState<"label" | "status">("label");
   const taskSort = useSortState<"id" | "owner">("id");
   const eventSort = useSortState<"time" | "type">("time");
+  const edgeSort = useSortState<"source" | "type">("source");
+
+  const labelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of activity.nodes) map.set(n.id, n.label);
+    return map;
+  }, [activity.nodes]);
 
   const bots = useMemo(() => {
     const rows = [...activity.nodes];
@@ -89,28 +105,43 @@ export function ListView({
     return rows;
   }, [activity.events, eventSort.dir, eventSort.key]);
 
+  const edges = useMemo(() => {
+    const rows = [...activity.edges];
+    rows.sort((a, b) => {
+      const av = edgeSort.key === "source" ? a.source : a.type;
+      const bv = edgeSort.key === "source" ? b.source : b.type;
+      const cmp = av.localeCompare(bv);
+      return edgeSort.dir === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [activity.edges, edgeSort.dir, edgeSort.key]);
+
+  const eventById = useMemo(() => {
+    const map = new Map<string, Event>();
+    for (const e of activity.events) map.set(e.id, e);
+    return map;
+  }, [activity.events]);
+
   return (
-    <div className="list-view" role="region" aria-label="List view">
+    <div className="list-view focus-region" role="region" aria-label="List view" tabIndex={0}>
       <section>
         <h2>Bots</h2>
-        <div className="list-sort-row">
-          <SortButton
-            label="Name"
-            active={botSort.key === "label"}
-            onClick={() => botSort.toggle("label")}
-          />
-          <SortButton
-            label="Status"
-            active={botSort.key === "status"}
-            onClick={() => botSort.toggle("status")}
-          />
-        </div>
         <table>
           <caption className="sr-only">Bots roster</caption>
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Status</th>
+              <SortableHeader
+                label="Name"
+                active={botSort.key === "label"}
+                direction={botSort.dir}
+                onSort={() => botSort.toggle("label")}
+              />
+              <SortableHeader
+                label="Status"
+                active={botSort.key === "status"}
+                direction={botSort.dir}
+                onSort={() => botSort.toggle("status")}
+              />
               <th scope="col">Task</th>
             </tr>
           </thead>
@@ -135,35 +166,87 @@ export function ListView({
 
       <section>
         <h2>Tasks</h2>
-        <div className="list-sort-row">
-          <SortButton
-            label="ID"
-            active={taskSort.key === "id"}
-            onClick={() => taskSort.toggle("id")}
-          />
-          <SortButton
-            label="Owner"
-            active={taskSort.key === "owner"}
-            onClick={() => taskSort.toggle("owner")}
-          />
-        </div>
         <table>
           <caption className="sr-only">Tasks</caption>
           <thead>
             <tr>
-              <th scope="col">ID</th>
-              <th scope="col">Owner</th>
+              <SortableHeader
+                label="ID"
+                active={taskSort.key === "id"}
+                direction={taskSort.dir}
+                onSort={() => taskSort.toggle("id")}
+              />
+              <SortableHeader
+                label="Owner"
+                active={taskSort.key === "owner"}
+                direction={taskSort.dir}
+                onSort={() => taskSort.toggle("owner")}
+              />
               <th scope="col">Status</th>
+              <th scope="col">Source</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map((t: Task) => (
               <tr key={t.id}>
-                <td>
-                  <a href={t.source_url} className="mono">{t.id}</a>
-                </td>
+                <td className="mono">{t.id}</td>
                 <td>{t.owner}</td>
                 <td><StatusPill status={t.status} /></td>
+                <td>
+                  {t.source_url ? (
+                    <a href={t.source_url}>ledger</a>
+                  ) : (
+                    <UnsourcedTag />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Edges</h2>
+        <table>
+          <caption className="sr-only">Derived edges</caption>
+          <thead>
+            <tr>
+              <SortableHeader
+                label="Source"
+                active={edgeSort.key === "source"}
+                direction={edgeSort.dir}
+                onSort={() => edgeSort.toggle("source")}
+              />
+              <th scope="col">Target</th>
+              <SortableHeader
+                label="Type"
+                active={edgeSort.key === "type"}
+                direction={edgeSort.dir}
+                onSort={() => edgeSort.toggle("type")}
+              />
+              <th scope="col">Count</th>
+              <th scope="col">Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            {edges.map((edge: Edge) => (
+              <tr key={edge.id}>
+                <td>{labelById.get(edge.source) ?? edge.source}</td>
+                <td>{labelById.get(edge.target) ?? edge.target}</td>
+                <td>{edge.type}</td>
+                <td>{edge.count}</td>
+                <td>
+                  {edge.event_ids.map((id) => {
+                    const ev = eventById.get(id);
+                    return ev?.source_url ? (
+                      <a key={id} href={ev.source_url} className="mono">
+                        {id}
+                      </a>
+                    ) : (
+                      <span key={id} className="mono">{id} </span>
+                    );
+                  })}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -172,24 +255,22 @@ export function ListView({
 
       <section>
         <h2>Events</h2>
-        <div className="list-sort-row">
-          <SortButton
-            label="Time"
-            active={eventSort.key === "time"}
-            onClick={() => eventSort.toggle("time")}
-          />
-          <SortButton
-            label="Type"
-            active={eventSort.key === "type"}
-            onClick={() => eventSort.toggle("type")}
-          />
-        </div>
         <table>
           <caption className="sr-only">Events</caption>
           <thead>
             <tr>
-              <th scope="col">Time</th>
-              <th scope="col">Type</th>
+              <SortableHeader
+                label="Time"
+                active={eventSort.key === "time"}
+                direction={eventSort.dir}
+                onSort={() => eventSort.toggle("time")}
+              />
+              <SortableHeader
+                label="Type"
+                active={eventSort.key === "type"}
+                direction={eventSort.dir}
+                onSort={() => eventSort.toggle("type")}
+              />
               <th scope="col">Task</th>
               <th scope="col">Source</th>
             </tr>
@@ -197,16 +278,14 @@ export function ListView({
           <tbody>
             {events.map((e: Event) => (
               <tr key={e.id}>
-                <td>{e.source_time}</td>
+                <td>{formatSourceTime(e.source_time)}</td>
                 <td>{e.type}</td>
                 <td className="mono">{e.task_id ?? "—"}</td>
                 <td>
                   {e.source_url ? (
                     <a href={e.source_url}>source</a>
                   ) : (
-                    <span className="unsourced-tag" aria-label="Unsourced fact">
-                      unsourced
-                    </span>
+                    <UnsourcedTag />
                   )}
                 </td>
               </tr>

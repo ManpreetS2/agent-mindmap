@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import type { Activity, Node } from "@shared/types";
 import { AgentGraph } from "../components/AgentGraph";
 import { DetailPanel } from "../components/DetailPanel";
@@ -24,6 +31,17 @@ import {
   eventIdsForTaskLifecycle,
   nodeIdsForTaskLifecycle,
 } from "../utils/taskLifecycle";
+import {
+  focusGraphNodeButton,
+  hierarchyNodeOrder,
+  nearestNodeInDirection,
+  type GraphDirection,
+} from "../utils/graphKeyboard";
+import {
+  adjacentTimelineEventId,
+  focusTimelineEventControl,
+  orderedTimelineFocusItems,
+} from "../utils/timelineKeyboard";
 import {
   isActivityEmpty,
   isStaleGeneratedAt,
@@ -54,6 +72,9 @@ export function MindmapView({
     null,
   );
   const filterRegionRef = useRef<HTMLDivElement>(null);
+  const [focusedTimelineEventId, setFocusedTimelineEventId] = useState<
+    string | null
+  >(null);
 
   const selectedNode: Node | null = useMemo(
     () => activity.nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -74,6 +95,11 @@ export function MindmapView({
   const taskIdsForFilters = useMemo(
     () => uniqueTaskIds(allEvents),
     [allEvents],
+  );
+
+  const timelineFocusOrder = useMemo(
+    () => orderedTimelineFocusItems(activity, visibleEvents),
+    [activity, visibleEvents],
   );
 
   const highlightedEventIds = useMemo(() => {
@@ -109,11 +135,73 @@ export function MindmapView({
     setHighlightedTaskId((prev) => (prev === taskId ? null : taskId));
   }, []);
 
+  const handleGraphKeyDown = useCallback(
+    (e: ReactKeyboardEvent) => {
+      const dirMap: Record<string, GraphDirection> = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+      };
+      const dir = dirMap[e.key];
+      if (dir) {
+        e.preventDefault();
+        const order = hierarchyNodeOrder(activity.nodes);
+        const current =
+          selectedNodeId ?? order[0]?.id ?? null;
+        if (!current) return;
+        const next = nearestNodeInDirection(activity.nodes, current, dir);
+        if (next) {
+          setSelectedNodeId(next);
+          focusGraphNodeButton(next);
+        }
+        return;
+      }
+      if (e.key === "Enter" && selectedNodeId) {
+        e.preventDefault();
+      }
+    },
+    [activity.nodes, selectedNodeId],
+  );
+
+  const handleTimelineKeyDown = useCallback(
+    (e: ReactKeyboardEvent) => {
+      if (
+        e.key !== "ArrowLeft" &&
+        e.key !== "ArrowRight" &&
+        e.key !== "ArrowUp" &&
+        e.key !== "ArrowDown"
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const direction =
+        e.key === "ArrowLeft" || e.key === "ArrowUp" ? "prev" : "next";
+      const nextId = adjacentTimelineEventId(
+        timelineFocusOrder,
+        focusedTimelineEventId,
+        direction,
+      );
+      if (nextId) {
+        setFocusedTimelineEventId(nextId);
+        focusTimelineEventControl(nextId);
+      }
+    },
+    [focusedTimelineEventId, timelineFocusOrder],
+  );
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setSelectedNodeId(null);
-        setHighlightedTaskId(null);
+        if (selectedNodeId) {
+          setSelectedNodeId(null);
+          return;
+        }
+        if (highlightedTaskId) {
+          setHighlightedTaskId(null);
+          return;
+        }
+        setFocusedTimelineEventId(null);
       }
       if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const target = e.target as HTMLElement;
@@ -127,7 +215,7 @@ export function MindmapView({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [highlightedTaskId, selectedNodeId]);
 
   return (
     <div className="mindmap-layout">
@@ -203,7 +291,12 @@ export function MindmapView({
           </div>
         ) : (
           <div className="mindmap-main">
-            <section className="graph-region" aria-label="Agent graph">
+            <section
+              className="graph-region focus-region"
+              aria-label="Agent graph"
+              tabIndex={0}
+              onKeyDown={handleGraphKeyDown}
+            >
               <AgentGraph
                 activity={activity}
                 selectedNodeId={selectedNodeId}
@@ -225,8 +318,10 @@ export function MindmapView({
         )}
 
         <section
-          className={`timeline-region${listView ? " timeline-region--feed" : ""}`}
+          className={`timeline-region focus-region${listView ? " timeline-region--feed" : ""}`}
           aria-label="Activity timeline"
+          tabIndex={0}
+          onKeyDown={handleTimelineKeyDown}
         >
           <div ref={filterRegionRef}>
             <TimelineFilters
@@ -242,6 +337,7 @@ export function MindmapView({
             highlightedTaskId={highlightedTaskId}
             highlightedEventIds={highlightedEventIds}
             onTaskIdClick={onTaskIdClick}
+            focusedEventId={focusedTimelineEventId}
           />
         </section>
 

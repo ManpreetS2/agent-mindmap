@@ -9,7 +9,7 @@ export function formatSourceTime(iso: string): string {
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
-      timeZoneName: "shortGeneric",
+      timeZoneName: "short",
     });
   } catch {
     return iso;

@@ -677,6 +677,35 @@
   color: var(--text-primary);
 }
 
+.list-th-sort {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.timeline-event-focus-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.timeline-event-focus-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  border-color: var(--accent);
+}
+
+.focus-region:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 .mindmap-main--list {
   flex-direction: column;
 }

@@ -29,6 +29,7 @@ describe("Accessibility (axe)", () => {
     const { container } = renderMindmap(
       <MindmapView activity={activity} initialListView={false} />,
     );
+    // React Flow edge markers use decorative SVG paths; rule disabled for graph shell only.
     const results = await axe(container, {
       rules: {
         "svg-img-alt": { enabled: false },
