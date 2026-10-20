@@ -8,6 +8,8 @@ and serves web/dist plus /activity.json on 127.0.0.1 only.
 from __future__ import annotations
 
 import argparse
+import errno
+import fcntl
 import hashlib
 import json
 import os
@@ -55,6 +57,10 @@ DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
 DEFAULT_EVENTS_POLL_SEC = 30.0
 DEFAULT_SSE_HEARTBEAT_SEC = 15.0
+MAX_SSE_CONNECTIONS = 8
+SSE_RETRY_AFTER_SEC = 5
+PROCESS_LOCK_MODE = 0o600
+PROCESS_LOCK_BASENAME = ".mindmap-live.lock"
 MIN_PYTHON_VERSION = (3, 12)
 LedgerSource = Literal["path", "gh"]
 EventsSource = Literal["gh", "off"]
@@ -89,6 +95,93 @@ def ensure_python_version(
         )
         return 1
     return 0
+
+
+class SingletonLockError(OSError):
+    """Another live daemon holds the process lock."""
+
+
+def process_lock_path(activity_path: Path) -> Path:
+    """QA-MM011-2: lock file adjacent to activity.json output."""
+    return activity_path.parent / PROCESS_LOCK_BASENAME
+
+
+class ProcessSingletonLock:
+    """
+    QA-MM011-2: exclusive non-blocking flock on a lock file (O_NOFOLLOW, 0o600).
+
+    Held for the process lifetime; released when the fd is closed.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._fd: int | None = None
+
+    def acquire(self) -> None:
+        if self.path.is_symlink():
+            raise SingletonLockError(
+                errno.ELOOP,
+                f"refusing symlink lock path: {self.path}",
+            )
+        flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
+        try:
+            fd = os.open(self.path, flags, PROCESS_LOCK_MODE)
+        except OSError as exc:
+            if exc.errno in (errno.ELOOP, errno.EMLINK):
+                raise SingletonLockError(
+                    errno.ELOOP,
+                    f"refusing symlink lock path: {self.path}",
+                ) from exc
+            raise
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            os.close(fd)
+            raise SingletonLockError(
+                errno.EAGAIN,
+                f"another mindmap live instance holds {self.path}",
+            ) from exc
+        self._fd = fd
+
+    def release(self) -> None:
+        if self._fd is None:
+            return
+        try:
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
+        finally:
+            os.close(self._fd)
+            self._fd = None
+
+    def __enter__(self) -> ProcessSingletonLock:
+        self.acquire()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.release()
+
+
+class SseConnectionLimiter:
+    """SEC-MM020d-1: cap concurrent open /events SSE streams."""
+
+    def __init__(self, max_connections: int = MAX_SSE_CONNECTIONS) -> None:
+        self._max = max_connections
+        self._lock = threading.Lock()
+        self._active = 0
+
+    def try_acquire(self) -> bool:
+        with self._lock:
+            if self._active >= self._max:
+                return False
+            self._active += 1
+            return True
+
+    def release(self) -> None:
+        with self._lock:
+            self._active = max(0, self._active - 1)
+
+    def active_count(self) -> int:
+        with self._lock:
+            return self._active
 
 
 def refuse_public_bind(host: str) -> None:
@@ -278,6 +371,9 @@ class LiveDaemon:
     _poll_thread: threading.Thread | None = field(default=None, init=False)
     _rate_limit_reset: int | None = field(default=None, init=False)
     _event_log: NetworkEventLog = field(default_factory=NetworkEventLog, init=False)
+    sse_limiter: SseConnectionLimiter = field(
+        default_factory=SseConnectionLimiter, init=False
+    )
 
     def health(self) -> HealthState:
         with self._lock:
@@ -678,28 +774,27 @@ class MindmapHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
+        if not self.daemon.sse_limiter.try_acquire():
+            self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+            self.send_header("Retry-After", str(SSE_RETRY_AFTER_SEC))
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(b"SSE connection limit reached\n")
+            return
+
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
         self.end_headers()
 
-        last_id = self.headers.get("Last-Event-ID")
-        if last_id is not None:
-            last_id = last_id.strip() or None
+        try:
+            last_id = self.headers.get("Last-Event-ID")
+            if last_id is not None:
+                last_id = last_id.strip() or None
 
-        sent: set[str] = set()
-        for evt in self.daemon.network_events_after(last_id):
-            eid = str(evt.get("id") or "")
-            if not eid or eid in sent:
-                continue
-            payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
-            self._write_sse_frame(event_id=eid, data=payload, comment=None)
-            sent.add(eid)
-            last_id = eid
-
-        heartbeat = max(0.05, float(self.sse_heartbeat_sec))
-        while True:
+            sent: set[str] = set()
             for evt in self.daemon.network_events_after(last_id):
                 eid = str(evt.get("id") or "")
                 if not eid or eid in sent:
@@ -708,11 +803,24 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 self._write_sse_frame(event_id=eid, data=payload, comment=None)
                 sent.add(eid)
                 last_id = eid
-            try:
-                self._write_sse_frame(event_id=None, data=None, comment="heartbeat")
-                time.sleep(heartbeat)
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                break
+
+            heartbeat = max(0.05, float(self.sse_heartbeat_sec))
+            while True:
+                for evt in self.daemon.network_events_after(last_id):
+                    eid = str(evt.get("id") or "")
+                    if not eid or eid in sent:
+                        continue
+                    payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
+                    self._write_sse_frame(event_id=eid, data=payload, comment=None)
+                    sent.add(eid)
+                    last_id = eid
+                try:
+                    self._write_sse_frame(event_id=None, data=None, comment="heartbeat")
+                    time.sleep(heartbeat)
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    break
+        finally:
+            self.daemon.sse_limiter.release()
 
     def _handle_get_head(self) -> None:
         if self._reject_unless_localhost():
@@ -923,6 +1031,17 @@ def main(argv: list[str] | None = None) -> int:
     with args.bots.open(encoding="utf-8") as f:
         bots = json.load(f)["bots"]
 
+    lock_path = process_lock_path(args.activity_out)
+    try:
+        process_lock = ProcessSingletonLock(lock_path)
+        process_lock.acquire()
+    except SingletonLockError:
+        print(
+            f"error: another mindmap live instance is already running (lock: {lock_path})",
+            file=sys.stderr,
+        )
+        return 1
+
     daemon = LiveDaemon(
         ledger_source=source,
         ledger_path=ledger_path,
@@ -966,6 +1085,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         daemon.stop_polling()
         httpd.server_close()
+        process_lock.release()
     return 0
 
 

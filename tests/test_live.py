@@ -8,7 +8,9 @@ import json
 import platform
 import shutil
 import socket
+import stat
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -21,11 +23,16 @@ import pytest
 
 from ingest.live import (
     BIND_HOST,
+    MAX_SSE_CONNECTIONS,
     LiveDaemon,
+    ProcessSingletonLock,
+    SSE_RETRY_AFTER_SEC,
+    SingletonLockError,
     create_http_server,
     ensure_python_version,
     host_header_allowed,
     origin_header_allowed,
+    process_lock_path,
     refuse_public_bind,
     resolve_live_ledger,
 )
@@ -403,6 +410,111 @@ def _read_sse_events(
             events.append(json.loads(payload))
     conn.close()
     return events
+
+
+def test_qa_mm011_2_singleton_lock_refused_and_released(live_env: dict) -> None:
+    lock_path = process_lock_path(live_env["activity"])
+    first = ProcessSingletonLock(lock_path)
+    first.acquire()
+    assert lock_path.is_file()
+    assert stat.S_IMODE(lock_path.stat().st_mode) == 0o600
+
+    second = ProcessSingletonLock(lock_path)
+    with pytest.raises(SingletonLockError):
+        second.acquire()
+
+    first.release()
+    third = ProcessSingletonLock(lock_path)
+    third.acquire()
+    third.release()
+
+
+def test_qa_mm011_2_second_process_refused_across_ports(live_env: dict) -> None:
+    """Lock is adjacent to activity.json — different --port cannot bypass it."""
+    lock_path = process_lock_path(live_env["activity"])
+    hold_script = """
+import sys, time
+from pathlib import Path
+from ingest.live import ProcessSingletonLock
+lock = ProcessSingletonLock(Path(sys.argv[1]))
+lock.acquire()
+print("held", flush=True)
+time.sleep(float(sys.argv[2]))
+"""
+    try_script = """
+import sys
+from pathlib import Path
+from ingest.live import ProcessSingletonLock, SingletonLockError
+try:
+    ProcessSingletonLock(Path(sys.argv[1])).acquire()
+except SingletonLockError:
+    sys.exit(1)
+sys.exit(0)
+"""
+    holder = subprocess.Popen(
+        [sys.executable, "-c", hold_script, str(lock_path), "30"],
+        cwd=str(ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        assert holder.stdout is not None
+        line = holder.stdout.readline().decode()
+        assert line.strip() == "held"
+
+        blocked = subprocess.run(
+            [sys.executable, "-c", try_script, str(lock_path)],
+            cwd=str(ROOT),
+            capture_output=True,
+            timeout=5,
+        )
+        assert blocked.returncode == 1
+
+        holder.terminate()
+        assert holder.wait(timeout=5) is not None
+
+        allowed = subprocess.run(
+            [sys.executable, "-c", try_script, str(lock_path)],
+            cwd=str(ROOT),
+            capture_output=True,
+            timeout=5,
+        )
+        assert allowed.returncode == 0
+    finally:
+        if holder.poll() is None:
+            holder.kill()
+            holder.wait(timeout=3)
+
+
+def test_sec_mm020d_1_sse_connection_cap(live_http: tuple[LiveDaemon, str, int]) -> None:
+    _, host, port = live_http
+    headers = {"Host": f"{host}:{port}"}
+    connections: list[http.client.HTTPConnection] = []
+    try:
+        for _ in range(MAX_SSE_CONNECTIONS):
+            conn = http.client.HTTPConnection(host, port, timeout=5)
+            conn.request("GET", "/events", headers=headers)
+            resp = conn.getresponse()
+            assert resp.status == HTTPStatus.OK
+            connections.append(conn)
+
+        overflow = http.client.HTTPConnection(host, port, timeout=5)
+        overflow.request("GET", "/events", headers=headers)
+        resp9 = overflow.getresponse()
+        assert resp9.status == HTTPStatus.SERVICE_UNAVAILABLE
+        assert resp9.getheader("Retry-After") == str(SSE_RETRY_AFTER_SEC)
+        overflow.close()
+
+        connections[0].close()
+        time.sleep(0.2)
+
+        replacement = http.client.HTTPConnection(host, port, timeout=5)
+        replacement.request("GET", "/events", headers=headers)
+        assert replacement.getresponse().status == HTTPStatus.OK
+        replacement.close()
+    finally:
+        for conn in connections[1:]:
+            conn.close()
 
 
 def test_sse_replay_last_event_id_and_dedupe(
