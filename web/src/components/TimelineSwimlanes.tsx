@@ -8,11 +8,12 @@ import {
   type TimelineLane,
 } from "../utils/timelineLanes";
 import { isLifecycleTaskId } from "../utils/taskLifecycle";
+import { plottableTimelineEvents } from "../utils/eventTime";
 import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { UnsourcedTag } from "./UnsourcedTag";
 
 const LABEL_WIDTH = 108;
-const LANE_HEIGHT = 18;
+const LANE_HEIGHT = 32;
 const AXIS_HEIGHT = 20;
 
 interface TimelineSwimlanesProps {
@@ -116,7 +117,7 @@ function EventMarker({
         </foreignObject>
       )}
       {!hasSource && (
-        <foreignObject x={x - 8} y={y + 10} width={80} height={18} opacity={opacity}>
+        <foreignObject x={x - 8} y={y + 10} width={120} height={20} opacity={opacity}>
           <UnsourcedTag />
         </foreignObject>
       )}
@@ -163,8 +164,9 @@ export function TimelineSwimlanes({
   }, []);
 
   const axisTicks = useMemo(() => {
-    if (events.length === 0) return [];
-    const times = events.map((e) => new Date(e.source_time).getTime());
+    const plottable = plottableTimelineEvents(events);
+    if (plottable.length === 0) return [];
+    const times = plottable.map((e) => new Date(e.source_time).getTime());
     const min = Math.min(...times);
     const max = Math.max(...times);
     const mid = (min + max) / 2;

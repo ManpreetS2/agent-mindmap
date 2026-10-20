@@ -81,9 +81,9 @@ describe("UI states (MM-007)", () => {
     expect(screen.getByText(/refresh/i)).toBeInTheDocument();
   });
 
-  it("unparsed fixture renders unparsed ledger panel", () => {
+  it("unparsed fixture renders debug drawer toggle", () => {
     renderMindmap(<MindmapView activity={unparsedFixture as Activity} />);
-    expect(screen.getByRole("region", { name: /Unparsed ledger/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Debug \(\d+\)/ })).toBeInTheDocument();
   });
 
   it("ledger error view shows path and retry", async () => {
