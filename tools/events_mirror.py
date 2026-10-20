@@ -50,9 +50,20 @@ from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do
 
 FLUSH_MIN_INTERVAL_S = 180
 RETENTION_DAYS = 7
-PROVENANCE_VALUES = frozenset({"observed", "agent-reported", "github-verified"})
 # SEC-MM020b-2: drop lines whose summary exceeds 280 chars.
 SUMMARY_MAX_CHARS = 280
+_SCHEMA_PATH = _ROOT / "schema" / "activity.schema.json"
+
+
+def _provenance_values_from_schema() -> frozenset[str]:
+    """Load $defs/provenance.enum from activity.schema.json (MM-020a source of truth)."""
+    with _SCHEMA_PATH.open(encoding="utf-8") as f:
+        root = json.load(f)
+    enum = root["$defs"]["provenance"]["enum"]
+    return frozenset(str(v) for v in enum)
+
+
+PROVENANCE_VALUES = _provenance_values_from_schema()
 
 # Match schema/$defs/taskId (same contract as MM-020b event_emit / activity.schema.json).
 _TASK_ID_RE = re.compile(
