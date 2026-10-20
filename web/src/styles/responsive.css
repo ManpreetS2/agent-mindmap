@@ -1,0 +1,56 @@
+/* design-spec §7 breakpoints */
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .detail-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .mindmap-main {
+    position: relative;
+  }
+}
+
+@media (max-width: 767px) {
+  .graph-region {
+    display: none;
+  }
+
+  .mindmap-main:not(.mindmap-main--list) .graph-region {
+    display: none;
+  }
+
+  .mindmap-main--list .list-view {
+    display: block;
+  }
+
+  .timeline-region--feed .timeline-swimlanes {
+    max-height: 240px;
+  }
+
+  .timeline-filters {
+    max-height: none;
+  }
+
+  .app-header__actions {
+    width: 100%;
+    order: 3;
+  }
+}
+
+@media (min-width: 768px) {
+  .mindmap-main--list .graph-region {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .detail-panel {
+    position: static;
+    box-shadow: none;
+  }
+}

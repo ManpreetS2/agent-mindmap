@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Node } from "@shared/types";
 import { AgentGraph } from "../components/AgentGraph";
 import { DetailPanel } from "../components/DetailPanel";
 import { EdgeLegend } from "../components/EdgeLegend";
 import { HandoffBanner } from "../components/HandoffBanner";
+import { ListView } from "../components/ListView";
+import { PartialSourceBanner } from "../components/PartialSourceBanner";
 import { TimelineFilters } from "../components/TimelineFilters";
 import { TimelineSwimlanes } from "../components/TimelineSwimlanes";
+import { UnparsedPanel } from "../components/UnparsedPanel";
+import { useResponsiveListDefault } from "../hooks/useResponsiveView";
 import { formatSourceTime } from "../utils/format";
 import { handoffEdgeCount } from "../utils/nodeFacts";
 import {
@@ -20,17 +24,36 @@ import {
   eventIdsForTaskLifecycle,
   nodeIdsForTaskLifecycle,
 } from "../utils/taskLifecycle";
+import {
+  isActivityEmpty,
+  isStaleGeneratedAt,
+  partialGithubBanner,
+  staleAgeLabel,
+} from "../utils/viewState";
 
 export interface MindmapViewProps {
   activity: Activity;
+  onRefresh?: () => void;
+  /** Override for tests (fixed clock). */
+  nowMs?: number;
+  /** Force list/graph mode (tests). */
+  initialListView?: boolean;
 }
 
-export function MindmapView({ activity }: MindmapViewProps) {
+export function MindmapView({
+  activity,
+  onRefresh,
+  nowMs = Date.now(),
+  initialListView,
+}: MindmapViewProps) {
+  const defaultList = useResponsiveListDefault();
+  const [listView, setListView] = useState(initialListView ?? defaultList);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [filters, setFilters] = useState<TimelineFilterState>(EMPTY_FILTERS);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(
     null,
   );
+  const filterRegionRef = useRef<HTMLDivElement>(null);
 
   const selectedNode: Node | null = useMemo(
     () => activity.nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -68,6 +91,16 @@ export function MindmapView({ activity }: MindmapViewProps) {
     return edgeIdsForTaskLifecycle(activity, highlightedTaskId);
   }, [activity, highlightedTaskId]);
 
+  const partialBanner = useMemo(
+    () => partialGithubBanner(activity.meta),
+    [activity.meta],
+  );
+  const stale = useMemo(
+    () => isStaleGeneratedAt(activity.generated_at, nowMs),
+    [activity.generated_at, nowMs],
+  );
+  const empty = useMemo(() => isActivityEmpty(activity), [activity]);
+
   const onSelectNode = useCallback((id: string | null) => {
     setSelectedNodeId(id);
   }, []);
@@ -81,6 +114,15 @@ export function MindmapView({ activity }: MindmapViewProps) {
       if (e.key === "Escape") {
         setSelectedNodeId(null);
         setHighlightedTaskId(null);
+      }
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+        e.preventDefault();
+        const firstChip = filterRegionRef.current?.querySelector<HTMLButtonElement>(
+          ".filter-chip",
+        );
+        firstChip?.focus();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -96,15 +138,42 @@ export function MindmapView({ activity }: MindmapViewProps) {
             Project: {activity.project}
           </span>
         </div>
+        <div className="app-header__actions">
+          <button
+            type="button"
+            className="view-toggle"
+            aria-pressed={listView}
+            onClick={() => setListView((v) => !v)}
+          >
+            {listView ? "Graph view" : "List view"}
+          </button>
+        </div>
         <div className="app-header__meta">
-          <span>Updated {formatSourceTime(activity.generated_at)}</span>
+          <span className={stale ? "timestamp-stale" : ""}>
+            Updated {formatSourceTime(activity.generated_at)}
+            {stale && (
+              <span className="timestamp-stale__hint">
+                (stale · {staleAgeLabel(activity.generated_at, nowMs)} — refresh)
+              </span>
+            )}
+          </span>
           <span className="app-header__sources">
             Source: ledger + GitHub ({activity.meta.github})
           </span>
         </div>
       </header>
 
+      {partialBanner && (
+        <PartialSourceBanner message={partialBanner} onRetry={onRefresh} />
+      )}
+
       <HandoffBanner handoffCount={handoffs} threshold={3} />
+
+      {empty && (
+        <p className="empty-activity-banner" role="status">
+          No activity recorded yet.
+        </p>
+      )}
 
       {highlightedTaskId && (
         <div className="lifecycle-banner" role="status">
@@ -116,35 +185,57 @@ export function MindmapView({ activity }: MindmapViewProps) {
         </div>
       )}
 
-      <div className="mindmap-body">
-        <div className="mindmap-main">
-          <section className="graph-region" aria-label="Agent graph">
-            <AgentGraph
+      <div id="main-content" className="mindmap-body" tabIndex={-1}>
+        {listView ? (
+          <div className="mindmap-main mindmap-main--list">
+            <ListView
               activity={activity}
               selectedNodeId={selectedNodeId}
               onSelectNode={onSelectNode}
-              lifecycleNodeIds={lifecycleNodeIds}
-              lifecycleEdgeIds={lifecycleEdgeIds}
             />
-            <EdgeLegend />
-          </section>
+            {selectedNode && (
+              <DetailPanel
+                node={selectedNode}
+                activity={activity}
+                onClose={() => setSelectedNodeId(null)}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="mindmap-main">
+            <section className="graph-region" aria-label="Agent graph">
+              <AgentGraph
+                activity={activity}
+                selectedNodeId={selectedNodeId}
+                onSelectNode={onSelectNode}
+                lifecycleNodeIds={lifecycleNodeIds}
+                lifecycleEdgeIds={lifecycleEdgeIds}
+              />
+              <EdgeLegend />
+            </section>
 
-          {selectedNode && (
-            <DetailPanel
-              node={selectedNode}
-              activity={activity}
-              onClose={() => setSelectedNodeId(null)}
+            {selectedNode && (
+              <DetailPanel
+                node={selectedNode}
+                activity={activity}
+                onClose={() => setSelectedNodeId(null)}
+              />
+            )}
+          </div>
+        )}
+
+        <section
+          className={`timeline-region${listView ? " timeline-region--feed" : ""}`}
+          aria-label="Activity timeline"
+        >
+          <div ref={filterRegionRef}>
+            <TimelineFilters
+              nodes={activity.nodes}
+              taskIds={taskIdsForFilters}
+              filters={filters}
+              onChange={setFilters}
             />
-          )}
-        </div>
-
-        <section className="timeline-region" aria-label="Activity timeline">
-          <TimelineFilters
-            nodes={activity.nodes}
-            taskIds={taskIdsForFilters}
-            filters={filters}
-            onChange={setFilters}
-          />
+          </div>
           <TimelineSwimlanes
             activity={activity}
             events={visibleEvents}
@@ -153,6 +244,8 @@ export function MindmapView({ activity }: MindmapViewProps) {
             onTaskIdClick={onTaskIdClick}
           />
         </section>
+
+        <UnparsedPanel lines={activity.unparsed} />
       </div>
     </div>
   );

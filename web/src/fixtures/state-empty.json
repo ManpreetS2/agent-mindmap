@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-20T04:58:00-07:00",
+  "project": "fencepost",
+  "meta": {
+    "github": "ok"
+  },
+  "nodes": [
+    {
+      "id": "manpreet",
+      "label": "Manpreet",
+      "group": "owner",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 0
+      }
+    },
+    {
+      "id": "director",
+      "label": "Director",
+      "group": "build",
+      "status": "IN_PROGRESS",
+      "current_task": "RP-009",
+      "last_activity_ts": "2026-10-19T21:20:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 72
+      }
+    },
+    {
+      "id": "architect",
+      "label": "Architect",
+      "group": "build",
+      "status": "DONE",
+      "current_task": "MM-001",
+      "last_activity_ts": "2026-10-19T21:35:00-07:00",
+      "agent_links": [
+        "bc-9f84dbdb"
+      ],
+      "layout": {
+        "x": 400,
+        "y": 144
+      }
+    },
+    {
+      "id": "dev-1",
+      "label": "DEV 1",
+      "group": "build",
+      "status": "IN_REVIEW",
+      "current_task": "RP-004",
+      "last_activity_ts": "2026-10-19T21:10:00-07:00",
+      "agent_links": [
+        "bc-1a2b3c4d"
+      ],
+      "layout": {
+        "x": 80,
+        "y": 256
+      }
+    },
+    {
+      "id": "dev-2",
+      "label": "DEV 2",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 256
+      }
+    },
+    {
+      "id": "ui-ux-maker",
+      "label": "UI/UX Maker",
+      "group": "build",
+      "status": "IN_PROGRESS",
+      "current_task": "MM-005",
+      "last_activity_ts": "2026-10-19T20:45:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 256
+      }
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation",
+      "group": "build",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 256
+      }
+    },
+    {
+      "id": "qa-verifier",
+      "label": "QA / Verifier",
+      "group": "qr",
+      "status": "DONE",
+      "last_activity_ts": "2026-10-19T21:37:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 176
+      }
+    },
+    {
+      "id": "security-engineer",
+      "label": "Security Engineer",
+      "group": "qr",
+      "status": "IN_REVIEW",
+      "current_task": "RP-004",
+      "last_activity_ts": "2026-10-19T21:15:00-07:00",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 256
+      }
+    },
+    {
+      "id": "devops-release",
+      "label": "DevOps / Release",
+      "group": "qr",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 336
+      }
+    },
+    {
+      "id": "scout",
+      "label": "Scout",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 384
+      }
+    },
+    {
+      "id": "skeptic",
+      "label": "Skeptic",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 384
+      }
+    },
+    {
+      "id": "nomen",
+      "label": "NOMEN",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 384
+      }
+    },
+    {
+      "id": "bug-fixer",
+      "label": "Bug fixer",
+      "group": "radar",
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 384
+      }
+    }
+  ],
+  "tasks": [],
+  "events": [],
+  "edges": [],
+  "unparsed": []
+}

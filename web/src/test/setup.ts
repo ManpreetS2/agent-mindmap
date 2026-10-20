@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "vitest-axe/extend-expect";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
@@ -9,6 +10,20 @@ class ResizeObserverMock {
 }
 
 globalThis.ResizeObserver = ResizeObserverMock;
+
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});
 
 Element.prototype.getBoundingClientRect = () => ({
   width: 1280,

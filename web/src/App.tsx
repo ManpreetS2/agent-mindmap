@@ -1,35 +1,72 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Activity } from "@shared/types";
-import { loadActivity } from "./data/loadActivity";
+import { LedgerLoadError, loadActivity } from "./data/loadActivity";
+import { LedgerErrorView } from "./components/LedgerErrorView";
+import { MindmapLoadingView } from "./components/MindmapLoadingView";
+import { SkipLink } from "./components/SkipLink";
 import { MindmapView } from "./views/MindmapView";
 
 export function App() {
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
+
+  const reload = useCallback(() => {
+    setError(null);
+    setActivity(null);
+    setRetryToken((t) => t + 1);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
     loadActivity()
-      .then(setActivity)
+      .then((data) => {
+        if (!cancelled) setActivity(data);
+      })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : "Failed to load data");
+        if (!cancelled) {
+          setError(e instanceof Error ? e : new Error("Failed to load data"));
+        }
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [retryToken]);
+
+  if (error instanceof LedgerLoadError) {
+    return (
+      <>
+        <SkipLink />
+        <LedgerErrorView onRetry={reload} />
+      </>
+    );
+  }
 
   if (error) {
     return (
-      <div className="app-error" role="alert">
-        {error}
-      </div>
+      <>
+        <SkipLink />
+        <div className="app-error" role="alert">
+          {error.message}
+          <button type="button" onClick={reload}>Retry</button>
+        </div>
+      </>
     );
   }
 
   if (!activity) {
     return (
-      <div className="app-loading" role="status" aria-live="polite">
-        Reading activity snapshot…
-      </div>
+      <>
+        <SkipLink />
+        <MindmapLoadingView />
+      </>
     );
   }
 
-  return <MindmapView activity={activity} />;
+  return (
+    <>
+      <SkipLink />
+      <MindmapView activity={activity} onRefresh={reload} />
+    </>
+  );
 }
