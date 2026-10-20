@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -30,6 +30,10 @@ import {
   labelForGroup,
   nodeInSelectedGroups,
 } from "../utils/groupMembership";
+import {
+  collectDraggedIds,
+  mergeFlowNodes,
+} from "../utils/mergeFlowNodes";
 import { AgentFlowNode } from "./AgentFlowNode";
 import { GroupAnchorNode } from "./GroupAnchorNode";
 import { GroupFilter } from "./GroupFilter";
@@ -207,25 +211,12 @@ export function AgentGraph({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges);
+  const draggedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    setNodes((prev) => {
-      const prevPos = new Map(prev.map((n) => [n.id, n.position]));
-      const layoutChanged = builtNodes.some((n) => {
-        const p = prevPos.get(n.id);
-        if (!p) return true;
-        return Math.hypot(p.x - n.position.x, p.y - n.position.y) > 1;
-      });
-      if (!layoutChanged && prev.length === builtNodes.length) {
-        return prev.map((p) => {
-          const next = builtNodes.find((n) => n.id === p.id);
-          // Preserve drag for agent nodes; anchors always follow layout.
-          if (next?.type === "groupAnchor") return next;
-          return next ? { ...next, position: p.position } : p;
-        });
-      }
-      return builtNodes;
-    });
+    // Merge layout into the live node list without treating user drags as
+    // layout resets (QA-MM020f-1). New / structurally changed agents re-layout.
+    setNodes((prev) => mergeFlowNodes(prev, builtNodes, draggedIdsRef.current));
   }, [builtNodes, setNodes]);
 
   useEffect(() => {
@@ -234,6 +225,7 @@ export function AgentGraph({
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      draggedIdsRef.current = collectDraggedIds(changes, draggedIdsRef.current);
       onNodesChange(changes);
     },
     [onNodesChange],
