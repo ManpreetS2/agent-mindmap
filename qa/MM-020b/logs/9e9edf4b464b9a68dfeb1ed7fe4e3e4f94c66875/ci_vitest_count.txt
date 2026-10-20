@@ -1,0 +1,2 @@
+web	Run npm run test	2026-10-20T09:02:06.4487965Z ^[[2m Test Files ^[[22m ^[[1m^[[32m18 passed^[[39m^[[22m^[[90m (18)^[[39m
+web	Run npm run test	2026-10-20T09:02:06.4513644Z ^[[2m      Tests ^[[22m ^[[1m^[[32m81 passed^[[39m^[[22m^[[90m (81)^[[39m

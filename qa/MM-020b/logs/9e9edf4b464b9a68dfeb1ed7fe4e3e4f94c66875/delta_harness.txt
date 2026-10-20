@@ -1,0 +1,20 @@
+ROOT=/tmp/qa-mm020b-delta/checkout
+[PASS] QA-MM020b-2.no_local_pattern_copy: imports_shared=True re.compile=False owns_rules=False
+[PASS] QA-MM020b-2.secret_scan_is_owner: tools/secret_scan.py defines _RULES + looks_like_secret
+[PASS] QA-MM020b-2.secret_payloads_refused: refused=['sk-', 'AKIA', 'JWT', 'PEM', 'email', 'ghp_', 'Bearer'] accepted_bad=[]
+[PASS] QA-MM020b-2.benign_words_pass: benign_fail=[]
+[PASS] QA-MM020b-1.preexisting_mode: outcomes={'0o644': 'tightened_to_0o600', '0o666': 'tightened_to_0o600'} (expected tighten to 0o600)
+[PASS] QA-MM020b-3.unknown_recipients_flagged: evt_unknown=['not-a-real-bot', 'also-fake'] recipients=['dev-1'] warned=True warn='unknown recipient id(s) in explicit recipients: also-fake, not-a-real-bot'
+[PASS] QA-MM020b-3.mentions_not_inferred: keys=['group', 'id', 'provenance', 'sender', 'summary', 'ts', 'type']
+[PASS] SEC.symlink_refused: refused=True size_unchanged=True
+[PASS] SEC.o_nofollow_audit: flags=['0xa0441']
+[PASS] SEC.new_file_0o600: mode=0o600
+[PASS] SEC.summary_240_cap: 241→240 uni→240 emoji→240
+[PASS] SEC.docstring_240: doc_snippet='\n    Short sanitized summary: normalize whitespace, cap length, refuse secrets.\n\n    Raises SecretRefusedError if the text looks like a credential or banned key name.\n     Build ag'
+[PASS] SEC.refuse_not_redact: msg='summary refused: secret-like content' exists=False
+[PASS] regression.MM-020a_membership: index={'director': ['build', 'qr']} unk=[{'bot_id': 'ghost', 'group_id': 'build'}]
+[PASS] regression.MM-020c_present_shared_scan: events_mirror_imports_secret_scan=True
+[PASS] regression.MM-020c_secret_detect: decide_flush_probe_error=decide_flush() takes 0 positional arguments but 2 were given; scanner=True
+[PASS] regression.MM-020f_ui_present: files_ok=True createSseTransport=False
+
+Summary: 17/17 ok; 0 fail

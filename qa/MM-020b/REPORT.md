@@ -1,4 +1,11 @@
-# QA Report — MM-020b (PR #17) re-verify @ `692216d`
+# QA Report — MM-020b (PR #17)
+
+> **Delta re-verify @ `9e9edf4`:** **PASS** — see [`DELTA_REPORT.md`](DELTA_REPORT.md) and [`logs/9e9edf4b464b9a68dfeb1ed7fe4e3e4f94c66875/DELTA_REPORT.md`](logs/9e9edf4b464b9a68dfeb1ed7fe4e3e4f94c66875/DELTA_REPORT.md).  
+> Prior FAIL at `692216d` remains below as historical baseline.
+
+---
+
+# QA Report — MM-020b (PR #17) re-verify @ `692216d` (baseline FAIL)
 
 | Field | Value |
 |-------|-------|

@@ -1,0 +1,10 @@
+public ['Any', 'DEFAULT_EVENTS_PATH', 'FLUSH_MIN_INTERVAL_S', 'PROVENANCE_VALUES', 'Path', 'RETENTION_DAYS', 'SUMMARY_MAX_CHARS', 'annotations', 'argparse', 'atomic_write_text', 'datetime', 'decide_flush', 'event_state_fingerprints', 'hashlib', 'json', 'load_state', 'looks_like_secret', 'main', 'mark_flushed', 'os', 'parse_iso_ts', 'prepare_events_payload', 're', 'save_state', 'secret_line_numbers', 'sha256_text', 'sys', 'time', 'timedelta', 'timezone', 'validate_network_event']
+decide_flush (*, content: 'str', events: 'list[dict[str, Any]]', state: 'dict[str, Any]', now: 'float', force: 'bool' = False) -> 'dict[str, Any]'
+looks_like_secret (text: 'str') -> 'bool'
+main (argv: 'list[str] | None' = None) -> 'int'
+mark_flushed (*, state_path: 'Path', sha256: 'str', events: 'list[dict[str, Any]] | None', now: 'float') -> 'dict[str, Any]'
+secret_line_numbers (content: 'str') -> 'list[int]'
+imports_secret_scan True
+secret_detected_reason True
+secret_flush_decision {'flush': False, 'sha256': 'ac7d79f5509d52da6ea437b6f170e8f5cf9c82613751f555d5d10e24eeb562c0', 'reason': 'secret_detected', 'lines': [2], 'new_state_change_count': 1}
+MM-020c secret refuse on flush: OK

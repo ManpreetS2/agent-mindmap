@@ -1,0 +1,109 @@
+[
+  {
+    "check": "QA-MM020b-2.no_local_pattern_copy",
+    "ok": true,
+    "detail": "imports_shared=True re.compile=False owns_rules=False"
+  },
+  {
+    "check": "QA-MM020b-2.secret_scan_is_owner",
+    "ok": true,
+    "detail": "tools/secret_scan.py defines _RULES + looks_like_secret"
+  },
+  {
+    "check": "QA-MM020b-2.secret_payloads_refused",
+    "ok": true,
+    "detail": "refused=['sk-', 'AKIA', 'JWT', 'PEM', 'email', 'ghp_', 'Bearer'] accepted_bad=[]",
+    "refused": [
+      "sk-",
+      "AKIA",
+      "JWT",
+      "PEM",
+      "email",
+      "ghp_",
+      "Bearer"
+    ],
+    "accepted_bad": []
+  },
+  {
+    "check": "QA-MM020b-2.benign_words_pass",
+    "ok": true,
+    "detail": "benign_fail=[]"
+  },
+  {
+    "check": "QA-MM020b-1.preexisting_mode",
+    "ok": true,
+    "detail": "outcomes={'0o644': 'tightened_to_0o600', '0o666': 'tightened_to_0o600'} (expected tighten to 0o600)",
+    "outcomes": {
+      "0o644": "tightened_to_0o600",
+      "0o666": "tightened_to_0o600"
+    },
+    "behavior": "tightened_to_0o600"
+  },
+  {
+    "check": "QA-MM020b-3.unknown_recipients_flagged",
+    "ok": true,
+    "detail": "evt_unknown=['not-a-real-bot', 'also-fake'] recipients=['dev-1'] warned=True warn='unknown recipient id(s) in explicit recipients: also-fake, not-a-real-bot'",
+    "behavior": "flagged_with_warning_not_hard_refuse"
+  },
+  {
+    "check": "QA-MM020b-3.mentions_not_inferred",
+    "ok": true,
+    "detail": "keys=['group', 'id', 'provenance', 'sender', 'summary', 'ts', 'type']"
+  },
+  {
+    "check": "SEC.symlink_refused",
+    "ok": true,
+    "detail": "refused=True size_unchanged=True"
+  },
+  {
+    "check": "SEC.o_nofollow_audit",
+    "ok": true,
+    "detail": "flags=['0xa0441']"
+  },
+  {
+    "check": "SEC.new_file_0o600",
+    "ok": true,
+    "detail": "mode=0o600"
+  },
+  {
+    "check": "SEC.summary_240_cap",
+    "ok": true,
+    "detail": "241\u2192240 uni\u2192240 emoji\u2192240"
+  },
+  {
+    "check": "SEC.docstring_240",
+    "ok": true,
+    "detail": "doc_snippet='\\n    Short sanitized summary: normalize whitespace, cap length, refuse secrets.\\n\\n    Raises SecretRefusedError if the text looks like a credential or banned key name.\\n     Build ag'"
+  },
+  {
+    "check": "SEC.refuse_not_redact",
+    "ok": true,
+    "detail": "msg='summary refused: secret-like content' exists=False"
+  },
+  {
+    "check": "regression.MM-020a_membership",
+    "ok": [
+      {
+        "bot_id": "ghost",
+        "group_id": "build"
+      }
+    ],
+    "detail": "index={'director': ['build', 'qr']} unk=[{'bot_id': 'ghost', 'group_id': 'build'}]"
+  },
+  {
+    "check": "regression.MM-020c_present_shared_scan",
+    "ok": true,
+    "detail": "events_mirror_imports_secret_scan=True"
+  },
+  {
+    "check": "regression.MM-020c_secret_detect",
+    "ok": true,
+    "detail": "decide_flush_probe_error=decide_flush() takes 0 positional arguments but 2 were given; scanner=True"
+  },
+  {
+    "check": "regression.MM-020f_ui_present",
+    "ok": true,
+    "detail": "files_ok=True createSseTransport=False",
+    "note": "SSE transport may still be MM-020d; message/group UI is 020f scope on this branch"
+  }
+]

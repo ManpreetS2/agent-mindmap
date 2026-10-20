@@ -1,0 +1,7 @@
+pytest	Install test dependencies	2026-10-20T09:01:26.5480845Z Installing collected packages: typing-extensions, rpds-py, pygments, pluggy, packaging, iniconfig, attrs, referencing, pytest, jsonschema-specifications, jsonschema
+pytest	Run pytest	2026-10-20T09:01:27.9989631Z ^[[36;1mcollected="$(python -m pytest --collect-only -q 2>&1 | tee /dev/stderr | tail -n1)"^[[0m
+pytest	Run pytest	2026-10-20T09:01:27.9990260Z ^[[36;1mcount="$(echo "$collected" | awk '/tests collected/ { print $1; exit }')"^[[0m
+pytest	Run pytest	2026-10-20T09:01:27.9991234Z ^[[36;1m  echo "Expected at least one test to be collected, got: ${count:-0}"^[[0m
+pytest	Run pytest	2026-10-20T09:01:28.8883878Z tests/test_mm020a_membership.py::test_legacy_activity_fixtures_load_unchanged[state-partial-github-skipped.json]
+pytest	Run pytest	2026-10-20T09:01:28.8908171Z 176 tests collected in 0.52s
+pytest	Run pytest	2026-10-20T09:01:37.1665515Z 175 passed, 1 skipped in 8.10s

@@ -1,0 +1,12 @@
+
+ RUN  v2.1.9 /tmp/qa-mm020b-delta/checkout/web
+
+ ✓ src/test/activityTransport.test.ts (2 tests) 12ms
+ ✓ src/test/graphLayout.test.ts (2 tests) 3ms
+ ✓ src/test/edgeTypes.test.tsx (6 tests) 314ms
+
+ Test Files  3 passed (3)
+      Tests  10 passed (10)
+   Start at  09:11:28
+   Duration  1.71s (transform 598ms, setup 437ms, collect 913ms, tests 329ms, environment 1.09s, prepare 420ms)
+
