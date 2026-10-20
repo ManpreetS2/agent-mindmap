@@ -1,0 +1,24 @@
+{
+  "cfg_ids": [
+    "owner",
+    "build",
+    "qr",
+    "radar"
+  ],
+  "node_group_ids": [
+    "build",
+    "owner",
+    "qr",
+    "radar"
+  ],
+  "d_groups": [
+    "build",
+    "qr",
+    "radar"
+  ],
+  "a_groups": [
+    "build",
+    "qr",
+    "radar"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "mode": "live",
+  "banner_mode": "live",
+  "banner_text": "LIVE MODE \u2014 ingested data",
+  "group_filters": [
+    "All groups",
+    "Owner",
+    "Build",
+    "Quality & Release",
+    "Research / Radar"
+  ],
+  "cluster_labels": [],
+  "dom_node_ids": [
+    "group:owner",
+    "group:build",
+    "group:qr",
+    "group:radar",
+    "manpreet",
+    "director",
+    "architect",
+    "dev-1",
+    "dev-2",
+    "ui-ux-maker",
+    "documentation",
+    "qa-verifier",
+    "security-engineer",
+    "devops-release",
+    "scout",
+    "skeptic",
+    "nomen",
+    "bug-fixer"
+  ],
+  "screenshot": "/tmp/qa-mm020g/evidence/screenshots/mode-live-overview.png",
+  "source_line": "Source: ledger + GitHub (ok)"
+}

@@ -1,0 +1,1 @@
+{"runs":[{"conclusion":"success","html_url":"https://github.com/ManpreetS2/agent-mindmap/actions/runs/39502219008/job/118902284308","id":118902284308,"name":"pytest","status":"completed"},{"conclusion":"success","html_url":"https://github.com/ManpreetS2/agent-mindmap/actions/runs/39502219022/job/118902283681","id":118902283681,"name":"web","status":"completed"}],"total":2}

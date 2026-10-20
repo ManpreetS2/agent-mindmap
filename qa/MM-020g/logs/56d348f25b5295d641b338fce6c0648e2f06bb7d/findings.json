@@ -1,0 +1,47 @@
+[
+  {
+    "id": "QA-MM020g-1-groups-count",
+    "severity": "medium",
+    "component": "config/groups.json + UI group filters/clusters",
+    "expected": "Exactly 3 groups render (this pass checklist); audit \u00a78.1 still documents 2 (Build+Q&R)",
+    "actual": "4 groups configured and rendered: owner, build, qr, radar. LIVE screenshot shows 4 labeled cluster frames; filters: All groups + Owner + Build + Quality & Release + Research / Radar",
+    "repro": "start-mac LIVE or DEMO; open http://127.0.0.1:8787/; count group filter chips / cluster labels",
+    "evidence": "mode-live-overview.png, groups_observation.json"
+  },
+  {
+    "id": "QA-MM020g-2-demo-multigroup",
+    "severity": "high",
+    "component": "fixtures/sample-activity.json + load_demo_activity_bytes",
+    "expected": "\u00a78.1: Director appears as one node belonging to Build+Q&R(+Radar) with membership, not duplicated; groups[] populated",
+    "actual": "DEMO activity remains schema_version 1.0.0; director/architect have groups=null; UI places both only in BUILD; no multi-group membership links. LIVE correctly has groups=['build','qr','radar']",
+    "repro": "./scripts/start-mac.sh --demo; GET /activity.json; inspect director.groups; compare screenshot mode-demo-overview.png vs mode-live-overview.png",
+    "evidence": "activity_demo.json, mode-demo-overview.png"
+  },
+  {
+    "id": "QA-MM020g-3-drag-persist",
+    "severity": "medium",
+    "component": "AgentGraph dragHandle + in-memory draggedIdsRef",
+    "expected": "Drag moves node and position persists",
+    "actual": "Drag via .agent-node-drag-handle moves (dx\u2248144, dy\u224894) within session; after full page reload position resets to layout defaults (no localStorage/disk persistence)",
+    "repro": "DEMO UI; drag Director by .agent-node-drag-handle; reload; compare bounding box",
+    "evidence": "drag_handle.json, mode-demo-drag-handle.png"
+  },
+  {
+    "id": "QA-MM020g-4-message-edge",
+    "severity": "medium",
+    "component": "E2E activity under start-mac (audit \u00a78.1 #3)",
+    "expected": "One bot-to-bot message (explicit recipients) \u2192 edge sender\u2192recipient with provenance agent-reported",
+    "actual": "0 message-type edges and 0 message events in both DEMO and LIVE activity snapshots from start-mac E2E (ledger fixture + gh mock)",
+    "repro": "start-mac LIVE with stub gh + ledger-sample; GET /activity.json; filter edges/events type=message",
+    "evidence": "activity_live.json, activity_demo.json"
+  },
+  {
+    "id": "QA-MM020g-5-bug-fixer-in-radar",
+    "severity": "low",
+    "component": "bots.json bug-fixer.group=radar vs groups.json radar.members",
+    "expected": "MM-020a: Bug fixer out of Research; only appear if added to groups.json members",
+    "actual": "bug-fixer has primary group radar and renders inside RESEARCH / RADAR cluster on LIVE, while not listed in radar.members (bots.json note acknowledges this)",
+    "repro": "LIVE UI; observe Bug fixer inside Research / Radar frame; compare config/groups.json radar.members",
+    "evidence": "mode-live-overview.png, config/bots.json"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "events": [
+    {
+      "id": "8fe480e7108207bd497009b38dd6a0bbaeff5161",
+      "ts": "2026-10-19T21:35:00-07:00",
+      "sender": "manpreet",
+      "group": "owner",
+      "type": "pr_opened",
+      "summary": "Opened pull request #5: feat/RP-005-ingest-hardening",
+      "provenance": "github-verified",
+      "task_id": "RP-005",
+      "mode": "live"
+    }
+  ],
+  "meta": {
+    "mode": "live",
+    "github": "ok",
+    "ledger": "ok",
+    "ledger_last_entry_at": "2026-10-19T23:01:00-07:00",
+    "events_source": "https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl"
+  }
+}

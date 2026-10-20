@@ -1,0 +1,58 @@
+[PASS] start-mac --demo: starts mode=demo — {'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:43:13.620855+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dropped_network_events
+[PASS] DEMO SSE order demo-evt-1..3 — ['demo-evt-1', 'demo-evt-2', 'demo-evt-3']
+[PASS] DEMO SSE Last-Event-ID resume — ['demo-evt-2', 'demo-evt-3']
+[PASS] demo SEC-MM011-1 forged Host → 403 — activity=403 events=403 healthz_forged=403
+[PASS] DEMO meta is fixture mode (not live ledger/gh) — {'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+[PASS] demo events have provenance (1.1) — bad=0
+[PASS] demo no placeholder tokens in activity — []
+[PASS] demo Director/Architect unique nodes — director=1 architect=1
+[INFO] demo config group count — cfg=['owner', 'build', 'qr', 'radar'] node_group_ids=['build', 'owner', 'qr', 'radar']
+[FINDING:medium] GROUPS-count-vs-checklist: config defines 4 groups: ['owner', 'build', 'qr', 'radar']; audit §8.1 still says two (Build+Q&R); MM-020a added Research + Owner
+[FAIL] demo exactly 3 groups (checklist) — have 4: ['owner', 'build', 'qr', 'radar']
+[FAIL] demo Director/Architect multi-group membership arrays — director.groups=[] architect.groups=[]
+[FINDING:medium] DEMO-membership-arrays: director.groups=[] architect.groups=[]
+[PASS] live-update path: SSE delivers events without page reload (API) — n=3
+[PASS] demo browser banner correct — demo / DEMO MODE — fixture data only
+[INFO] demo UI group filter chips — ['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']
+[INFO] demo UI cluster labels observed — ['Q&R']
+[PASS] demo browser Director/Architect once — director=1 architect=1 nodes=14
+[PASS] demo detail panel on select — panel=True text=True
+[FAIL] demo node drag moves position — before={'x': 647.6340942382812, 'y': 305.17498779296875, 'width': 127.3946533203125, 'height': 55.09613037109375} after={'x': 647.7921142578125, 'y': 305.17498779296875, 'width': 127.42572021484375, 'height': 55.09613037109375}
+[FINDING:medium] UI-demo-drag: before={'x': 647.6340942382812, 'y': 305.17498779296875, 'width': 127.3946533203125, 'height': 55.09613037109375} after={'x': 647.7921142578125, 'y': 305.17498779296875, 'width': 127.42572021484375, 'height': 55.09613037
+[PASS] demo timeline/filters present
+[PASS] demo source line visible — Source: ledger + GitHub (skipped)
+[PASS] demo SSE kill → UI stays up (poll fallback path)
+[PASS] start-mac: starts mode=live — {'mode': 'live', 'last_ledger_poll': '2026-10-20T21:43:24.985193+00:00', 'last_gh_poll': '2026-10-20T21:43:24.987409+00:00', 'last_events_poll': '2026-10-20T21:43:24.762938+00:00', 'last_build': '2026-10-20T21:43:24.9847
+[PASS] LIVE SSE endpoint 200 (may be empty with events=off/fixture) — n=1 ids=['8fe480e7108207bd497009b38dd6a0bbaeff5161']
+[PASS] live SEC-MM011-1 forged Host → 403 — activity=403 events=403 healthz_forged=403
+[PASS] LIVE activity not demo fixtures — {'mode': 'live', 'github': 'ok', 'ledger': 'ok', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00', 'events_source': 'https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl'}
+[PASS] live events have provenance (1.1) — bad=0
+[PASS] live no placeholder tokens in activity — []
+[PASS] live Director/Architect unique nodes — director=1 architect=1
+[INFO] live config group count — cfg=['owner', 'build', 'qr', 'radar'] node_group_ids=['build', 'owner', 'qr', 'radar']
+[FINDING:medium] GROUPS-count-vs-checklist: config defines 4 groups: ['owner', 'build', 'qr', 'radar']; audit §8.1 still says two (Build+Q&R); MM-020a added Research + Owner
+[FAIL] live exactly 3 groups (checklist) — have 4: ['owner', 'build', 'qr', 'radar']
+[PASS] live Director/Architect multi-group membership arrays — director.groups=['build', 'qr', 'radar'] architect.groups=['build', 'qr', 'radar']
+[PASS] live browser banner correct — live / LIVE MODE — ingested data
+[INFO] live UI group filter chips — ['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']
+[INFO] live UI cluster labels observed — []
+[PASS] live browser Director/Architect once — director=1 architect=1 nodes=18
+[PASS] live detail panel on select — panel=True text=True
+[FAIL] live node drag moves position — before={'x': 208.26235961914062, 'y': 293.83331298828125, 'width': 126.16314697265625, 'height': 54.555999755859375} after={'x': 208.28431701660156, 'y': 293.83331298828125, 'width': 126.17646789550781, 'height': 54.555999755859375}
+[FINDING:medium] UI-live-drag: before={'x': 208.26235961914062, 'y': 293.83331298828125, 'width': 126.16314697265625, 'height': 54.555999755859375} after={'x': 208.28431701660156, 'y': 293.83331298828125, 'width': 126.17646789550781, 'height': 54.5559
+[PASS] live timeline/filters present
+[PASS] live source line visible — Source: ledger + GitHub (ok)
+[PASS] live SSE kill → UI stays up (poll fallback path)
+[PASS] negative: port busy → nonzero + clear message — rc=1 out=n use; exiting (launchd ThrottleInterval limits restart churn)
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+python  61833 ubuntu    5u  IPv4 138630      0t0  TCP 127.0.0.1:8787 (LISTEN)
+
+[PASS] negative: missing ledger → nonzero + clear message — rc=1
+[PASS] negative: gh unauthenticated → nonzero + auth message — rc=1 error: gh is not authenticated. Run 'gh auth login' yourself (this script will not).
+
+
+=== SUMMARY ===
+PASS 32
+FAIL 5
+INFO 6
+FINDINGS 5

@@ -1,0 +1,40 @@
+{
+  "events": [
+    {
+      "id": "demo-evt-1",
+      "ts": "2026-10-20T12:00:00+00:00",
+      "sender": "director",
+      "group": "build",
+      "type": "message",
+      "summary": "Demo stream event one",
+      "provenance": "agent-reported",
+      "mode": "demo"
+    },
+    {
+      "id": "demo-evt-2",
+      "ts": "2026-10-20T12:00:05+00:00",
+      "sender": "architect",
+      "group": "build",
+      "type": "message",
+      "summary": "Demo stream event two",
+      "provenance": "agent-reported",
+      "mode": "demo"
+    },
+    {
+      "id": "demo-evt-3",
+      "ts": "2026-10-20T12:00:10+00:00",
+      "sender": "qa-verifier",
+      "group": "qr",
+      "type": "message",
+      "summary": "Demo stream event three",
+      "provenance": "agent-reported",
+      "mode": "demo"
+    }
+  ],
+  "meta": {
+    "github": "skipped",
+    "ledger": "demo",
+    "ledger_last_entry_at": "2026-10-19T21:39:00-07:00",
+    "mode": "demo"
+  }
+}

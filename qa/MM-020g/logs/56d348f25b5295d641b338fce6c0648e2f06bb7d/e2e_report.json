@@ -1,0 +1,277 @@
+{
+  "sha": "56d348f25b5295d641b338fce6c0648e2f06bb7d",
+  "checks": [
+    {
+      "check": "start-mac --demo: starts mode=demo",
+      "result": "PASS",
+      "detail": "{'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:43:13.620855+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dropped_network_events"
+    },
+    {
+      "check": "DEMO SSE order demo-evt-1..3",
+      "result": "PASS",
+      "detail": "['demo-evt-1', 'demo-evt-2', 'demo-evt-3']"
+    },
+    {
+      "check": "DEMO SSE Last-Event-ID resume",
+      "result": "PASS",
+      "detail": "['demo-evt-2', 'demo-evt-3']"
+    },
+    {
+      "check": "demo SEC-MM011-1 forged Host \u2192 403",
+      "result": "PASS",
+      "detail": "activity=403 events=403 healthz_forged=403"
+    },
+    {
+      "check": "DEMO meta is fixture mode (not live ledger/gh)",
+      "result": "PASS",
+      "detail": "{'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "demo events have provenance (1.1)",
+      "result": "PASS",
+      "detail": "bad=0"
+    },
+    {
+      "check": "demo no placeholder tokens in activity",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "demo Director/Architect unique nodes",
+      "result": "PASS",
+      "detail": "director=1 architect=1"
+    },
+    {
+      "check": "demo config group count",
+      "result": "INFO",
+      "detail": "cfg=['owner', 'build', 'qr', 'radar'] node_group_ids=['build', 'owner', 'qr', 'radar']"
+    },
+    {
+      "check": "demo exactly 3 groups (checklist)",
+      "result": "FAIL",
+      "detail": "have 4: ['owner', 'build', 'qr', 'radar']"
+    },
+    {
+      "check": "demo Director/Architect multi-group membership arrays",
+      "result": "FAIL",
+      "detail": "director.groups=[] architect.groups=[]"
+    },
+    {
+      "check": "live-update path: SSE delivers events without page reload (API)",
+      "result": "PASS",
+      "detail": "n=3"
+    },
+    {
+      "check": "demo browser banner correct",
+      "result": "PASS",
+      "detail": "demo / DEMO MODE \u2014 fixture data only"
+    },
+    {
+      "check": "demo UI group filter chips",
+      "result": "INFO",
+      "detail": "['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']"
+    },
+    {
+      "check": "demo UI cluster labels observed",
+      "result": "INFO",
+      "detail": "['Q&R']"
+    },
+    {
+      "check": "demo browser Director/Architect once",
+      "result": "PASS",
+      "detail": "director=1 architect=1 nodes=14"
+    },
+    {
+      "check": "demo detail panel on select",
+      "result": "PASS",
+      "detail": "panel=True text=True"
+    },
+    {
+      "check": "demo node drag moves position",
+      "result": "FAIL",
+      "detail": "before={'x': 647.6340942382812, 'y': 305.17498779296875, 'width': 127.3946533203125, 'height': 55.09613037109375} after={'x': 647.7921142578125, 'y': 305.17498779296875, 'width': 127.42572021484375, 'height': 55.09613037109375}"
+    },
+    {
+      "check": "demo timeline/filters present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "demo source line visible",
+      "result": "PASS",
+      "detail": "Source: ledger + GitHub (skipped)"
+    },
+    {
+      "check": "demo SSE kill \u2192 UI stays up (poll fallback path)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "start-mac: starts mode=live",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'last_ledger_poll': '2026-10-20T21:43:24.985193+00:00', 'last_gh_poll': '2026-10-20T21:43:24.987409+00:00', 'last_events_poll': '2026-10-20T21:43:24.762938+00:00', 'last_build': '2026-10-20T21:43:24.9847"
+    },
+    {
+      "check": "LIVE SSE endpoint 200 (may be empty with events=off/fixture)",
+      "result": "PASS",
+      "detail": "n=1 ids=['8fe480e7108207bd497009b38dd6a0bbaeff5161']"
+    },
+    {
+      "check": "live SEC-MM011-1 forged Host \u2192 403",
+      "result": "PASS",
+      "detail": "activity=403 events=403 healthz_forged=403"
+    },
+    {
+      "check": "LIVE activity not demo fixtures",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'github': 'ok', 'ledger': 'ok', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00', 'events_source': 'https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl'}"
+    },
+    {
+      "check": "live events have provenance (1.1)",
+      "result": "PASS",
+      "detail": "bad=0"
+    },
+    {
+      "check": "live no placeholder tokens in activity",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "live Director/Architect unique nodes",
+      "result": "PASS",
+      "detail": "director=1 architect=1"
+    },
+    {
+      "check": "live config group count",
+      "result": "INFO",
+      "detail": "cfg=['owner', 'build', 'qr', 'radar'] node_group_ids=['build', 'owner', 'qr', 'radar']"
+    },
+    {
+      "check": "live exactly 3 groups (checklist)",
+      "result": "FAIL",
+      "detail": "have 4: ['owner', 'build', 'qr', 'radar']"
+    },
+    {
+      "check": "live Director/Architect multi-group membership arrays",
+      "result": "PASS",
+      "detail": "director.groups=['build', 'qr', 'radar'] architect.groups=['build', 'qr', 'radar']"
+    },
+    {
+      "check": "live browser banner correct",
+      "result": "PASS",
+      "detail": "live / LIVE MODE \u2014 ingested data"
+    },
+    {
+      "check": "live UI group filter chips",
+      "result": "INFO",
+      "detail": "['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']"
+    },
+    {
+      "check": "live UI cluster labels observed",
+      "result": "INFO",
+      "detail": "[]"
+    },
+    {
+      "check": "live browser Director/Architect once",
+      "result": "PASS",
+      "detail": "director=1 architect=1 nodes=18"
+    },
+    {
+      "check": "live detail panel on select",
+      "result": "PASS",
+      "detail": "panel=True text=True"
+    },
+    {
+      "check": "live node drag moves position",
+      "result": "FAIL",
+      "detail": "before={'x': 208.26235961914062, 'y': 293.83331298828125, 'width': 126.16314697265625, 'height': 54.555999755859375} after={'x': 208.28431701660156, 'y': 293.83331298828125, 'width': 126.17646789550781, 'height': 54.555999755859375}"
+    },
+    {
+      "check": "live timeline/filters present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "live source line visible",
+      "result": "PASS",
+      "detail": "Source: ledger + GitHub (ok)"
+    },
+    {
+      "check": "live SSE kill \u2192 UI stays up (poll fallback path)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "negative: port busy \u2192 nonzero + clear message",
+      "result": "PASS",
+      "detail": "rc=1 out=n use; exiting (launchd ThrottleInterval limits restart churn)\nCOMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\npython  61833 ubuntu    5u  IPv4 138630      0t0  TCP 127.0.0.1:8787 (LISTEN)\n"
+    },
+    {
+      "check": "negative: missing ledger \u2192 nonzero + clear message",
+      "result": "PASS",
+      "detail": "rc=1"
+    },
+    {
+      "check": "negative: gh unauthenticated \u2192 nonzero + auth message",
+      "result": "PASS",
+      "detail": "rc=1 error: gh is not authenticated. Run 'gh auth login' yourself (this script will not).\n"
+    }
+  ],
+  "findings": [
+    {
+      "id": "GROUPS-count-vs-checklist",
+      "component": "config/groups.json + UI clusters",
+      "expected": "Exactly 3 groups render (this pass checklist)",
+      "actual": "config defines 4 groups: ['owner', 'build', 'qr', 'radar']; audit \u00a78.1 still says two (Build+Q&R); MM-020a added Research + Owner",
+      "repro": "Read config/groups.json; load UI group filters/clusters",
+      "evidence": "groups_observation.json",
+      "environment": "@56d348f",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "DEMO-membership-arrays",
+      "component": "node.groups",
+      "expected": "Director/Architect carry multi-group membership (Build+Q&R+Radar)",
+      "actual": "director.groups=[] architect.groups=[]",
+      "repro": "Inspect activity nodes after migrate/bootstrap",
+      "evidence": "activity_demo.json",
+      "environment": "@56d348f",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "UI-demo-drag",
+      "component": "AgentGraph drag",
+      "expected": "node position changes on drag",
+      "actual": "before={'x': 647.6340942382812, 'y': 305.17498779296875, 'width': 127.3946533203125, 'height': 55.09613037109375} after={'x': 647.7921142578125, 'y': 305.17498779296875, 'width': 127.42572021484375, 'height': 55.09613037109375}",
+      "repro": "drag Director node",
+      "evidence": "mode-demo-after-drag.png",
+      "environment": "@56d348f",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "GROUPS-count-vs-checklist",
+      "component": "config/groups.json + UI clusters",
+      "expected": "Exactly 3 groups render (this pass checklist)",
+      "actual": "config defines 4 groups: ['owner', 'build', 'qr', 'radar']; audit \u00a78.1 still says two (Build+Q&R); MM-020a added Research + Owner",
+      "repro": "Read config/groups.json; load UI group filters/clusters",
+      "evidence": "groups_observation.json",
+      "environment": "@56d348f",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "UI-live-drag",
+      "component": "AgentGraph drag",
+      "expected": "node position changes on drag",
+      "actual": "before={'x': 208.26235961914062, 'y': 293.83331298828125, 'width': 126.16314697265625, 'height': 54.555999755859375} after={'x': 208.28431701660156, 'y': 293.83331298828125, 'width': 126.17646789550781, 'height': 54.555999755859375}",
+      "repro": "drag Director node",
+      "evidence": "mode-live-after-drag.png",
+      "environment": "@56d348f",
+      "severity": "medium",
+      "confidence": "high"
+    }
+  ]
+}

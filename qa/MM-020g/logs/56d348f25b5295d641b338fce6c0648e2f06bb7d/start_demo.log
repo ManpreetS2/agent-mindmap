@@ -1,0 +1,29 @@
+mindmap live on http://127.0.0.1:8787 (mode=demo, fixtures=/tmp/qa-mm020g/checkout/fixtures)
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CcSh6Gy4.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CR_ADaeC.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CcSh6Gy4.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CR_ADaeC.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
