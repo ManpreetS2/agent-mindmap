@@ -176,8 +176,8 @@ def test_pr5_merged_with_sha_693ebc7(cache_dir: Path) -> None:
     assert "pull/5" in merged[0]["source_url"]
 
 
-def test_security_review_actor_from_github_login(cache_dir: Path) -> None:
-    """SEC-MM020e-2: review actor from user.login, not ~Bot signature in body."""
+def test_security_review_actor_from_leading_signature(cache_dir: Path) -> None:
+    """P0: ~Bot at body start (not GitHub login)."""
     result = poll_github(cache_dir=cache_dir, runner=MockGh())
     security = [
         e
@@ -185,9 +185,10 @@ def test_security_review_actor_from_github_login(cache_dir: Path) -> None:
         if e.get("pr") == 6 and e["type"] == "verdict" and e.get("verdict") == "PASS"
     ]
     assert len(security) == 1
-    assert security[0]["actor"] == "manpreet"
-    assert security[0]["attribution"]["method"] == "github_login"
+    assert security[0]["actor"] == "security-engineer"
+    assert security[0]["attribution"]["method"] == "signature"
     assert security[0]["provenance"] == "github-verified"
+    assert security[0].get("repo")
 
 
 def test_unsigned_comment_is_unknown(cache_dir: Path) -> None:
@@ -198,7 +199,8 @@ def test_unsigned_comment_is_unknown(cache_dir: Path) -> None:
         if e.get("pr") == 6 and "Unsigned follow-up" in e.get("raw", "")
     ]
     assert len(notes) == 1
-    assert notes[0]["attribution"]["method"] == "github_login"
+    assert notes[0]["attribution"]["method"] == "unknown"
+    assert notes[0]["actor"] is None
 
 
 def test_second_run_gets_304s(cache_dir: Path) -> None:
@@ -639,17 +641,22 @@ def test_sibling_allowlisted_repo_link_stops_pagination(cache_dir: Path) -> None
 
 
 def test_merged_by_login_maps_merger_to_bot(cache_dir: Path) -> None:
-    """MM-020e2: merged actor from PR merged_by.login (bot mapping)."""
+    """P0: PR body ~Bot signature attributes opener; merge without body sig stays unknown."""
     result = poll_github(cache_dir=cache_dir, runner=MockGh())
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] == "manpreet"
-    assert merged[0]["attribution"]["method"] == "github_login"
-    assert merged[0]["provenance"] == "github-verified"
+    assert merged[0]["actor"] is None
+    assert merged[0]["attribution"]["method"] == "unknown"
     assert merged[0]["repo"] == "ManpreetS2/fencepost"
     opened = [e for e in result.events if e["type"] == "pr_opened" and e.get("pr") == 5]
-    assert opened[0]["actor"] == "manpreet"
-    assert opened[0]["attribution"]["method"] == "github_login"
+    assert opened[0]["actor"] is None
+    ledger_tasks = [{"id": "RP-005", "owner": "DEV 1", "status": "IN_PROGRESS"}]
+    with_ledger = poll_github(
+        cache_dir=cache_dir, runner=MockGh(), ledger_tasks=ledger_tasks
+    )
+    opened2 = [e for e in with_ledger.events if e["type"] == "pr_opened" and e.get("pr") == 5]
+    assert opened2[0]["actor"] == "dev-1"
+    assert opened2[0]["attribution"]["method"] == "ledger_owner"
 
 
 def test_merged_without_merged_by_is_agent_reported_unknown(cache_dir: Path) -> None:
@@ -714,8 +721,11 @@ def test_merged_squash_sha_absent_from_commits_uses_merged_by(cache_dir: Path) -
     )
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] == "manpreet"
-    assert merged[0]["provenance"] == "github-verified"
+    assert merged[0]["actor"] is None
+    assert merged[0]["attribution"]["method"] == "unknown"
+    opened = [e for e in result.events if e["type"] == "pr_opened" and e.get("pr") == 5]
+    assert opened[0]["actor"] == "dev-1"
+    assert opened[0]["attribution"]["method"] == "signature"
 
 
 def test_merged_by_unmapped_login_is_agent_reported(cache_dir: Path) -> None:
@@ -747,11 +757,11 @@ def test_merged_by_unmapped_login_is_agent_reported(cache_dir: Path) -> None:
     assert len(merged) == 1
     assert merged[0]["actor"] is None
     assert merged[0]["provenance"] == "agent-reported"
-    assert merged[0]["attribution"]["method"] == "github_login_unmapped"
+    assert merged[0]["attribution"]["method"] == "unknown"
 
 
 def test_ledger_style_merge_note_does_not_infer_merger_from_signature(cache_dir: Path) -> None:
-    """SEC-MM020e-2: ~Bot signature in merge note does not set actor (login only)."""
+    """P0: merge event uses title only — mid-body ~Bot on issue comment does not attribute merge."""
     mapping = _single_pr_mapping()
     mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
         {
@@ -800,13 +810,12 @@ def test_ledger_style_merge_note_does_not_infer_merger_from_signature(cache_dir:
     )
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] == "manpreet"
-    assert merged[0]["attribution"]["method"] == "github_login"
-    assert merged[0]["actor"] != "devops-release"
+    assert merged[0]["actor"] is None
+    assert merged[0]["attribution"]["method"] == "unknown"
 
 
 def test_merge_hint_alone_does_not_attribute_merger(cache_dir: Path) -> None:
-    """SEC-MM020e-2: casual merge hint + ~Bot does not infer merger from body."""
+    """P0: merge attribution does not read issue-comment bodies."""
     mapping = _single_pr_mapping()
     mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
         {
@@ -855,9 +864,8 @@ def test_merge_hint_alone_does_not_attribute_merger(cache_dir: Path) -> None:
     )
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] == "manpreet"
-    assert merged[0]["attribution"]["method"] == "github_login"
-    assert merged[0]["actor"] != "devops-release"
+    assert merged[0]["actor"] is None
+    assert merged[0]["attribution"]["method"] == "unknown"
 
 
 def test_repositories_numeric_id_link_pagination(cache_dir: Path) -> None:

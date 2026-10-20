@@ -387,8 +387,8 @@ def test_derive_edges_idempotent_with_duplicate_lane_events() -> None:
     assert ids1 == ids2
 
 
-def test_sec_mm020e2_pr_updated_commit_login_not_body_signature() -> None:
-    """SEC-MM020e-2: pr_updated actor from commit author.login only."""
+def test_pr_updated_commit_body_leading_signature() -> None:
+    """P0: pr_updated actor from leading ~Bot in commit message, not GitHub login."""
     poller = GitHubPoller(bots=load_bots(), runner=MockGh(fail=True))
     html = "https://github.com/ManpreetS2/fencepost/pull/99"
     sha = "abcdef1234567890abcdef1234567890abcdef12"
@@ -408,7 +408,8 @@ def test_sec_mm020e2_pr_updated_commit_login_not_body_signature() -> None:
         set(),
     )
     assert len(mapped) == 1
-    assert mapped[0]["actor"] == "manpreet"
+    assert mapped[0]["actor"] == "dev-2"
+    assert mapped[0]["attribution"]["method"] == "signature"
     assert mapped[0]["provenance"] == "github-verified"
 
     unmapped = poller._push_events(
@@ -427,6 +428,6 @@ def test_sec_mm020e2_pr_updated_commit_login_not_body_signature() -> None:
         set(),
     )
     assert len(unmapped) == 1
-    assert unmapped[0]["actor"] is None
-    assert unmapped[0]["provenance"] == "agent-reported"
-    assert unmapped[0]["attribution"]["method"] == "github_login_unmapped"
+    assert unmapped[0]["actor"] == "qa-verifier"
+    assert unmapped[0]["provenance"] == "github-verified"
+    assert unmapped[0]["attribution"]["method"] == "signature"

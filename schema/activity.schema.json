@@ -29,7 +29,8 @@
     },
     "project": {
       "type": "string",
-      "const": "fencepost"
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "description": "MM-020-P0: live builds use resolve_project_name(); demo fixtures may use fencepost"
     },
     "meta": {
       "type": "object",
@@ -38,17 +39,21 @@
       "properties": {
         "github": {
           "type": "string",
-          "enum": ["ok", "error", "skipped", "rate_limited"]
+          "enum": ["ok", "error", "skipped", "rate_limited", "never_run"]
         },
         "ledger": {
           "type": "string",
-          "enum": ["ok", "error", "skipped", "demo"],
+          "enum": ["ok", "error", "skipped", "demo", "unavailable"],
           "description": "Ledger read status (path or gh data/ledger mirror)"
         },
         "ledger_last_entry_at": {
           "type": ["string", "null"],
           "format": "date-time",
           "description": "Latest dated ledger entry timestamp for the stale banner"
+        },
+        "ledger_error": {
+          "type": "string",
+          "description": "Human-readable ledger failure when meta.ledger is unavailable or error"
         },
         "events_source": {
           "type": "string",
@@ -58,6 +63,16 @@
           "type": "string",
           "enum": ["demo", "live"],
           "description": "MM-020i: server mode when snapshot was produced (demo fixtures vs live ingest)"
+        },
+        "project": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$",
+          "description": "MM-020-P0: same as top-level project; UI reads meta.project first"
+        },
+        "unattributed_event_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Events with no resolved actor after strict attribution"
         }
       }
     },
@@ -81,6 +96,27 @@
       "type": "array",
       "items": { "$ref": "#/$defs/event" },
       "description": "Ledger lines that could not be fully classified; also mirrored as note events when applicable"
+    },
+    "groups": {
+      "type": "array",
+      "description": "Group rooms from config/groups.json (id, label, members)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "members"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "members": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "groups_reason": {
+      "type": "string",
+      "description": "Present when groups is empty — explains missing config"
     }
   },
   "allOf": [
@@ -167,7 +203,8 @@
             "ledger_owner",
             "unknown",
             "github_login",
-            "github_login_unmapped"
+            "github_login_unmapped",
+            "network_from"
           ]
         }
       }

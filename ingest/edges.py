@@ -12,8 +12,6 @@ import re
 from typing import Any
 
 from .attribute import VERDICT_TOKENS
-from .membership import group_target_id
-
 # Event types that always yield a handoff-style edge (actor → target).
 _HANDOFF_TYPES = frozenset({"handoff", "assigned"})
 
@@ -130,8 +128,8 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
       reviewer → PR author.
     - pr: each signature-attributed review/comment → PR author → reviewer,
       deduped per (author, reviewer, repo, pr).
-    - message (MM-020a): explicit recipients → sender→each recipient;
-      untargeted → sender→group:{group}. Recipients are never invented.
+    - message (MM-020a / P0): explicit recipients → sender→each recipient.
+      No recipients → no message edge. Recipients are never invented.
     """
     pr_authors: dict[tuple[str, int], str] = {}
     merges_by_pr: dict[tuple[str, int], list[dict[str, Any]]] = {}
@@ -220,9 +218,5 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if recipients:
             for dest in recipients:
                 add_edge(str(sender), dest, "message", eid)
-        else:
-            group = evt.get("group")
-            if isinstance(group, str) and group.strip():
-                add_edge(str(sender), group_target_id(group.strip()), "message", eid)
 
     return sorted(buckets.values(), key=lambda e: (e["type"], e["source"], e["target"]))
