@@ -13,7 +13,9 @@ import fcntl
 import hashlib
 import json
 import os
+import select
 import signal
+import socket
 import sys
 import threading
 import time
@@ -166,6 +168,7 @@ class SseConnectionLimiter:
     def __init__(self, max_connections: int = MAX_SSE_CONNECTIONS) -> None:
         self._max = max_connections
         self._lock = threading.Lock()
+        self._cond = threading.Condition(self._lock)
         self._active = 0
 
     def try_acquire(self) -> bool:
@@ -178,10 +181,24 @@ class SseConnectionLimiter:
     def release(self) -> None:
         with self._lock:
             self._active = max(0, self._active - 1)
+            self._cond.notify_all()
 
     def active_count(self) -> int:
         with self._lock:
             return self._active
+
+    def wait_until_active_at_most(
+        self, limit: int, *, timeout: float = 2.0
+    ) -> bool:
+        """Block until ``active_count <= limit`` (for tests; no time.sleep polling)."""
+        with self._cond:
+            deadline = time.monotonic() + timeout
+            while self._active > limit:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._cond.wait(timeout=remaining)
+            return True
 
 
 def refuse_public_bind(host: str) -> None:
@@ -209,14 +226,14 @@ def host_header_allowed(value: str | None) -> bool:
 
 
 def origin_header_allowed(value: str | None) -> bool:
-    """SEC-MM011-1: absent, null, or localhost/127.0.0.1 Origin only."""
+    """SEC-MM011-1: missing Origin ok; literal ``null`` and foreign origins → deny."""
     if value is None:
         return True
     raw = value.strip()
     if not raw:
         return True
     if raw.lower() == "null":
-        return True
+        return False
     parsed = urlparse(raw)
     if parsed.scheme not in ("http", "https"):
         return False
@@ -765,6 +782,46 @@ class MindmapHandler(BaseHTTPRequestHandler):
             self.wfile.write(f": {comment}\n\n".encode("utf-8"))
         self.wfile.flush()
 
+    def _peer_closed(self) -> bool:
+        """True when the client half-closed the TCP connection (EOF on read)."""
+        conn = self.connection
+        if conn is None:
+            return True
+        try:
+            readable, _, _ = select.select([conn], [], [], 0)
+            if not readable:
+                return False
+            peek = conn.recv(1, socket.MSG_PEEK)
+            return peek == b""
+        except BlockingIOError:
+            return False
+        except OSError as exc:
+            if exc.errno in (
+                errno.EBADF,
+                errno.ENOTCONN,
+                errno.ECONNRESET,
+                errno.EPIPE,
+                errno.ESHUTDOWN,
+            ):
+                return True
+            return False
+
+    def _push_sse_events(
+        self,
+        *,
+        last_id: str | None,
+        sent: set[str],
+    ) -> str | None:
+        for evt in self.daemon.network_events_after(last_id):
+            eid = str(evt.get("id") or "")
+            if not eid or eid in sent:
+                continue
+            payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
+            self._write_sse_frame(event_id=eid, data=payload, comment=None)
+            sent.add(eid)
+            last_id = eid
+        return last_id
+
     def _handle_sse(self) -> None:
         if self.command == "HEAD":
             self.send_response(HTTPStatus.OK)
@@ -795,28 +852,26 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 last_id = last_id.strip() or None
 
             sent: set[str] = set()
-            for evt in self.daemon.network_events_after(last_id):
-                eid = str(evt.get("id") or "")
-                if not eid or eid in sent:
-                    continue
-                payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
-                self._write_sse_frame(event_id=eid, data=payload, comment=None)
-                sent.add(eid)
-                last_id = eid
+            last_id = self._push_sse_events(last_id=last_id, sent=sent)
 
             heartbeat = max(0.05, float(self.sse_heartbeat_sec))
-            while True:
-                for evt in self.daemon.network_events_after(last_id):
-                    eid = str(evt.get("id") or "")
-                    if not eid or eid in sent:
-                        continue
-                    payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
-                    self._write_sse_frame(event_id=eid, data=payload, comment=None)
-                    sent.add(eid)
-                    last_id = eid
+            conn = self.connection
+            while conn is not None:
+                if self._peer_closed():
+                    break
+                try:
+                    last_id = self._push_sse_events(last_id=last_id, sent=sent)
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    break
+
+                readable, _, _ = select.select([conn], [], [], heartbeat)
+                if readable:
+                    if self._peer_closed():
+                        break
+                    continue
+
                 try:
                     self._write_sse_frame(event_id=None, data=None, comment="heartbeat")
-                    time.sleep(heartbeat)
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     break
         finally:

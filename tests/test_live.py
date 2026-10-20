@@ -319,6 +319,7 @@ def test_host_and_origin_helpers() -> None:
     assert origin_header_allowed(None)
     assert origin_header_allowed("http://127.0.0.1:8787")
     assert not origin_header_allowed("https://evil.example")
+    assert not origin_header_allowed("null")
 
 
 def test_sec_mm011_forged_host_and_origin_rejected(
@@ -343,6 +344,31 @@ def test_sec_mm011_forged_host_and_origin_rejected(
         {"Host": f"{host}:{port}", "Origin": "https://evil.example"},
     )
     assert status3 == HTTPStatus.FORBIDDEN
+
+
+def test_sec_mm020d_2_origin_null_rejected(live_http: tuple[LiveDaemon, str, int]) -> None:
+    _, host, port = live_http
+    headers = {"Host": f"{host}:{port}", "Origin": "null"}
+    for path in ("/healthz", "/activity.json", "/events"):
+        status, _, _ = _http_get(f"http://{host}:{port}{path}", headers)
+        assert status == HTTPStatus.FORBIDDEN
+
+
+def test_sec_mm020d_2_missing_origin_allowed_for_get(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    """Same-origin GETs without an Origin header remain allowed (SEC-MM011-1)."""
+    _, host, port = live_http
+    headers = {"Host": f"{host}:{port}"}
+    for path in ("/healthz", "/activity.json"):
+        status, _, _ = _http_get(f"http://{host}:{port}{path}", headers)
+        assert status == HTTPStatus.OK
+
+    conn = http.client.HTTPConnection(host, port, timeout=5)
+    conn.request("GET", "/events", headers=headers)
+    resp = conn.getresponse()
+    assert resp.status == HTTPStatus.OK
+    conn.close()
 
 
 def test_sec_mm011_localhost_allowed(live_http: tuple[LiveDaemon, str, int]) -> None:
@@ -487,15 +513,18 @@ sys.exit(0)
 
 
 def test_sec_mm020d_1_sse_connection_cap(live_http: tuple[LiveDaemon, str, int]) -> None:
-    _, host, port = live_http
+    daemon, host, port = live_http
     headers = {"Host": f"{host}:{port}"}
     connections: list[http.client.HTTPConnection] = []
+    # Keep HTTPResponse objects alive so http.client does not close the SSE socket.
+    responses: list[http.client.HTTPResponse] = []
     try:
         for _ in range(MAX_SSE_CONNECTIONS):
             conn = http.client.HTTPConnection(host, port, timeout=5)
             conn.request("GET", "/events", headers=headers)
             resp = conn.getresponse()
             assert resp.status == HTTPStatus.OK
+            responses.append(resp)
             connections.append(conn)
 
         overflow = http.client.HTTPConnection(host, port, timeout=5)
@@ -505,8 +534,9 @@ def test_sec_mm020d_1_sse_connection_cap(live_http: tuple[LiveDaemon, str, int])
         assert resp9.getheader("Retry-After") == str(SSE_RETRY_AFTER_SEC)
         overflow.close()
 
+        responses[0].close()
         connections[0].close()
-        time.sleep(0.2)
+        assert daemon.sse_limiter.wait_until_active_at_most(MAX_SSE_CONNECTIONS - 1)
 
         replacement = http.client.HTTPConnection(host, port, timeout=5)
         replacement.request("GET", "/events", headers=headers)
