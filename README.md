@@ -136,7 +136,7 @@ make live
 
 Bots may append opt-in live messages with `tools/event_emit.py` (JSONL, one `O_APPEND` write per line, ≤ `PIPE_BUF` bytes).
 
-- **Summary:** short sanitized summary only — never raw chat transcripts. Whitespace collapsed, secret patterns refused (MM-010 plus `sk-`, `AKIA`, JWT, PEM private keys, email addresses in any free-text field), **max 240 characters** (truncated with `…` if longer).
+- **Summary:** short sanitized summary only — never raw chat transcripts. Whitespace collapsed, secret patterns refused via `tools.secret_scan.looks_like_secret` (shared denylist from MM-020c), **max 240 characters** (truncated with `…` if longer).
 - **Recipients:** only when explicit; ids not in `config/bots.json` are listed under `unknown_recipients` (event still emitted; warning logged).
 - **File:** opens with `O_NOFOLLOW` (symlinks refused); new files created **0o600**; existing files tightened to **0o600** on open.
 

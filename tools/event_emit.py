@@ -9,7 +9,7 @@ Summary contract: **short sanitized summary** only — never raw transcripts. Wh
 collapsed, secrets are refused (MM-010 scan), and text is capped at SUMMARY_MAX_CHARS (240)
 before emit. Longer input is truncated with a trailing ellipsis character.
 
-No network; no token reads. Secret scan reuses ingest.github_poller._looks_like_secret.
+No network; no token reads. Free-text secret scan: ``tools.secret_scan``.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import hashlib
 import json
 import logging
 import os
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,7 +29,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from ingest.attribute import load_bots  # noqa: E402
-from ingest.github_poller import _looks_like_secret  # noqa: E402 — MM-010 pattern
+from tools.secret_scan import looks_like_secret  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -42,36 +41,9 @@ DEFAULT_PROVENANCE = "agent-reported"
 DEFAULT_EVENT_TYPE = "message"
 SCHEMA_PATH = _ROOT / "schema" / "activity.schema.json"
 
-# MM-020b / QA-MM020b-2: extra free-text patterns beyond MM-010 github_poller scan.
-_RE_OPENAI_SK = re.compile(r"sk-[A-Za-z0-9_-]+")
-_RE_AWS_AKIA = re.compile(r"AKIA[0-9A-Z]{16}")
-_RE_JWT = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
-_RE_PEM_PRIVATE = re.compile(
-    r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.IGNORECASE
-)
-_RE_EMAIL = re.compile(
-    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-    re.IGNORECASE,
-)
-
-_FREE_TEXT_SCANNERS: tuple[re.Pattern[str], ...] = (
-    _RE_OPENAI_SK,
-    _RE_AWS_AKIA,
-    _RE_JWT,
-    _RE_PEM_PRIVATE,
-    _RE_EMAIL,
-)
-
-
-def _free_text_looks_like_secret(text: str) -> bool:
-    """Refuse OpenAI/AWS/JWT/PEM/email patterns plus MM-010 credential scan."""
-    if _looks_like_secret(text):
-        return True
-    return any(p.search(text) for p in _FREE_TEXT_SCANNERS)
-
 
 def _refuse_free_text_field(field: str, value: str) -> None:
-    if _free_text_looks_like_secret(value):
+    if looks_like_secret(value):
         raise SecretRefusedError(f"{field} refused: secret-like content")
 
 
@@ -131,7 +103,7 @@ def sanitize_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str:
     cleaned = " ".join(text.split())
     if not cleaned:
         raise EventEmitError("summary must not be empty")
-    if _free_text_looks_like_secret(cleaned):
+    if looks_like_secret(cleaned):
         raise SecretRefusedError("summary refused: secret-like content")
     if len(cleaned) > max_chars:
         cleaned = cleaned[: max_chars - 1] + "…"
@@ -239,7 +211,7 @@ def build_network_event(
 
 def _serialize_line(event: dict[str, Any]) -> bytes:
     blob = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    if _free_text_looks_like_secret(blob):
+    if looks_like_secret(blob):
         raise SecretRefusedError("serialized event refused: secret-like content")
     line = (blob + "\n").encode("utf-8")
     if b"\n" in blob.encode("utf-8"):

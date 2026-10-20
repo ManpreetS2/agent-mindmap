@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from ingest.github_poller import _looks_like_secret
+from tools.secret_scan import looks_like_secret
 from tools.event_emit import (
     JSONL_FILE_MODE,
     PIPE_BUF,
@@ -252,7 +252,7 @@ def test_concurrent_append_no_lost_lines(tmp_path: Path) -> None:
         eid = obj["id"]
         assert eid not in ids
         ids.add(eid)
-    assert not _looks_like_secret(raw.decode("utf-8", errors="replace"))
+    assert not looks_like_secret(raw.decode("utf-8", errors="replace"))
 
 
 def test_append_event_defaults_missing_provenance(tmp_path: Path) -> None:
