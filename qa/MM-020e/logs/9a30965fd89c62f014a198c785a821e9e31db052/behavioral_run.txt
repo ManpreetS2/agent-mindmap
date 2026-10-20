@@ -1,0 +1,22 @@
+test_fork_head_and_foreign_repo_not_polled (__main__.TestAllowlist.test_fork_head_and_foreign_repo_not_polled)
+Behavioral: only ALLOWED_REPOS appear in MockGh calls. ... ok
+test_non_allowlisted_repo_rejected_at_ctor (__main__.TestAllowlist.test_non_allowlisted_repo_rejected_at_ctor) ... ok
+test_pagination_next_to_other_repo_ignored (__main__.TestAllowlist.test_pagination_next_to_other_repo_ignored)
+Cross-repo Link next must not expand allowlist (existing poller rule). ... ok
+test_commit_pagination_many_pages (__main__.TestGhReadOnlyTokenAndErrors.test_commit_pagination_many_pages)
+Many commits across Link pages are collected (up to MAX_PAGES). ... ok
+test_gh_argv_read_only_and_no_token (__main__.TestGhReadOnlyTokenAndErrors.test_gh_argv_read_only_and_no_token) ... ok
+test_rate_limit_graceful (__main__.TestGhReadOnlyTokenAndErrors.test_rate_limit_graceful) ... ok
+test_secret_and_long_subject_in_activity_json_raw (__main__.TestRawFieldSecurityFinding.test_secret_and_long_subject_in_activity_json_raw) ... ok
+test_ui_detail_panel_renders_raw_as_text_not_html (__main__.TestRawFieldSecurityFinding.test_ui_detail_panel_renders_raw_as_text_not_html)
+XSS: DetailPanel uses React text child for raw (escaped); no dangersetInnerHTML. ... ok
+test_020f_multigroup_still_present (__main__.TestRegressions.test_020f_multigroup_still_present) ... ok
+test_mm020a_and_020c_suites (__main__.TestRegressions.test_mm020a_and_020c_suites) ... ok
+test_secret_summaries_refused_benign_pass (__main__.TestSecretScanSharedAndBenign.test_secret_summaries_refused_benign_pass) ... ok
+test_uses_shared_scanner_no_local_copy (__main__.TestSecretScanSharedAndBenign.test_uses_shared_scanner_no_local_copy) ... ok
+test_239_240_241_multibyte_emoji_multiline (__main__.TestSummaryCap240.test_239_240_241_multibyte_emoji_multiline) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.030s
+
+OK

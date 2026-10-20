@@ -1,0 +1,18 @@
+{
+  "calls": [
+    "repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100",
+    "repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100&page=2",
+    "repos/ManpreetS2/fencepost/commits/0000000000000000000000000000000000000004/check-runs",
+    "repos/ManpreetS2/fencepost/pulls/6/commits?per_page=100"
+  ],
+  "pr5_updated_shas": [
+    "0000000000000000000000000000000000000001",
+    "0000000000000000000000000000000000000002",
+    "0000000000000000000000000000000000000003",
+    "0000000000000000000000000000000000000004"
+  ],
+  "meta": "error",
+  "errors": [
+    "gh api repos/ManpreetS2/fencepost/commits/0000000000000000000000000000000000000004/check-runs -> HTTP 404"
+  ]
+}

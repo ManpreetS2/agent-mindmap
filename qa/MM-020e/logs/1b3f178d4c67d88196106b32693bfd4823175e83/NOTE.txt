@@ -1,0 +1,1 @@
+At 1b3f178 (pre-fix): commit subject raw was unscanned/uncapped. Head moved to 9a30965 which sanitizes commit subjects before raw (SEC-MM020e-1).

@@ -1,0 +1,8 @@
+{
+  "meta": "rate_limited",
+  "errors": [
+    "gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 403 (rate limited)",
+    "failed to resolve numeric id for repo ManpreetS2/agent-mindmap"
+  ],
+  "n_events": 0
+}

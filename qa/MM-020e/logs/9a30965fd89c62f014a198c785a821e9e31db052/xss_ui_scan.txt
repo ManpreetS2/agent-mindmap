@@ -1,0 +1,2 @@
+(none)
+DetailPanel has text binding: True

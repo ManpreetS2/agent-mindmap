@@ -1,0 +1,19 @@
+{
+  "head_note": "SEC-MM020e-1 fix expected at 9a30965+",
+  "pr_updated_count": 3,
+  "raw_samples": [
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u2026",
+    "<img src=x onerror=\"alert(1)\"> <script>alert(2)</script> & \"quotes\"",
+    "benign task-runner subject ~Dev 1 \ud83d\udee0\ufe0f"
+  ],
+  "secret_in_activity_events_raw": false,
+  "secret_on_disk_activity_json": false,
+  "long_subject_uncapped_in_raw": false,
+  "long_subject_capped_in_raw": true,
+  "longest_raw_len": 240,
+  "benign_task_runner_present": true,
+  "xss_markup_in_raw": true,
+  "secret_in_network_events": false,
+  "secret_review_raw_still_possible_on_event_dict": true,
+  "ui_would_receive_raw_from_activity": true
+}
