@@ -17,7 +17,10 @@ const sample: Activity = {
 describe("createPollTransport", () => {
   it("exposes poll kind and fetches activity.json", async () => {
     const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify(sample), { status: 200 }),
+      new Response(JSON.stringify(sample), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
     ) as unknown as typeof fetch;
     const transport = createPollTransport({
       intervalMs: 50,
@@ -32,7 +35,10 @@ describe("createPollTransport", () => {
   it("subscribe polls on an interval", async () => {
     vi.useFakeTimers();
     const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify(sample), { status: 200 }),
+      new Response(JSON.stringify(sample), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
     ) as unknown as typeof fetch;
     const transport = createPollTransport({
       intervalMs: 100,
