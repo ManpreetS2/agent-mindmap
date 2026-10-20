@@ -11,6 +11,7 @@ from pathlib import Path
 from tools.events_mirror import (
     FLUSH_MIN_INTERVAL_S,
     RETENTION_DAYS,
+    SUMMARY_MAX_CHARS,
     decide_flush,
     event_state_fingerprints,
     load_state,
@@ -81,6 +82,17 @@ def test_validate_drops_bad_provenance_and_missing_fields() -> None:
     del bad["sender"]
     assert validate_network_event(bad) is None
     assert validate_network_event("not-a-dict") is None
+
+
+def test_summary_max_chars_is_240() -> None:
+    """Director ruling: summary hard cap is 240 (not 280)."""
+    assert SUMMARY_MAX_CHARS == 240
+    at_cap = validate_network_event(_ev("ok", summary="x" * SUMMARY_MAX_CHARS))
+    assert at_cap is not None
+    over = validate_network_event(_ev("nope", summary="x" * (SUMMARY_MAX_CHARS + 1)))
+    assert over is None
+    # Explicitly not the rejected 280 figure.
+    assert validate_network_event(_ev("nope280", summary="y" * 280)) is None
 
 
 def test_invalid_line_drop_with_warning() -> None:

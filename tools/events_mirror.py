@@ -35,6 +35,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -50,6 +51,17 @@ from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do
 FLUSH_MIN_INTERVAL_S = 180
 RETENTION_DAYS = 7
 PROVENANCE_VALUES = frozenset({"observed", "agent-reported", "github-verified"})
+# Director ruling: summary hard cap is 240 chars (not 280).
+SUMMARY_MAX_CHARS = 240
+
+# Match schema/$defs/taskId (same contract as MM-020b event_emit / activity.schema.json).
+_TASK_ID_RE = re.compile(
+    r"^(?:"
+    r"[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?"
+    r"|"
+    r"[A-Z]{2,}-[A-Z]{2}[0-9]{3}(-[0-9]+)?"
+    r")$"
+)
 
 DEFAULT_EVENTS_PATH = Path(
     os.environ.get("MINDMAP_EVENTS", "/workspace/events.jsonl")
@@ -87,20 +99,23 @@ def parse_iso_ts(value: str) -> datetime | None:
 
 def validate_network_event(obj: Any) -> dict[str, Any] | None:
     """
-    Minimal NetworkEvent validator (audit §6.1 / shared/types.ts).
+    Minimal NetworkEvent validator aligned with MM-020b / schema $defs/networkEvent.
 
-    Unknown `group` strings pass through (no throw). Returns None if invalid.
-    Prefer tools.event_emit helpers when that module exists on the branch.
+    Standalone on purpose: do not import tools.event_emit (PR #17 @ 48a13d9) —
+    that helper raises-or-None via jsonschema and is not on this branch yet.
+    Follow-up after #17 merges: dedupe validators / reuse one shared helper.
+
+    Field + secret contract (aligned with MM-020b / schema $defs/networkEvent):
+      required: id, ts, sender, group, type, summary, provenance
+      provenance ∈ {observed, agent-reported, github-verified}
+      summary: non-empty string, max SUMMARY_MAX_CHARS (240) — Director ruling
+      group: any non-empty string (unknown groups pass through)
+      recipients: optional list of non-empty strings
+      task_id: optional null or schema taskId pattern
+      secrets: refused at flush via SEC-MM010-1 (_looks_like_secret), same as emit
+
+    Returns a cleaned dict, or None if invalid (caller drops the line).
     """
-    try:
-        from tools.event_emit import validate_network_event as _ext  # type: ignore
-
-        return _ext(obj)
-    except ImportError:
-        pass
-    except Exception:  # noqa: BLE001 — fall back to local rules
-        pass
-
     if not isinstance(obj, dict):
         return None
 
@@ -122,7 +137,10 @@ def validate_network_event(obj: Any) -> dict[str, Any] | None:
         return None
     if not isinstance(etype, str) or not etype.strip():
         return None
-    if not isinstance(summary, str):
+    # Emitter refuses empty summaries; Director: hard cap SUMMARY_MAX_CHARS (240).
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    if len(summary) > SUMMARY_MAX_CHARS:
         return None
     if provenance not in PROVENANCE_VALUES:
         return None
@@ -139,15 +157,20 @@ def validate_network_event(obj: Any) -> dict[str, Any] | None:
 
     if "recipients" in obj and obj["recipients"] is not None:
         rec = obj["recipients"]
-        if not isinstance(rec, list) or not all(isinstance(x, str) for x in rec):
+        if not isinstance(rec, list):
+            return None
+        if not all(isinstance(x, str) and x.strip() for x in rec):
             return None
         out["recipients"] = list(rec)
 
     if "task_id" in obj:
         tid = obj["task_id"]
-        if tid is not None and not isinstance(tid, str):
+        if tid is None:
+            out["task_id"] = None
+        elif isinstance(tid, str) and _TASK_ID_RE.match(tid):
+            out["task_id"] = tid
+        else:
             return None
-        out["task_id"] = tid
 
     if "related_id" in obj:
         rid = obj["related_id"]
