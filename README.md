@@ -1,6 +1,6 @@
 # agent-mindmap
 
-Agent activity mind map dashboard for Manpreet's bot team (MINDMAP). Read-only: ledger + GitHub (`gh` CLI) → `activity.json` → static UI (later tasks).
+Agent activity mind map dashboard for bot team (MINDMAP). Read-only: ledger + GitHub (`gh` CLI) → `activity.json` → static UI (later tasks).
 
 ## MM-001 — data schema and bot roster
 
