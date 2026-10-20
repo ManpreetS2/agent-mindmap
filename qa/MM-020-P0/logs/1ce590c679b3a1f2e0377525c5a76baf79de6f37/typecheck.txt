@@ -1,0 +1,9 @@
+
+> mindmap-web@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+
+> agent-mindmap@0.1.0 typecheck
+> tsc --noEmit
+
+sh: 1: tsc: not found

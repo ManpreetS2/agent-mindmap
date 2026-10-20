@@ -1,0 +1,50 @@
+[PASS] start-mac LIVE starts — {'mode': 'live', 'last_ledger_poll': '2026-10-20T22:28:41.891653+00:00', 'last_gh_poll': '2026-10-20T22:28:42.040003+00:00', 'last_events_poll': '2026-10-20T22:28:43.944344+00:00', 'last_build': '2026
+[PASS] (1) meta.ledger unavailable + ledger_error — {'mode': 'live', 'project': 'agent-mindmap', 'github': 'ok', 'ledger': 'unavailable', 'ledger_last_entry_at': None, 'ledger_error': 'ledger not found at data/ledger', 'events_source': 'https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl'}
+[PASS] (1) github=ok (not skipped) — ok
+[PASS] (1) events/edges nonempty — events=12 edges=3
+[FAIL] (1) nodes UNKNOWN not fake IDLE — statuses sample=[('manpreet', 'IDLE'), ('director', 'IDLE'), ('architect', 'IDLE'), ('dev-1', 'IDLE'), ('dev-2', 'IDLE'), ('ui-ux-maker', 'IDLE'), ('documentation', 'IDLE'), ('qa-verifier', 'IDLE')] idle_count=14
+[FINDING:high] P0-1-unknown-status: idle=14 statuses=['IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE']
+[PASS] (1/6) message edges present — n=3
+[PASS] (3) POST /refresh → 202 — status=202 body=b'{"queued": true}'
+[FAIL] (2) new network event without reload — had=['0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2', '07748fc2f05ffae6a556b026d4ad6b3c83fb3761', '1dc84745bb7303926e03d7e9b3177a0d970289dd', '2ddfe66883a2e665f6836832c29c74c90c93437e', '6cbf23fee7b232e784486b2403144a19e6f71e2d'] now_has_new=False
+[FINDING:high] P0-2-live-event: ids sample=['f384a355adeff178fc82c225d9bb65f3a372a2a8', 'ea877004313955dbbd8a0b0046315d8f33d8e3ec', 'p0-net-1', '1dc84745bb7303926e03d7e9b3177a0d970289dd', '0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2', '8fe480e7108207bd497
+[PASS] (3) burst POST /refresh → 429 + countdown — st=429 retry_after=5 body=b'{"retry_after_s": 5}'
+[PASS] (8) bad Host → 403 — 403
+[PASS] (8) Origin: null → 403 — 403
+[PASS] (8) foreign Origin → 403 — 403
+[PASS] (8) same-origin allowed (202/429) — 429
+[PASS] (8) GET /refresh not accepted as refresh — 404
+[PASS] (8) PUT → 405 — 405
+[PASS] (6) message edges trace to recipients — msg_edges=3 fabricated=0
+[PASS] (7) touch web/src → rebuild needed — NEEDS_REBUILD
+[PASS] (7) fresh dist → no rebuild — NO_REBUILD
+[PASS] (9) 3 team groups + Owner — ['owner', 'build', 'qr', 'radar']
+[PASS] (9) Bug fixer not in radar.members — ['director', 'architect', 'scout', 'skeptic', 'nomen']
+[FINDING:medium] P0-9-bug-fixer-radar: node.group=radar members_ok=True
+[FAIL] (9) Bug fixer not rendered in Radar — group=radar
+[PASS] (9) message edges exist — n=3
+[PASS] (9) no UNKNOWN sender on known p0 network events — []
+[PASS] (5) project is agent-mindmap not Fencepost — agent-mindmap
+[INFO] (5) events carry repo / fencepost attribution — repos={'ManpreetS2/fencepost'} fence_events=9
+[PASS] (1) UI shows SOURCE UNAVAILABLE — LIVE MODE — ingested data Skip to main content MINDMAPProject: Agent-Mindmap List view Handoffs 0 Updated Oct 20, 3:28 PM PDT Source: ledger + GitHub (ok) SOURCE UNAVAILABLE — ledger: unavailable — le
+[FAIL] (5) header Project: agent-mindmap — Project: Agent-Mindmap
+[FINDING:high] P0-5-header: Project: Agent-Mindmap
+[PASS] (4) single MindmapStatusBar — mindmap-status-bar=1 banner-like=1
+[INFO] (9) group filter chips — ['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']
+[FAIL] (5) Fencepost repo tag + filter in UI — {'hasFencepost': False, 'hasRepoHeading': False}
+[FINDING:medium] P0-5-repo-filter: filters=['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar'] bodyProbe={'hasFencepost': False, 'hasRepoHeading': False}
+[PASS] (3) UI Retry disabled on 429 countdown — disabled=True rate_txt=True
+[FAIL] (4) DISCONNECTED after SSE kill — not found
+[PASS] (4) still single status bar after disconnect — count=1
+[FINDING:high] P0-4-disconnected: not shown
+[PASS] (9) drag moves
+[FAIL] (9) drag persists across reload — moved=True persisted=False
+[FINDING:medium] P0-9-drag-persist: moved=True persisted=False
+[PASS] start-mac LIVE starts — {'mode': 'live', 'last_ledger_poll': '2026-10-20T22:29:08.509658+00:00', 'last_gh_poll': '2026-10-20T22:29:08.660329+00:00', 'last_events_poll': '2026-10-20T22:29:10.623565+00:00', 'last_build': '2026
+[PASS] (3) server stopped → unreachable UI — c NOMEN Bug fixer unknown 7:45 PM PDT 8:44 PM PDT 9:44 PM PDT PR+ PR+ RP-005 CHG CHG RP-005 MRG MRG RP-005 PR~ PR~ RP-005 PR~ PR~ RP-005 PR+ PR+ RP-004 PASS PASS RP-004 NOTE NOTE RP-004 PR~ PR~ RP-004
+
+=== SUMMARY ===
+PASS 28
+FAIL 7
+INFO 2
+FINDINGS 7

@@ -1,0 +1,8 @@
+{
+  "bad_host": 403,
+  "null": 403,
+  "foreign": 403,
+  "same": 429,
+  "get": 404,
+  "put": 405
+}

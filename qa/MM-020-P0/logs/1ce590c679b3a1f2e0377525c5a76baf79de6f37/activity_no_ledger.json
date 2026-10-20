@@ -1,0 +1,458 @@
+{
+  "schema_version": "1.1.0",
+  "generated_at": "2026-10-20T22:28:44.109441+00:00",
+  "project": "agent-mindmap",
+  "meta": {
+    "mode": "live",
+    "project": "agent-mindmap",
+    "github": "ok",
+    "ledger": "unavailable",
+    "ledger_last_entry_at": null,
+    "ledger_error": "ledger not found at data/ledger",
+    "events_source": "https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl"
+  },
+  "nodes": [
+    {
+      "id": "manpreet",
+      "label": "Manpreet",
+      "group": "owner",
+      "groups": [
+        "owner"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 0
+      },
+      "last_activity_ts": "2026-10-19T21:39:00-07:00"
+    },
+    {
+      "id": "director",
+      "label": "Director",
+      "group": "build",
+      "groups": [
+        "build",
+        "qr",
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 72
+      },
+      "last_activity_ts": "2026-10-20T22:00:00+00:00"
+    },
+    {
+      "id": "architect",
+      "label": "Architect",
+      "group": "build",
+      "groups": [
+        "build",
+        "qr",
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 144
+      },
+      "last_activity_ts": "2026-10-20T22:01:00+00:00"
+    },
+    {
+      "id": "dev-1",
+      "label": "DEV 1",
+      "group": "build",
+      "groups": [
+        "build"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 256
+      },
+      "last_activity_ts": "2026-10-20T22:02:00+00:00"
+    },
+    {
+      "id": "dev-2",
+      "label": "DEV 2",
+      "group": "build",
+      "groups": [
+        "build"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 256
+      }
+    },
+    {
+      "id": "ui-ux-maker",
+      "label": "UI/UX Maker",
+      "group": "build",
+      "groups": [
+        "build"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 256
+      }
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation",
+      "group": "build",
+      "groups": [
+        "build"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 256
+      }
+    },
+    {
+      "id": "qa-verifier",
+      "label": "QA / Verifier",
+      "group": "qr",
+      "groups": [
+        "qr"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 176
+      }
+    },
+    {
+      "id": "security-engineer",
+      "label": "Security Engineer",
+      "group": "qr",
+      "groups": [
+        "qr"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 256
+      }
+    },
+    {
+      "id": "devops-release",
+      "label": "DevOps / Release",
+      "group": "qr",
+      "groups": [
+        "qr"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 800,
+        "y": 336
+      }
+    },
+    {
+      "id": "scout",
+      "label": "Scout",
+      "group": "radar",
+      "groups": [
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 80,
+        "y": 384
+      }
+    },
+    {
+      "id": "skeptic",
+      "label": "Skeptic",
+      "group": "radar",
+      "groups": [
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 240,
+        "y": 384
+      }
+    },
+    {
+      "id": "nomen",
+      "label": "NOMEN",
+      "group": "radar",
+      "groups": [
+        "radar"
+      ],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 400,
+        "y": 384
+      }
+    },
+    {
+      "id": "bug-fixer",
+      "label": "Bug fixer",
+      "group": "radar",
+      "groups": [],
+      "status": "IDLE",
+      "agent_links": [],
+      "layout": {
+        "x": 560,
+        "y": 384
+      }
+    }
+  ],
+  "tasks": [],
+  "events": [
+    {
+      "id": "8fe480e7108207bd497009b38dd6a0bbaeff5161",
+      "type": "pr_opened",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+      "source_time": "2026-10-19T21:35:00-07:00",
+      "raw": "Opened pull request #5: feat/RP-005-ingest-hardening",
+      "provenance": "github-verified",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "f384a355adeff178fc82c225d9bb65f3a372a2a8",
+      "type": "verdict",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-501",
+      "source_time": "2026-10-19T21:37:00-07:00",
+      "raw": "~QA / Verifier \ud83e\uddea CHANGES on RP-005: tighten etag cache tests.",
+      "provenance": "github-verified",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "verdict": "CHANGES"
+    },
+    {
+      "id": "758febb5adcc43918d430bc968d4d93a80113e2f",
+      "type": "merged",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+      "source_time": "2026-10-19T21:39:00-07:00",
+      "raw": "squash-merged as 693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+      "provenance": "github-verified",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901"
+    },
+    {
+      "id": "6cbf23fee7b232e784486b2403144a19e6f71e2d",
+      "type": "pr_updated",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+      "source_time": "2026-10-19T21:34:00-07:00",
+      "raw": "feat(RP-005): ingest hardening",
+      "provenance": "github-verified",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "aaa1111bbbbbbbccccccccdddddddddeeeeeeee"
+    },
+    {
+      "id": "1dc84745bb7303926e03d7e9b3177a0d970289dd",
+      "type": "pr_updated",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-005",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+      "source_time": "2026-10-19T21:39:00-07:00",
+      "raw": "squash merge RP-005",
+      "provenance": "github-verified",
+      "pr": 5,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901"
+    },
+    {
+      "id": "07748fc2f05ffae6a556b026d4ad6b3c83fb3761",
+      "type": "pr_opened",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
+      "source_time": "2026-10-19T20:00:00-07:00",
+      "raw": "Opened pull request #6: feat/RP-004-workload-generator",
+      "provenance": "github-verified",
+      "pr": 6,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2",
+      "type": "verdict",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/6#pullrequestreview-601",
+      "source_time": "2026-10-19T21:15:00-07:00",
+      "raw": "~Security Engineer \ud83d\udd10 PASS \u2014 no secrets in workload fixtures.",
+      "provenance": "github-verified",
+      "pr": 6,
+      "repo": "ManpreetS2/fencepost",
+      "verdict": "PASS"
+    },
+    {
+      "id": "ea877004313955dbbd8a0b0046315d8f33d8e3ec",
+      "type": "note",
+      "actor": "manpreet",
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "github_login"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/6#issuecomment-9001",
+      "source_time": "2026-10-19T21:16:00-07:00",
+      "raw": "Unsigned follow-up without a bot signature.",
+      "provenance": "github-verified",
+      "pr": 6,
+      "repo": "ManpreetS2/fencepost"
+    },
+    {
+      "id": "2ddfe66883a2e665f6836832c29c74c90c93437e",
+      "type": "pr_updated",
+      "actor": null,
+      "target": null,
+      "task_id": "RP-004",
+      "attribution": {
+        "method": "unknown"
+      },
+      "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
+      "source_time": "2026-10-19T19:50:00-07:00",
+      "raw": "feat(RP-004): workload generator",
+      "provenance": "agent-reported",
+      "pr": 6,
+      "repo": "ManpreetS2/fencepost",
+      "sha": "bbb2222cccccccdddddddddeeeeeeeeffffffff"
+    },
+    {
+      "id": "p0-net-1",
+      "type": "message",
+      "actor": "director",
+      "target": "architect",
+      "task_id": null,
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T22:00:00+00:00",
+      "raw": "msg1",
+      "provenance": "agent-reported",
+      "group": "build",
+      "recipients": [
+        "architect"
+      ]
+    },
+    {
+      "id": "p0-net-2",
+      "type": "message",
+      "actor": "architect",
+      "target": "qa-verifier",
+      "task_id": null,
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T22:01:00+00:00",
+      "raw": "msg2",
+      "provenance": "agent-reported",
+      "group": "qr",
+      "recipients": [
+        "qa-verifier"
+      ]
+    },
+    {
+      "id": "p0-net-3",
+      "type": "message",
+      "actor": "dev-1",
+      "target": "dev-2",
+      "task_id": null,
+      "attribution": {
+        "method": "signature"
+      },
+      "source_url": "live:network-events",
+      "source_time": "2026-10-20T22:02:00+00:00",
+      "raw": "msg3",
+      "provenance": "agent-reported",
+      "group": "build",
+      "recipients": [
+        "dev-2"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "a42cb852f870cd80df6baaa24d7868ad755355e2",
+      "source": "architect",
+      "target": "qa-verifier",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "p0-net-2"
+      ]
+    },
+    {
+      "id": "a374223dce76e8bb6a9d75a59177123e90242673",
+      "source": "dev-1",
+      "target": "dev-2",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "p0-net-3"
+      ]
+    },
+    {
+      "id": "4d063409a02c748d5fa91b522e6f6485c6750432",
+      "source": "director",
+      "target": "architect",
+      "type": "message",
+      "count": 1,
+      "event_ids": [
+        "p0-net-1"
+      ]
+    }
+  ],
+  "unparsed": []
+}

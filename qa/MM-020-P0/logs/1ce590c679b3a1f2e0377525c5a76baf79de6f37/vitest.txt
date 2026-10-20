@@ -1,0 +1,68 @@
+
+> mindmap-web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /tmp/qa-mm020p0/checkout/web
+
+ ✓ src/test/activityTransport.test.ts (13 tests) 69ms
+ ✓ src/test/edgeTypes.test.tsx (6 tests) 414ms
+   ✓ edge types (MM-020f) > renders group filter, anchors, and multi-group agents 336ms
+ ✓ src/test/mm020p0Web.test.tsx (9 tests) 371ms
+ ✓ src/test/clusterLayout.test.ts (6 tests) 15ms
+ ✓ src/test/KeyboardNav.test.tsx (10 tests) 1052ms
+ ✓ src/test/DetailPanel.test.tsx (4 tests) 120ms
+ ✓ src/test/States.test.tsx (10 tests) 704ms
+ ✓ src/test/useMindmapRefresh.test.ts (6 tests) 22ms
+ ✓ src/test/mergeFlowNodes.test.ts (7 tests) 4ms
+ ✓ src/test/activityDiff.test.ts (4 tests) 3ms
+ ✓ src/test/loadActivity.test.ts (6 tests) 6ms
+ ✓ src/test/refreshFlow.test.ts (6 tests) 3ms
+ ✓ src/test/GraphView.test.tsx (5 tests) 765ms
+ ✓ src/test/eventTime.test.ts (4 tests) 2ms
+ ✓ src/test/Timeline.test.tsx (4 tests) 776ms
+ ✓ src/test/eventGlyph.test.ts (3 tests) 2ms
+ ✓ src/test/graphLayout.test.ts (2 tests) 3ms
+ ✓ src/test/useServerMode.test.ts (3 tests) 629ms
+   ✓ useServerMode > retries after fetch failure and recovers 511ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > list view has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/postRefresh.test.ts (4 tests) 5ms
+ ✓ src/test/ModeBanner.test.tsx (4 tests) 61ms
+stderr | src/test/A11y.test.tsx > Accessibility (axe) > graph view shell has no serious or critical axe violations
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/tmp/qa-mm020p0/checkout/web/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at /tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:21249:49
+    at Object.get (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/A11y.test.tsx (2 tests) 911ms
+   ✓ Accessibility (axe) > list view has no serious or critical axe violations 484ms
+   ✓ Accessibility (axe) > graph view shell has no serious or critical axe violations 426ms
+ ✓ src/test/UnparsedPanel.test.tsx (1 test) 76ms
+ ✓ src/test/timelineBrush.test.ts (3 tests) 2ms
+ ✓ src/test/sourceUrl.test.ts (2 tests) 2ms
+ ✓ src/test/plainText.test.ts (2 tests) 2ms
+
+ Test Files  25 passed (25)
+      Tests  126 passed (126)
+   Start at  22:33:35
+   Duration  7.63s (transform 795ms, setup 2.32s, collect 3.05s, tests 6.02s, environment 6.75s, prepare 1.26s)
+

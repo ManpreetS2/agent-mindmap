@@ -1,0 +1,264 @@
+{
+  "merged": "1ce590c679b3a1f2e0377525c5a76baf79de6f37",
+  "pr30": "4bcb907",
+  "pr29": "e3d4db5",
+  "checks": [
+    {
+      "check": "start-mac LIVE starts",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'last_ledger_poll': '2026-10-20T22:28:41.891653+00:00', 'last_gh_poll': '2026-10-20T22:28:42.040003+00:00', 'last_events_poll': '2026-10-20T22:28:43.944344+00:00', 'last_build': '2026"
+    },
+    {
+      "check": "(1) meta.ledger unavailable + ledger_error",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'project': 'agent-mindmap', 'github': 'ok', 'ledger': 'unavailable', 'ledger_last_entry_at': None, 'ledger_error': 'ledger not found at data/ledger', 'events_source': 'https://github.com/ManpreetS2/agent-mindmap/blob/data/events/events.jsonl'}"
+    },
+    {
+      "check": "(1) github=ok (not skipped)",
+      "result": "PASS",
+      "detail": "ok"
+    },
+    {
+      "check": "(1) events/edges nonempty",
+      "result": "PASS",
+      "detail": "events=12 edges=3"
+    },
+    {
+      "check": "(1) nodes UNKNOWN not fake IDLE",
+      "result": "FAIL",
+      "detail": "statuses sample=[('manpreet', 'IDLE'), ('director', 'IDLE'), ('architect', 'IDLE'), ('dev-1', 'IDLE'), ('dev-2', 'IDLE'), ('ui-ux-maker', 'IDLE'), ('documentation', 'IDLE'), ('qa-verifier', 'IDLE')] idle_count=14"
+    },
+    {
+      "check": "(1/6) message edges present",
+      "result": "PASS",
+      "detail": "n=3"
+    },
+    {
+      "check": "(3) POST /refresh \u2192 202",
+      "result": "PASS",
+      "detail": "status=202 body=b'{\"queued\": true}'"
+    },
+    {
+      "check": "(2) new network event without reload",
+      "result": "FAIL",
+      "detail": "had=['0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2', '07748fc2f05ffae6a556b026d4ad6b3c83fb3761', '1dc84745bb7303926e03d7e9b3177a0d970289dd', '2ddfe66883a2e665f6836832c29c74c90c93437e', '6cbf23fee7b232e784486b2403144a19e6f71e2d'] now_has_new=False"
+    },
+    {
+      "check": "(3) burst POST /refresh \u2192 429 + countdown",
+      "result": "PASS",
+      "detail": "st=429 retry_after=5 body=b'{\"retry_after_s\": 5}'"
+    },
+    {
+      "check": "(8) bad Host \u2192 403",
+      "result": "PASS",
+      "detail": "403"
+    },
+    {
+      "check": "(8) Origin: null \u2192 403",
+      "result": "PASS",
+      "detail": "403"
+    },
+    {
+      "check": "(8) foreign Origin \u2192 403",
+      "result": "PASS",
+      "detail": "403"
+    },
+    {
+      "check": "(8) same-origin allowed (202/429)",
+      "result": "PASS",
+      "detail": "429"
+    },
+    {
+      "check": "(8) GET /refresh not accepted as refresh",
+      "result": "PASS",
+      "detail": "404"
+    },
+    {
+      "check": "(8) PUT \u2192 405",
+      "result": "PASS",
+      "detail": "405"
+    },
+    {
+      "check": "(6) message edges trace to recipients",
+      "result": "PASS",
+      "detail": "msg_edges=3 fabricated=0"
+    },
+    {
+      "check": "(7) touch web/src \u2192 rebuild needed",
+      "result": "PASS",
+      "detail": "NEEDS_REBUILD"
+    },
+    {
+      "check": "(7) fresh dist \u2192 no rebuild",
+      "result": "PASS",
+      "detail": "NO_REBUILD"
+    },
+    {
+      "check": "(9) 3 team groups + Owner",
+      "result": "PASS",
+      "detail": "['owner', 'build', 'qr', 'radar']"
+    },
+    {
+      "check": "(9) Bug fixer not in radar.members",
+      "result": "PASS",
+      "detail": "['director', 'architect', 'scout', 'skeptic', 'nomen']"
+    },
+    {
+      "check": "(9) Bug fixer not rendered in Radar",
+      "result": "FAIL",
+      "detail": "group=radar"
+    },
+    {
+      "check": "(9) message edges exist",
+      "result": "PASS",
+      "detail": "n=3"
+    },
+    {
+      "check": "(9) no UNKNOWN sender on known p0 network events",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "(5) project is agent-mindmap not Fencepost",
+      "result": "PASS",
+      "detail": "agent-mindmap"
+    },
+    {
+      "check": "(5) events carry repo / fencepost attribution",
+      "result": "INFO",
+      "detail": "repos={'ManpreetS2/fencepost'} fence_events=9"
+    },
+    {
+      "check": "(1) UI shows SOURCE UNAVAILABLE",
+      "result": "PASS",
+      "detail": "LIVE MODE \u2014 ingested data Skip to main content MINDMAPProject: Agent-Mindmap List view Handoffs 0 Updated Oct 20, 3:28 PM PDT Source: ledger + GitHub (ok) SOURCE UNAVAILABLE \u2014 ledger: unavailable \u2014 le"
+    },
+    {
+      "check": "(5) header Project: agent-mindmap",
+      "result": "FAIL",
+      "detail": "Project: Agent-Mindmap"
+    },
+    {
+      "check": "(4) single MindmapStatusBar",
+      "result": "PASS",
+      "detail": "mindmap-status-bar=1 banner-like=1"
+    },
+    {
+      "check": "(9) group filter chips",
+      "result": "INFO",
+      "detail": "['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar']"
+    },
+    {
+      "check": "(5) Fencepost repo tag + filter in UI",
+      "result": "FAIL",
+      "detail": "{'hasFencepost': False, 'hasRepoHeading': False}"
+    },
+    {
+      "check": "(3) UI Retry disabled on 429 countdown",
+      "result": "PASS",
+      "detail": "disabled=True rate_txt=True"
+    },
+    {
+      "check": "(4) DISCONNECTED after SSE kill",
+      "result": "FAIL",
+      "detail": "not found"
+    },
+    {
+      "check": "(4) still single status bar after disconnect",
+      "result": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "check": "(9) drag moves",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "(9) drag persists across reload",
+      "result": "FAIL",
+      "detail": "moved=True persisted=False"
+    },
+    {
+      "check": "start-mac LIVE starts",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'last_ledger_poll': '2026-10-20T22:29:08.509658+00:00', 'last_gh_poll': '2026-10-20T22:29:08.660329+00:00', 'last_events_poll': '2026-10-20T22:29:10.623565+00:00', 'last_build': '2026"
+    },
+    {
+      "check": "(3) server stopped \u2192 unreachable UI",
+      "result": "PASS",
+      "detail": "c NOMEN Bug fixer unknown 7:45 PM PDT 8:44 PM PDT 9:44 PM PDT PR+ PR+ RP-005 CHG CHG RP-005 MRG MRG RP-005 PR~ PR~ RP-005 PR~ PR~ RP-005 PR+ PR+ RP-004 PASS PASS RP-004 NOTE NOTE RP-004 PR~ PR~ RP-004"
+    }
+  ],
+  "findings": [
+    {
+      "id": "P0-1-unknown-status",
+      "component": "node.status",
+      "expected": "UNKNOWN rather than fake IDLE when ledger missing",
+      "actual": "idle=14 statuses=['IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE']",
+      "repro": "GET /activity.json with missing ledger",
+      "evidence": "activity_no_ledger.json",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-2-live-event",
+      "component": "network\u2192activity via /refresh",
+      "expected": "p0-live-new in /activity.json after refresh",
+      "actual": "ids sample=['f384a355adeff178fc82c225d9bb65f3a372a2a8', 'ea877004313955dbbd8a0b0046315d8f33d8e3ec', 'p0-net-1', '1dc84745bb7303926e03d7e9b3177a0d970289dd', '0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2', '8fe480e7108207bd497009b38dd6a0bbaeff5161', 'p0-net-2', '6cbf23fee7b232e784486b2403144a19e6f71e2d', 'p0-net-3', '758febb5adcc43918d430bc968d4d93a80113e2f']",
+      "repro": "append events.jsonl stub; POST /refresh; GET /activity.json",
+      "evidence": "activity_no_ledger.json",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-9-bug-fixer-radar",
+      "component": "bots.json / layout",
+      "expected": "Bug fixer not in Radar cluster",
+      "actual": "node.group=radar members_ok=True",
+      "repro": "LIVE UI Research/Radar frame",
+      "evidence": "browser screenshots",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-5-header",
+      "component": "MindmapView header",
+      "expected": "Project: agent-mindmap",
+      "actual": "Project: Agent-Mindmap",
+      "repro": "read .app-header__project",
+      "evidence": "p0-overview.png",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-5-repo-filter",
+      "component": "Timeline / event UI",
+      "expected": "Fencepost events show repo tag and a repo filter",
+      "actual": "filters=['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar'] bodyProbe={'hasFencepost': False, 'hasRepoHeading': False}",
+      "repro": "inspect timeline filters and event chips for repo",
+      "evidence": "p0-overview.png",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-4-disconnected",
+      "component": "SSE status",
+      "expected": "DISCONNECTED in status bar",
+      "actual": "not shown",
+      "repro": "abort /events in browser",
+      "evidence": "p0-disconnected.png",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "P0-9-drag-persist",
+      "component": "AgentGraph positions",
+      "expected": "dragged position persists across reload",
+      "actual": "moved=True persisted=False",
+      "repro": "drag Director handle; reload",
+      "evidence": "p0-after-drag.png, drag.json",
+      "severity": "medium",
+      "confidence": "high"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+    at Object.get (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:15329:23)
+    at _isIconLigature (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:21248:41)
+    at /tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33168:54
+    at Array.some (<anonymous>)
+    at hasRealTextChildren (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33167:35)
+    at Rule.colorContrastMatches [as matches] (/tmp/qa-mm020p0/checkout/web/node_modules/axe-core/axe.js:33129:12) undefined
+
+ ✓ src/test/A11y.test.tsx (2 tests) 911ms
+   ✓ Accessibility (axe) > list view has no serious or critical axe violations 484ms
+   ✓ Accessibility (axe) > graph view shell has no serious or critical axe violations 426ms
+ ✓ src/test/UnparsedPanel.test.tsx (1 test) 76ms
+ ✓ src/test/timelineBrush.test.ts (3 tests) 2ms
+ ✓ src/test/sourceUrl.test.ts (2 tests) 2ms
+ ✓ src/test/plainText.test.ts (2 tests) 2ms
+
+ Test Files  25 passed (25)
+      Tests  126 passed (126)
+   Start at  22:33:35
+   Duration  7.63s (transform 795ms, setup 2.32s, collect 3.05s, tests 6.02s, environment 6.75s, prepare 1.26s)
+

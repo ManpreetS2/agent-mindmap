@@ -1,0 +1,9 @@
+mindmap live on http://127.0.0.1:8787 (mode=live, ledger=gh:data/ledger, events=gh:data/events)
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CcSh6Gy4.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-DoVfmIii.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -

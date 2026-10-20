@@ -1,0 +1,62 @@
+[
+  {
+    "id": "P0-1-unknown-status",
+    "component": "node.status",
+    "expected": "UNKNOWN rather than fake IDLE when ledger missing",
+    "actual": "idle=14 statuses=['IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE', 'IDLE']",
+    "repro": "GET /activity.json with missing ledger",
+    "evidence": "activity_no_ledger.json",
+    "severity": "high",
+    "confidence": "high"
+  },
+  {
+    "id": "P0-2-live-event",
+    "component": "network\u2192activity via /refresh",
+    "expected": "p0-live-new in /activity.json after refresh",
+    "actual": "ids sample=['f384a355adeff178fc82c225d9bb65f3a372a2a8', 'ea877004313955dbbd8a0b0046315d8f33d8e3ec', 'p0-net-1', '1dc84745bb7303926e03d7e9b3177a0d970289dd', '0748112af84266d4ba0ab0e7aba5fdb40ac9c0d2', '8fe480e7108207bd497009b38dd6a0bbaeff5161', 'p0-net-2', '6cbf23fee7b232e784486b2403144a19e6f71e2d', 'p0-net-3', '758febb5adcc43918d430bc968d4d93a80113e2f']",
+    "repro": "append events.jsonl stub; POST /refresh; GET /activity.json",
+    "evidence": "activity_no_ledger.json",
+    "severity": "high",
+    "confidence": "high"
+  },
+  {
+    "id": "P0-9-bug-fixer-radar",
+    "component": "bots.json / layout",
+    "expected": "Bug fixer not in Radar cluster",
+    "actual": "node.group=radar members_ok=True",
+    "repro": "LIVE UI Research/Radar frame",
+    "evidence": "browser screenshots",
+    "severity": "medium",
+    "confidence": "high"
+  },
+  {
+    "id": "P0-5-repo-filter",
+    "component": "Timeline / event UI",
+    "expected": "Fencepost events show repo tag and a repo filter",
+    "actual": "filters=['All groups', 'Owner', 'Build', 'Quality & Release', 'Research / Radar'] bodyProbe={'hasFencepost': False, 'hasRepoHeading': False}",
+    "repro": "inspect timeline filters and event chips for repo",
+    "evidence": "p0-overview.png",
+    "severity": "medium",
+    "confidence": "high"
+  },
+  {
+    "id": "P0-4-disconnected",
+    "component": "SSE status",
+    "expected": "DISCONNECTED in status bar",
+    "actual": "DISCONNECTED not shown after /events abort while server up; appears only when server stopped (see p0-unreachable.png)",
+    "repro": "Playwright route.abort(\"/events\") or close EventSource; observe MindmapStatusBar for 15s",
+    "evidence": "p0-disconnected.png",
+    "severity": "high",
+    "confidence": "high"
+  },
+  {
+    "id": "P0-9-drag-persist",
+    "component": "AgentGraph positions",
+    "expected": "dragged position persists across reload",
+    "actual": "moved=True persisted=False",
+    "repro": "drag Director handle; reload",
+    "evidence": "p0-after-drag.png, drag.json",
+    "severity": "medium",
+    "confidence": "high"
+  }
+]

@@ -1,0 +1,4 @@
+{"id": "p0-net-1", "ts": "2026-10-20T22:00:00+00:00", "sender": "director", "recipients": ["architect"], "group": "build", "type": "message", "summary": "msg1", "provenance": "agent-reported", "repo": "ManpreetS2/agent-mindmap"}
+{"id": "p0-net-2", "ts": "2026-10-20T22:01:00+00:00", "sender": "architect", "recipients": ["qa-verifier"], "group": "qr", "type": "message", "summary": "msg2", "provenance": "agent-reported", "repo": "ManpreetS2/agent-mindmap"}
+{"id": "p0-net-3", "ts": "2026-10-20T22:02:00+00:00", "sender": "dev-1", "recipients": ["dev-2"], "group": "build", "type": "message", "summary": "msg3", "provenance": "agent-reported", "repo": "ManpreetS2/fencepost"}
+{"id": "p0-live-new", "ts": "2026-10-20T22:10:00+00:00", "sender": "director", "recipients": ["dev-1"], "group": "build", "type": "message", "summary": "new", "provenance": "agent-reported", "repo": "ManpreetS2/agent-mindmap"}
