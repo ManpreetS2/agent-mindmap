@@ -1,0 +1,13 @@
+
+> mindmap-web@0.1.0 build
+> tsc --noEmit -p tsconfig.json && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 231 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:   0.29 kB
+dist/assets/index-DLFmhHr2.css   29.41 kB │ gzip:   5.59 kB
+dist/assets/index-BZr17Xjd.js   361.54 kB │ gzip: 115.98 kB
+✓ built in 1.02s

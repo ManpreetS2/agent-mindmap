@@ -1,0 +1,66 @@
+{
+  "head": "0c500c1d272989bd415d14b3d6510703c44f2ce2",
+  "checks": [
+    [
+      "fixture_schema_validation",
+      "PASS"
+    ],
+    [
+      "required_ledger_path_no_default",
+      "PASS"
+    ],
+    [
+      "malformed_ledger_local",
+      "PASS"
+    ],
+    [
+      "malformed_ledger_gh_decode",
+      "PASS"
+    ],
+    [
+      "idempotent_mirror_rerun",
+      "PASS"
+    ],
+    [
+      "idempotent_ingest_rerun",
+      "PASS"
+    ],
+    [
+      "pr_join_repo_number",
+      "PASS"
+    ],
+    [
+      "merged_by_ignored_no_edge",
+      "PASS"
+    ],
+    [
+      "merger_from_bot_signature",
+      "PASS"
+    ],
+    [
+      "merged_by_not_read_for_actor",
+      "PASS"
+    ],
+    [
+      "gh_read_only",
+      "PASS"
+    ],
+    [
+      "SEC-MM010-1_secret_blocks_force_no_write_no_leak",
+      "PASS"
+    ],
+    [
+      "SEC-MM010-1_clean_payload_still_flushes",
+      "PASS"
+    ],
+    [
+      "write_paths_constrained_gh_mocked_e2e",
+      "PASS"
+    ],
+    [
+      "no_secrets_in_repo",
+      "PASS"
+    ]
+  ],
+  "findings": []
+}
