@@ -1,0 +1,13 @@
+=== VENV INSTALLER SIM ===
+Python 3.12.3
+venv_ok 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]
+absolute_venv_python_exists=/tmp/mm011-qa-venv-install/.venv/bin/python
+123:  1. In the repo: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (and `cd web && npm run build`).
+README.md:124:  2. `mkdir -p ~/Library/Logs/mindmap` (launchd does not create the log directory).
+README.md:128:     - `REPLACE_WITH_ABSOLUTE_LOG_DIR` → e.g. `/Users/you/Library/Logs/mindmap`.
+README.md:130:  5. `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist` (unload: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist`).
+ops/com.manpreet.mindmap.plist:26:		<key>SuccessfulExit</key>
+ops/com.manpreet.mindmap.plist:30:	<string>REPLACE_WITH_ABSOLUTE_LOG_DIR/live.stdout.log</string>
+ops/com.manpreet.mindmap.plist:32:	<string>REPLACE_WITH_ABSOLUTE_LOG_DIR/live.stderr.log</string>
+9:		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python</string>
+OK no /usr/bin/python3

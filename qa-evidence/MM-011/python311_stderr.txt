@@ -1,0 +1,1 @@
+mindmap live requires Python 3.12+ (interpreter reports 3.11); use REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python (pip install -e '.[dev]' in the repo venv)

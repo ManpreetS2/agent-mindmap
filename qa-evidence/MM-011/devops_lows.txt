@@ -1,0 +1,17 @@
+=== DEVOPS-MM011-1 (MEDIUM fix) ===
+plist_uses_venv_python True
+plist_lacks_usr_bin_python3 True
+ensure_python_version_in_live True
+readme_python312_venv True
+
+=== DEVOPS-MM011-2 (LOW) ===
+log_paths_placeholder True
+no_hardcoded_Users_manpreet True
+readme_mkdir_logs True
+
+=== DEVOPS-MM011-3 (LOW) ===
+KeepAlive_SuccessfulExit_false True
+no_bare_KeepAlive_true True
+readme_bootstrap True
+readme_bootout_uninstall True
+readme_avoids_deprecated_load_as_primary True

@@ -1,0 +1,9 @@
+=== PYTHON 3.11 FAIL-FAST ===
+exit_code=1
+--- stderr ---
+mindmap live requires Python 3.12+ (interpreter reports 3.11); use REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python (pip install -e '.[dev]' in the repo venv)
+--- stdout ---
+real_sys (3, 11) rc 1
+msg: mindmap live requires Python 3.12+ (interpreter reports 3.11); use REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python (pip install -e '.[dev]' in the repo venv)
+fake_3.9_rc 1 msg mindmap live requires Python 3.12+ (interpreter reports 3.9); use REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python (pip install -e '.[dev]' in the repo venv)
+python312_timeout_exit=124 (124=timeout=running)

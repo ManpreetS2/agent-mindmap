@@ -1,0 +1,26 @@
+{
+  "/../etc/passwd": {
+    "status": 400,
+    "leaked": false
+  },
+  "/%2e%2e/etc/passwd": {
+    "status": 404,
+    "leaked": false
+  },
+  "/..%2fetc/passwd": {
+    "status": 400,
+    "leaked": false
+  },
+  "/%2e%2e%2fetc%2fpasswd": {
+    "status": 404,
+    "leaked": false
+  },
+  "/assets/../../etc/passwd": {
+    "status": 400,
+    "leaked": false
+  },
+  "/./../../etc/passwd": {
+    "status": 400,
+    "leaked": false
+  }
+}

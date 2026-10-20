@@ -1,0 +1,32 @@
+[PASS] daemon_starts_and_binds: up=True poll=None
+[FAIL] bind_127_only: bind_ok=False public=False; snippet=
+[PASS] healthz_ok: code=200 health={'last_ledger_poll': '2026-10-20T08:05:20.200582+00:00', 'last_gh_poll': '2026-10-20T08:05:20.202662+00:00', 'last_build': '2026-10-20T08:05:20.200313+00:00', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00', 'errors': []}
+[PASS] activity_served: code=200 len=37907 etag="fdcc0b364176f768f19116f8a6971860e8d0f66d113e86a6e21937ee6e71c9af"
+[PASS] idempotent_no_rewrite: mtime1=1792483520195723923 mtime2=1792483520195723923 size1=37907 size2=37907
+[PASS] refresh_on_ledger_change: refreshed=True new_mtime=1792483526323643353
+[FAIL] SEC-MM011-1_host_header_allowlist: status=200 body_has_schema=True (DNS rebinding possible if 200 with content)
+[PASS] methods_get_head_only: {'POST': 405, 'PUT': 405, 'DELETE': 405, 'PATCH': 501, 'OPTIONS': 501, 'HEAD': 200, 'HEAD_body_empty': True}
+[PASS] path_traversal_blocked: {"/../etc/passwd": {"status": 400, "leaked": false}, "/%2e%2e/etc/passwd": {"status": 404, "leaked": false}, "/..%2fetc/passwd": {"status": 400, "leaked": false}, "/%2e%2e%2fetc%2fpasswd": {"status": 404, "leaked": false}, "/assets/../../etc/passwd": {"status": 400, "leaked": false}, "/./../../etc/passwd": {"status": 400, "leaked": false}}
+[PASS] writes_only_intended_paths: files=6 outside=[]
+[PASS] file_permissions_sane: bad_modes=[] sample=[{'path': '/tmp/mm011-qa-run/dist/activity.json', 'mode': '0o600'}, {'path': '/tmp/mm011-qa-run/cache/etags.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/464cea0bef563e5fb737e191fe94e29cf1409c5b.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/cbd04f798f13092c6f45571f7dce0354ff402cf8.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/ed10d0e33020c5da30ef6272ca8b7aafc6ec4f8e.json', 'mode': '0o644'}]
+[PASS] logs_no_tokens: leaks=[] log_bytes=7081
+[PASS] locking_same_port: proc2_alive_after_2s=False listeners=[] exit=1 log_tail=^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+    socketserver.TCPServer.server_bind(self)
+  File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+[FAIL] locking_prevents_two_instances: both_running=True up3=True (product appears to have no singleton lock)
+[PASS] sigterm_clean: exit=0 timed_out=False orphans=[] still_alive=False
+[PASS] gh_down_recovers_no_tight_loop: health_status=200 errors=['gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0'] gh_calls_in_8s=16 tight=False activity_kept=True
+[PASS] rate_limit_backoff: calls=1 health_errors=['github poll skipped (rate-limit backoff)', 'github poll skipped (rate-limit backoff)', 'github poll skipped (rate-limit backoff)']
+[PASS] sigint_clean: exit=0 timed_out=False orphans=[]
+[PASS] port_released_after_shutdown: port_free=True
+
+=== 16/19 checks passed ===
+  FAIL: bind_127_only
+  FAIL: SEC-MM011-1_host_header_allowlist
+  FAIL: locking_prevents_two_instances

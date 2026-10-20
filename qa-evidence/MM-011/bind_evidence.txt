@@ -1,0 +1,12 @@
+listeners [('127.0.0.1', 18791)]
+non_loopback 172.30.0.2 refused (ConnectionRefusedError)
+non_loopback 172.17.0.1 refused (ConnectionRefusedError)
+loopback SUCCESS
+Host evil.example 200 b'{"last_ledger_poll": "2026-10-20T08:06:16.981179+00:00", "la'
+POST 405
+PUT 405
+DELETE 405
+PATCH 501
+trav /../etc/passwd 400 leak False
+trav /%2e%2e/etc/passwd 404 leak False
+trav /..%2fetc/passwd 400 leak False

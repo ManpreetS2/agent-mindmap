@@ -1,0 +1,27 @@
+mindmap live on http://127.0.0.1:18787 (ledger=/tmp/mm011-qa-run/ledger/task-ledger.md)
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - code 405, message Method Not Allowed
+127.0.0.1 - "POST /activity.json HTTP/1.1" 405 -
+127.0.0.1 - code 405, message Method Not Allowed
+127.0.0.1 - "PUT /activity.json HTTP/1.1" 405 -
+127.0.0.1 - code 405, message Method Not Allowed
+127.0.0.1 - "DELETE /activity.json HTTP/1.1" 405 -
+127.0.0.1 - code 501, message Unsupported method ('PATCH')
+127.0.0.1 - "PATCH /activity.json HTTP/1.1" 501 -
+127.0.0.1 - code 501, message Unsupported method ('OPTIONS')
+127.0.0.1 - "OPTIONS /activity.json HTTP/1.1" 501 -
+127.0.0.1 - "HEAD /activity.json HTTP/1.1" 200 -
+127.0.0.1 - code 400, message Bad Request
+127.0.0.1 - "GET /../etc/passwd HTTP/1.1" 400 -
+127.0.0.1 - code 404, message Not Found
+127.0.0.1 - "GET /%2e%2e/etc/passwd HTTP/1.1" 404 -
+127.0.0.1 - code 400, message Bad Request
+127.0.0.1 - "GET /..%2fetc/passwd HTTP/1.1" 400 -
+127.0.0.1 - code 404, message Not Found
+127.0.0.1 - "GET /%2e%2e%2fetc%2fpasswd HTTP/1.1" 404 -
+127.0.0.1 - code 400, message Bad Request
+127.0.0.1 - "GET /assets/../../etc/passwd HTTP/1.1" 400 -
+127.0.0.1 - code 400, message Bad Request
+127.0.0.1 - "GET /./../../etc/passwd HTTP/1.1" 400 -

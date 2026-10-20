@@ -1,0 +1,11 @@
+=== TYPECHECK ===
+
+> agent-mindmap@0.1.0 typecheck
+> tsc --noEmit
+
+EXIT_ROOT:0
+
+> mindmap-web@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+EXIT_WEB:0

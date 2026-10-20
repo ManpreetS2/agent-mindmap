@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/tmp/mm011-qa-run/dist/activity.json",
+    "mode": "0o600"
+  },
+  {
+    "path": "/tmp/mm011-qa-run/cache/etags.json",
+    "mode": "0o644"
+  },
+  {
+    "path": "/tmp/mm011-qa-run/cache/bodies/464cea0bef563e5fb737e191fe94e29cf1409c5b.json",
+    "mode": "0o644"
+  },
+  {
+    "path": "/tmp/mm011-qa-run/cache/bodies/cbd04f798f13092c6f45571f7dce0354ff402cf8.json",
+    "mode": "0o644"
+  },
+  {
+    "path": "/tmp/mm011-qa-run/cache/bodies/ed10d0e33020c5da30ef6272ca8b7aafc6ec4f8e.json",
+    "mode": "0o644"
+  },
+  {
+    "path": "/tmp/mm011-qa-run/cache/bodies/ba32a9dae000e52e53ab88f8882e617455894070.json",
+    "mode": "0o644"
+  }
+]

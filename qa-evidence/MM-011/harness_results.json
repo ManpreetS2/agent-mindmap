@@ -1,0 +1,120 @@
+[
+  {
+    "check": "daemon_starts_and_binds",
+    "ok": true,
+    "expected": "listening on 127.0.0.1 and process alive",
+    "actual": "up=True poll=None"
+  },
+  {
+    "check": "bind_127_only",
+    "ok": false,
+    "expected": "ss shows 127.0.0.1 only, not 0.0.0.0",
+    "actual": "bind_ok=False public=False; snippet="
+  },
+  {
+    "check": "healthz_ok",
+    "ok": true,
+    "expected": "200 JSON with errors field",
+    "actual": "code=200 health={'last_ledger_poll': '2026-10-20T08:05:20.200582+00:00', 'last_gh_poll': '2026-10-20T08:05:20.202662+00:00', 'last_build': '2026-10-20T08:05:20.200313+00:00', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00', 'errors': []}"
+  },
+  {
+    "check": "activity_served",
+    "ok": true,
+    "expected": "200 with activity JSON",
+    "actual": "code=200 len=37907 etag=\"fdcc0b364176f768f19116f8a6971860e8d0f66d113e86a6e21937ee6e71c9af\""
+  },
+  {
+    "check": "idempotent_no_rewrite",
+    "ok": true,
+    "expected": "activity.json mtime/size unchanged across poll with no input change",
+    "actual": "mtime1=1792483520195723923 mtime2=1792483520195723923 size1=37907 size2=37907"
+  },
+  {
+    "check": "refresh_on_ledger_change",
+    "ok": true,
+    "expected": "activity.json rewritten within ~10s after ledger edit (poll=2s)",
+    "actual": "refreshed=True new_mtime=1792483526323643353"
+  },
+  {
+    "check": "SEC-MM011-1_host_header_allowlist",
+    "ok": false,
+    "expected": "reject or ignore foreign Host (400/403/421); not serve app content",
+    "actual": "status=200 body_has_schema=True (DNS rebinding possible if 200 with content)",
+    "severity": "LOW",
+    "finding_id": "SEC-MM011-1"
+  },
+  {
+    "check": "methods_get_head_only",
+    "ok": true,
+    "expected": "non-GET/HEAD \u2192 405 (or 501 if unimplemented); HEAD 200 empty body",
+    "actual": "{'POST': 405, 'PUT': 405, 'DELETE': 405, 'PATCH': 501, 'OPTIONS': 501, 'HEAD': 200, 'HEAD_body_empty': True}"
+  },
+  {
+    "check": "path_traversal_blocked",
+    "ok": true,
+    "expected": "traversal paths \u2192 400/404 and no /etc/passwd content",
+    "actual": "{\"/../etc/passwd\": {\"status\": 400, \"leaked\": false}, \"/%2e%2e/etc/passwd\": {\"status\": 404, \"leaked\": false}, \"/..%2fetc/passwd\": {\"status\": 400, \"leaked\": false}, \"/%2e%2e%2fetc%2fpasswd\": {\"status\": 404, \"leaked\": false}, \"/assets/../../etc/passwd\": {\"status\": 400, \"leaked\": false}, \"/./../../etc/passwd\": {\"status\": 400, \"leaked\": false}}"
+  },
+  {
+    "check": "writes_only_intended_paths",
+    "ok": true,
+    "expected": "only activity under dist + cache under --cache-dir",
+    "actual": "files=6 outside=[]"
+  },
+  {
+    "check": "file_permissions_sane",
+    "ok": true,
+    "expected": "no world-writable files among daemon outputs",
+    "actual": "bad_modes=[] sample=[{'path': '/tmp/mm011-qa-run/dist/activity.json', 'mode': '0o600'}, {'path': '/tmp/mm011-qa-run/cache/etags.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/464cea0bef563e5fb737e191fe94e29cf1409c5b.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/cbd04f798f13092c6f45571f7dce0354ff402cf8.json', 'mode': '0o644'}, {'path': '/tmp/mm011-qa-run/cache/bodies/ed10d0e33020c5da30ef6272ca8b7aafc6ec4f8e.json', 'mode': '0o644'}]"
+  },
+  {
+    "check": "logs_no_tokens",
+    "ok": true,
+    "expected": "daemon + mock gh logs contain no token patterns",
+    "actual": "leaks=[] log_bytes=7081"
+  },
+  {
+    "check": "locking_same_port",
+    "ok": true,
+    "expected": "second instance cannot serve on same port (OS bind or explicit lock)",
+    "actual": "proc2_alive_after_2s=False listeners=[] exit=1 log_tail=^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/socketserver.py\", line 457, in __init__\n    self.server_bind()\n  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind\n    socketserver.TCPServer.server_bind(self)\n  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind\n    self.socket.bind(self.server_address)\nOSError: [Errno 98] Address already in use\n"
+  },
+  {
+    "check": "locking_prevents_two_instances",
+    "ok": false,
+    "expected": "explicit lock/pidfile prevents two daemon instances even on different ports",
+    "actual": "both_running=True up3=True (product appears to have no singleton lock)",
+    "severity": "MEDIUM",
+    "note": "Port collision alone is not a full singleton lock"
+  },
+  {
+    "check": "sigterm_clean",
+    "ok": true,
+    "expected": "SIGTERM exits promptly, no orphans",
+    "actual": "exit=0 timed_out=False orphans=[] still_alive=False"
+  },
+  {
+    "check": "gh_down_recovers_no_tight_loop",
+    "ok": true,
+    "expected": "keeps serving, records errors, poll rate bounded by interval (not spin)",
+    "actual": "health_status=200 errors=['gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/fencepost -> HTTP 0', 'gh api repos/ManpreetS2/fencepost/pulls?state=all&per_page=100 -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap -> HTTP 0', 'gh api repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100 -> HTTP 0'] gh_calls_in_8s=16 tight=False activity_kept=True"
+  },
+  {
+    "check": "rate_limit_backoff",
+    "ok": true,
+    "expected": "rate-limit sets backoff; process keeps serving; no tight loop",
+    "actual": "calls=1 health_errors=['github poll skipped (rate-limit backoff)', 'github poll skipped (rate-limit backoff)', 'github poll skipped (rate-limit backoff)']"
+  },
+  {
+    "check": "sigint_clean",
+    "ok": true,
+    "expected": "SIGINT exits promptly, no orphans",
+    "actual": "exit=0 timed_out=False orphans=[]"
+  },
+  {
+    "check": "port_released_after_shutdown",
+    "ok": true,
+    "expected": "port not listening after SIGINT shutdown",
+    "actual": "port_free=True"
+  }
+]

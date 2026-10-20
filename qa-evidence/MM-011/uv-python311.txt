@@ -1,0 +1,6 @@
+Downloading cpython-3.11.17-linux-x86_64-gnu (download) (29.4MiB)
+ Downloaded cpython-3.11.17-linux-x86_64-gnu (download)
+Installed Python 3.11.17 in 507ms
+ + cpython-3.11.17-linux-x86_64-gnu (python3.11)
+warning: The requested interpreter resolved to Python 3.11.17, which is incompatible with the project's Python requirement: `>=3.12` (from `project.requires-python`)
+/home/ubuntu/.local/share/uv/python/cpython-3.11-linux-x86_64-gnu/bin/python3.11
