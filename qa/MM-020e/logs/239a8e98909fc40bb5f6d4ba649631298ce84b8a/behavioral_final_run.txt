@@ -1,0 +1,13 @@
+test_abuse_and_edge_cases (__main__.TestAbuseEdge.test_abuse_and_edge_cases) ... ok
+test_no_sk_false_positives (__main__.TestCentralSanitizer.test_no_sk_false_positives) ... ok
+test_single_central_sanitizer_in_event (__main__.TestCentralSanitizer.test_single_central_sanitizer_in_event) ... ok
+test_whole_class_never_reaches_any_field (__main__.TestCentralSanitizer.test_whole_class_never_reaches_any_field)
+Title, review, comment, commit, branch-shaped inputs, nested raw → nowhere. ... ok
+test_sse_order_and_last_event_id (__main__.TestLiveSse.test_sse_order_and_last_event_id) ... ok
+test_lanes_provenance_stable_ids_dedupe (__main__.TestPrLanes.test_lanes_provenance_stable_ids_dedupe) ... ok
+test_transport_source_and_recovery_behavior (__main__.TestSseFallbackRecovery.test_transport_source_and_recovery_behavior) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.302s
+
+OK

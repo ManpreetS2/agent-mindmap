@@ -1,0 +1,9 @@
+{
+  "active_after_aborts": 7,
+  "max": 8,
+  "probe_status": 200,
+  "retry_after": null,
+  "body_prefix": "id: leak-0\ndata: {\"id\":\"leak-0\",\"ts\":\"2026-10-20T12:00:00+00:00\",\"sender\":\"dev-1\",\"group\":\"build\",\"type\":\"message\",\"summ",
+  "slots_leaked": true,
+  "exhausted": false
+}

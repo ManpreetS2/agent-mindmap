@@ -1,0 +1,18 @@
+
+> mindmap-web@0.1.0 build
+> tsc --noEmit -p tsconfig.json && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 660 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:   0.29 kB
+dist/assets/index-C5l97pT1.css   47.39 kB │ gzip:   9.31 kB
+dist/assets/index-CXslVkQD.js   590.63 kB │ gzip: 192.17 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.84s

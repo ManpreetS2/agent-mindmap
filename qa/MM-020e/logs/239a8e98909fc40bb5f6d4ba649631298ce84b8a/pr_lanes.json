@@ -1,0 +1,33 @@
+{
+  "n_network": 8,
+  "n_edges": 4,
+  "types": [
+    "merged",
+    "note",
+    "pr_opened",
+    "pr_updated",
+    "verdict"
+  ],
+  "sample": [
+    {
+      "id": "8fe480e7108207bd497009b38dd6a0bbaeff5161",
+      "ts": "2026-10-19T21:35:00-07:00",
+      "sender": "dev-1",
+      "group": "build",
+      "type": "pr_opened",
+      "summary": "Opened pull request #5: feat/RP-005-ingest-hardening",
+      "provenance": "github-verified",
+      "task_id": "RP-005"
+    },
+    {
+      "id": "f384a355adeff178fc82c225d9bb65f3a372a2a8",
+      "ts": "2026-10-19T21:37:00-07:00",
+      "sender": "qa-verifier",
+      "group": "qr",
+      "type": "verdict",
+      "summary": "~QA / Verifier \ud83e\uddea CHANGES on RP-005: tighten etag cache tests.",
+      "provenance": "github-verified",
+      "task_id": "RP-005"
+    }
+  ]
+}

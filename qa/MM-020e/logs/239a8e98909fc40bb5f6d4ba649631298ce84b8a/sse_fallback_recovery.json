@@ -1,0 +1,9 @@
+{
+  "app_uses_createSseTransport": true,
+  "sse_first_when_EventSource": true,
+  "falls_back_on_error": true,
+  "permanent_fellBack_latch": true,
+  "resets_fellBack_to_false": false,
+  "reconnect_or_recover_logic": false,
+  "recovers_to_sse": false
+}

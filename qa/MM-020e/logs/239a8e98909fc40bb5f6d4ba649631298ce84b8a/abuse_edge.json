@@ -1,0 +1,20 @@
+{
+  "malformed": {
+    "ok": true,
+    "n_network": 0,
+    "n_edges": 0
+  },
+  "oversized": {
+    "in_len": 10000,
+    "out_len": 240,
+    "capped": true
+  },
+  "burst": {
+    "requested": 50,
+    "added": 50,
+    "count": 50,
+    "redeupe_added": 0
+  },
+  "malformed_ingest": "ok",
+  "unicode_raw": "feat: caf\u00e9 \u65e5\u672c\u8a9e \ud83d\ude00 wire lanes"
+}

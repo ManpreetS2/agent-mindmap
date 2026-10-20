@@ -1,0 +1,6 @@
+{
+  "sanitize_calls_in__event": 1,
+  "_event_call_sites": 5,
+  "local_sk_regex_in_poller": false,
+  "shared_import": true
+}

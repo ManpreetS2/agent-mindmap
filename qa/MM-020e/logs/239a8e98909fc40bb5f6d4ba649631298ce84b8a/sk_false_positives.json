@@ -1,0 +1,18 @@
+{
+  "task-runner": {
+    "shared": false,
+    "sanitize": "use the task-runner for builds"
+  },
+  "SK-upper": {
+    "shared": false,
+    "sanitize": "SK-abcdefghijklmnopqrstuvwxyz1234"
+  },
+  "sk_short": {
+    "shared": false,
+    "sanitize": "sk-shorttoken"
+  },
+  "benign_title": {
+    "shared": false,
+    "sanitize": "Opened pull request #5: feat wire lanes"
+  }
+}

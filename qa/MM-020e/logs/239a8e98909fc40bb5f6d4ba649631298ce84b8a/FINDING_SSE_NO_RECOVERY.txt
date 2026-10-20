@@ -1,0 +1,1 @@
+createSseTransport sets fellBack=true permanently on first error; never reopens EventSource. AC: recover back to SSE — FAIL.

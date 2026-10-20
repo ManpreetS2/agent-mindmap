@@ -1,0 +1,16 @@
+{
+  "lane_count": 8,
+  "ordered_ids": [
+    "8fe480e7108207bd497009b38dd6a0bbaeff5161",
+    "f384a355adeff178fc82c225d9bb65f3a372a2a8",
+    "758febb5adcc43918d430bc968d4d93a80113e2f",
+    "6cbf23fee7b232e784486b2403144a19e6f71e2d",
+    "07748fc2f05ffae6a556b026d4ad6b3c83fb3761"
+  ],
+  "resume_after": "8fe480e7108207bd497009b38dd6a0bbaeff5161",
+  "resume_next": "f384a355adeff178fc82c225d9bb65f3a372a2a8",
+  "new_event": "qa-live-new-1",
+  "all_github_verified": true,
+  "activity_json_status": 200,
+  "ui_transport": "createSseTransport"
+}

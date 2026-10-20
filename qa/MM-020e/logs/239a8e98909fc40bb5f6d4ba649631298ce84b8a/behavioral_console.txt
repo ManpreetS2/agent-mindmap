@@ -1,0 +1,54 @@
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 41042)
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 879, in _handle_sse
+    last_id = self._push_sse_events(last_id=last_id, sent=sent)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 844, in _push_sse_events
+    self._write_sse_frame(event_id=eid, data=payload, comment=None)
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 789, in _write_sse_frame
+    self.wfile.write(b"\n")
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+ConnectionResetError: [Errno 104] Connection reset by peer
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 772, in do_GET
+    self._handle_get_head()
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 918, in _handle_get_head
+    self._handle_sse()
+  File "/tmp/qa-mm020e-final/checkout/ingest/live.py", line 903, in _handle_sse
+    if conn is not None:
+       ^^^^
+UnboundLocalError: cannot access local variable 'conn' where it is not associated with a value
+----------------------------------------
+test_abuse_and_edge_cases (__main__.TestAbuseEdge.test_abuse_and_edge_cases) ... ok
+test_no_sk_false_positives (__main__.TestCentralSanitizer.test_no_sk_false_positives) ... ok
+test_single_central_sanitizer_in_event (__main__.TestCentralSanitizer.test_single_central_sanitizer_in_event) ... ok
+test_whole_class_never_reaches_any_field (__main__.TestCentralSanitizer.test_whole_class_never_reaches_any_field)
+Title, review, comment, commit, branch-shaped inputs, nested raw → nowhere. ... ok
+test_sse_order_and_last_event_id (__main__.TestLiveSse.test_sse_order_and_last_event_id) ... ok
+test_lanes_provenance_stable_ids_dedupe (__main__.TestPrLanes.test_lanes_provenance_stable_ids_dedupe) ... ok
+test_transport_source_and_recovery_behavior (__main__.TestSseFallbackRecovery.test_transport_source_and_recovery_behavior) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.302s
+
+OK
+
