@@ -1,4 +1,0 @@
-gh_calls=[['repos/ManpreetS2/agent-mindmap/contents/ledger.md?ref=data/ledger']]
-api_path_used=True
-files_under_sandbox=['activity.json', 'cache/ledger/bodies/90aa5ba5f00cee94f167bde45945b530cd9e0808.json', 'cache/ledger/etags.json', 'ledger.md', 'payload.md', 'state.json']
-outside=[]

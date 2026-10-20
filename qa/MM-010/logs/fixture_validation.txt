@@ -1,7 +1,0 @@
-PASS fixtures/sample-activity.json
-PASS web/src/fixtures/state-empty.json
-PASS web/src/fixtures/state-partial-github-error.json
-PASS web/src/fixtures/state-partial-github-rate-limited.json
-PASS web/src/fixtures/state-partial-github-skipped.json
-PASS web/src/fixtures/state-stale.json
-PASS web/src/fixtures/state-unparsed.json

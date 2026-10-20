@@ -1,3 +1,0 @@
-rc=2
-stdout=
-stderr=error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable (or use --ledger-source gh)
