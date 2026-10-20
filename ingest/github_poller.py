@@ -32,7 +32,12 @@ ALLOWED_REPOS = frozenset(
 DEFAULT_REPOS = ("ManpreetS2/fencepost", "ManpreetS2/agent-mindmap")
 RATE_LIMIT_FLOOR = 50
 PER_PAGE = 100
+MAX_PAGES = 20
 LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
+
+
+class PaginationLinkError(ValueError):
+    """Raised when a Link rel=next target fails host/repo allowlisting."""
 
 
 def _repo_root() -> Path:
@@ -43,24 +48,45 @@ def event_id(source: str, locator: str) -> str:
     return hashlib.sha1(f"{source}{locator}".encode("utf-8")).hexdigest()
 
 
-def _api_path_from_link(url: str) -> str:
-    """Turn an absolute GitHub API URL into a `gh api` path (+ query)."""
-    parsed = urlparse(url)
-    path = parsed.path.lstrip("/")
-    if path.startswith("api.github.com/"):
-        path = path[len("api.github.com/") :]
-    if parsed.query:
-        return f"{path}?{parsed.query}"
-    return path
+def next_link_path(
+    link_header: str | None,
+    *,
+    allowed_repos: frozenset[str] = ALLOWED_REPOS,
+) -> str | None:
+    """
+    Extract the next page path from a GitHub Link header.
 
-
-def next_link_path(link_header: str | None) -> str | None:
+    SEC-MM003-1: only follow links whose netloc is exactly `api.github.com`
+    and whose path starts with `repos/<allowlisted owner/repo>/`.
+    Raises PaginationLinkError on foreign host/repo (caller stops + meta=error).
+    """
     if not link_header:
         return None
     m = LINK_NEXT_RE.search(link_header)
     if not m:
         return None
-    return _api_path_from_link(m.group(1))
+
+    parsed = urlparse(m.group(1))
+    if parsed.netloc != "api.github.com":
+        raise PaginationLinkError(
+            f"refusing pagination link host {parsed.netloc!r} (want api.github.com)"
+        )
+
+    path = parsed.path.lstrip("/")
+    parts = path.split("/")
+    # Expect: repos / <owner> / <name> / ...
+    if len(parts) < 3 or parts[0] != "repos":
+        raise PaginationLinkError(f"refusing pagination link path {path!r}")
+    repo = f"{parts[1]}/{parts[2]}"
+    if repo not in allowed_repos:
+        raise PaginationLinkError(f"refusing pagination link repo {repo!r}")
+    if not path.startswith(f"repos/{repo}/") and path != f"repos/{repo}":
+        # path must be under the allowlisted repo prefix
+        raise PaginationLinkError(f"refusing pagination link path {path!r}")
+
+    if parsed.query:
+        return f"{path}?{parsed.query}"
+    return path
 
 
 @dataclass
@@ -293,7 +319,7 @@ class GitHubPoller:
     def _get_json_list(self, api_path: str) -> list[Any]:
         """
         Paginated list GET (per_page=100, follow Link rel=next).
-        Returns concatenated items; empty list on total failure.
+        Caps at MAX_PAGES. Rejected next links stop pagination and flag error.
         """
         items: list[Any] = []
         path = api_path
@@ -302,7 +328,15 @@ class GitHubPoller:
             path = f"{path}{sep}per_page={PER_PAGE}"
 
         seen_paths: set[str] = set()
+        page_count = 0
         while path and path not in seen_paths:
+            page_count += 1
+            if page_count > MAX_PAGES:
+                self._errors.append(
+                    f"pagination page cap ({MAX_PAGES}) exceeded for {api_path}"
+                )
+                break
+
             seen_paths.add(path)
             resp, data = self._request(path)
             if isinstance(data, list):
@@ -320,7 +354,11 @@ class GitHubPoller:
             ):
                 break
 
-            path_next = next_link_path(resp.headers.get("link"))
+            try:
+                path_next = next_link_path(resp.headers.get("link"))
+            except PaginationLinkError as exc:
+                self._errors.append(str(exc))
+                break
             if not path_next:
                 break
             path = path_next

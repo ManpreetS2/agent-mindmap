@@ -11,7 +11,9 @@ import pytest
 
 from ingest.attribute import attribute_from_body
 from ingest.github_poller import (
+    MAX_PAGES,
     GhResponse,
+    PaginationLinkError,
     assert_no_credentials,
     next_link_path,
     poll_github,
@@ -381,3 +383,143 @@ def test_next_link_path_helper() -> None:
     assert next_link_path(link) == (
         "repos/ManpreetS2/fencepost/pulls?page=2&per_page=100"
     )
+
+
+def test_next_link_rejects_foreign_host() -> None:
+    link = '<https://evil.example/repos/ManpreetS2/fencepost/pulls?page=2>; rel="next"'
+    with pytest.raises(PaginationLinkError, match="host"):
+        next_link_path(link)
+
+
+def test_next_link_rejects_foreign_repo() -> None:
+    link = (
+        '<https://api.github.com/repos/OtherOrg/other-repo/pulls?page=2>; rel="next"'
+    )
+    with pytest.raises(PaginationLinkError, match="repo"):
+        next_link_path(link)
+
+
+def _single_pr_mapping() -> dict[str, Any]:
+    return {
+        "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100": [
+            {
+                "number": 5,
+                "title": "feat/RP-005-ingest-hardening",
+                "body": "~DEV 1 ⚙️",
+                "html_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+                "created_at": "2026-10-19T21:35:00-07:00",
+                "merged_at": None,
+                "merge_commit_sha": None,
+                "head": {"ref": "feat/RP-005-ingest-hardening", "sha": "aaa"},
+                "user": {"login": "ManpreetS2"},
+            }
+        ],
+        "repos/ManpreetS2/fencepost/pulls/5/comments?per_page=100": [],
+        "repos/ManpreetS2/fencepost/issues/5/comments?per_page=100": [],
+        "repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100": [],
+    }
+
+
+def test_foreign_host_link_stops_pagination_sets_error(cache_dir: Path) -> None:
+    """SEC-MM003-1: evil Link host → stop + meta.github=error; keep page-1 data."""
+    p1 = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100"
+    mapping = _single_pr_mapping()
+    mapping[p1] = [
+        {
+            "id": 1,
+            "body": "page1 review",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-1",
+            "submitted_at": "2026-10-19T21:00:00-07:00",
+            "state": "COMMENTED",
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mock = MockGh(
+        mapping=mapping,
+        links={p1: '<https://evil.example/repos/ManpreetS2/fencepost/pulls/5/reviews?page=2>; rel="next"'},
+    )
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=mock,
+        repos=("ManpreetS2/fencepost",),
+    )
+    assert result.meta_github == "error"
+    assert any("page1 review" in e.get("raw", "") for e in result.events)
+    assert not any("evil.example" in c for c in mock.calls)
+
+
+def test_foreign_repo_link_stops_pagination_sets_error(cache_dir: Path) -> None:
+    """SEC-MM003-1: Link to non-allowlisted repo → stop + meta.github=error."""
+    p1 = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100"
+    mapping = _single_pr_mapping()
+    mapping[p1] = [
+        {
+            "id": 1,
+            "body": "ok review",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-1",
+            "submitted_at": "2026-10-19T21:00:00-07:00",
+            "state": "COMMENTED",
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mock = MockGh(
+        mapping=mapping,
+        links={
+            p1: (
+                '<https://api.github.com/repos/OtherOrg/other-repo/pulls/1/reviews?page=2>; '
+                'rel="next"'
+            )
+        },
+    )
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=mock,
+        repos=("ManpreetS2/fencepost",),
+    )
+    assert result.meta_github == "error"
+    assert any("ok review" in e.get("raw", "") for e in result.events)
+    assert not any("OtherOrg" in c for c in mock.calls)
+
+
+def test_pagination_page_cap(cache_dir: Path) -> None:
+    """SEC-MM003-1: stop after MAX_PAGES (20) and set meta.github=error."""
+    mapping = _single_pr_mapping()
+    links: dict[str, str] = {}
+    for page in range(1, MAX_PAGES + 2):
+        if page == 1:
+            path = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100"
+        else:
+            path = (
+                f"repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100&page={page}"
+            )
+        mapping[path] = [
+            {
+                "id": page,
+                "body": f"cap review {page}",
+                "html_url": (
+                    f"https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-{page}"
+                ),
+                "submitted_at": "2026-10-19T21:00:00-07:00",
+                "state": "COMMENTED",
+                "user": {"login": "ManpreetS2"},
+            }
+        ]
+        if page <= MAX_PAGES:
+            nxt = (
+                f"repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100&page={page + 1}"
+            )
+            links[path] = f'<https://api.github.com/{nxt}>; rel="next"'
+
+    mock = MockGh(mapping=mapping, links=links)
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=mock,
+        repos=("ManpreetS2/fencepost",),
+    )
+    assert result.meta_github == "error"
+    assert any("page cap" in e for e in result.errors)
+    review_pages = [
+        e for e in result.events if e.get("raw", "").startswith("cap review ")
+    ]
+    assert len(review_pages) == MAX_PAGES
+    assert not any(c.endswith(f"page={MAX_PAGES + 1}") for c in mock.calls)
