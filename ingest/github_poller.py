@@ -3,6 +3,13 @@ GitHub poller via `gh api` (read-only). No tokens in process, logs, or output.
 
 Caches ETags + bodies under ingest/.cache/ so a re-run sends If-None-Match
 and receives 304s. Allowed repos: ManpreetS2/fencepost, ManpreetS2/agent-mindmap.
+
+MM-020e / MM-013 PR lanes
+-------------------------
+``build_pr_lane_events(gh_data, roster)`` is the pure hook for live rebuild
+(DEV 1 wires it after MM-020d). It projects polled GitHub activity events into
+NetworkEvent rows (provenance ``github-verified``) plus edges via
+``ingest.edges.derive_edges``. Not called from ``ingest.live`` yet.
 """
 
 from __future__ import annotations
@@ -22,6 +29,7 @@ from .attribute import (
     extract_verdict,
     load_bots,
 )
+from .edges import derive_edges
 
 ALLOWED_REPOS = frozenset(
     {
@@ -35,6 +43,12 @@ PER_PAGE = 100
 MAX_PAGES = 20  # sub-resource page cap
 MAX_PRS = 50  # architecture §8 — PR list hard cap
 LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
+
+# Director / SEC: PR-lane NetworkEvent summaries (MM-020e).
+SUMMARY_MAX_CHARS = 240
+PR_LANE_TYPES = frozenset({"pr_opened", "pr_updated", "verdict", "note", "merged"})
+GITHUB_PROVENANCE = "github-verified"
+UNKNOWN_SENDER = "UNKNOWN"
 
 
 class PaginationLinkError(ValueError):
@@ -603,12 +617,54 @@ class GitHubPoller:
         commits = self._get_json_list(
             f"repos/{repo}/pulls/{number}/commits", repo=repo
         )
+        for commit in commits:
+            if isinstance(commit, dict):
+                events.extend(
+                    self._push_events(repo, number, html, task_id, commit, seen)
+                )
         if commits:
             head_sha = (commits[-1].get("sha") or "")[:40].lower()
             if pr.get("merged_at") and head_sha:
                 self._get_json(f"repos/{repo}/commits/{head_sha}/check-runs")
 
         return events
+
+    def _push_events(
+        self,
+        repo: str,
+        number: int,
+        html: str,
+        task_id: str | None,
+        commit: dict[str, Any],
+        seen: set[str],
+    ) -> list[dict[str, Any]]:
+        """PR push / commit → pr_updated (stable id by sha)."""
+        sha = (commit.get("sha") or "")[:40].lower()
+        if not sha or not re.fullmatch(r"[0-9a-f]+", sha) or len(sha) < 7:
+            return []
+        commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
+        msg = str((commit_obj or {}).get("message") or "")
+        actor, method = attribute_from_body(msg, self.bots)
+        ts = ""
+        author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
+        if isinstance(author, dict):
+            ts = str(author.get("date") or "")
+        evt = _event(
+            locator=f"{repo}#pr{number}:push:{sha}",
+            etype="pr_updated",
+            actor=actor,
+            task_id=task_id,
+            pr=number,
+            repo=repo,
+            sha=sha,
+            source_url=html,
+            source_time=ts or None,
+            attribution=method,
+            raw=msg.split("\n", 1)[0] or f"Push on PR #{number} ({sha[:7]})",
+        )
+        out: list[dict[str, Any]] = []
+        _append_unique(out, seen, evt)
+        return out
 
     def _review_events(
         self,
@@ -736,6 +792,8 @@ def _event(
         "source_url": source_url,
         "source_time": source_time or "1970-01-01T00:00:00Z",
         "raw": raw,
+        # MM-020e / schema 1.1.0: GitHub-derived facts are github-verified.
+        "provenance": GITHUB_PROVENANCE,
     }
     if pr is not None:
         evt["pr"] = pr
@@ -746,6 +804,144 @@ def _event(
     if verdict:
         evt["verdict"] = verdict
     return evt
+
+
+def sanitize_pr_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str | None:
+    """
+    Cap summary at 240 chars; refuse (return None) if secret_scan hits.
+
+    Never returns secret material — caller drops the event when None.
+    """
+    from tools.secret_scan import looks_like_secret
+
+    cleaned = " ".join((text or "").split())
+    if not cleaned:
+        return None
+    if looks_like_secret(cleaned):
+        return None
+    if len(cleaned) > max_chars:
+        cleaned = cleaned[: max_chars - 1] + "…"
+    return cleaned
+
+
+def _normalize_gh_events(gh_data: Any) -> list[dict[str, Any]]:
+    if gh_data is None:
+        return []
+    if isinstance(gh_data, GitHubPollResult):
+        return list(gh_data.events)
+    if isinstance(gh_data, dict):
+        ev = gh_data.get("events")
+        return [e for e in ev if isinstance(e, dict)] if isinstance(ev, list) else []
+    if isinstance(gh_data, list):
+        return [e for e in gh_data if isinstance(e, dict)]
+    return []
+
+
+def _is_pr_lane_event(evt: dict[str, Any]) -> bool:
+    etype = evt.get("type")
+    if etype in {"pr_opened", "pr_updated", "merged"}:
+        return True
+    if etype in {"verdict", "note"} and evt.get("pr") is not None:
+        return True
+    return False
+
+
+def _bot_home_group(bot_id: str, roster: list[dict[str, Any]]) -> str:
+    for bot in roster:
+        if str(bot.get("id")) == bot_id:
+            g = bot.get("group")
+            if isinstance(g, str) and g.strip():
+                return g.strip()
+    return "build"
+
+
+def activity_event_to_network_event(
+    evt: dict[str, Any],
+    roster: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """
+    Map one activity Event (from the poller) → NetworkEvent, or None if refused.
+
+    Unknown actors become sender UNKNOWN (no false edge — derive_edges skips
+    null actors on the activity side).
+    """
+    summary = sanitize_pr_summary(str(evt.get("raw") or ""))
+    if summary is None:
+        return None
+    actor = evt.get("actor")
+    sender = str(actor) if isinstance(actor, str) and actor.strip() else UNKNOWN_SENDER
+    group = _bot_home_group(sender, roster) if sender != UNKNOWN_SENDER else "build"
+    ne: dict[str, Any] = {
+        "id": str(evt["id"]),
+        "ts": str(evt.get("source_time") or "1970-01-01T00:00:00Z"),
+        "sender": sender,
+        "group": group,
+        "type": str(evt.get("type") or "note"),
+        "summary": summary,
+        "provenance": GITHUB_PROVENANCE,
+    }
+    if evt.get("task_id") is not None:
+        ne["task_id"] = evt.get("task_id")
+    if evt.get("related_id") is not None:
+        ne["related_id"] = evt.get("related_id")
+    # Explicit recipients only — never invent (PR lanes usually omit).
+    rec = evt.get("recipients")
+    if isinstance(rec, list) and rec:
+        ne["recipients"] = [str(x) for x in rec if isinstance(x, str) and x.strip()]
+    return ne
+
+
+def build_pr_lane_events(
+    gh_data: Any,
+    roster: list[dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Pure MM-020e / MM-013 hook for live rebuild (not wired into live.py yet).
+
+    Parameters
+    ----------
+    gh_data:
+        ``GitHubPollResult``, ``{"events": [...]}``, or a list of activity
+        Event dicts from ``poll_github`` / ``GitHubPoller.poll``.
+    roster:
+        bots.json-shaped list (``id``, ``group``, ``aliases``, …). Defaults to
+        ``load_bots()``.
+
+    Returns
+    -------
+    (network_events, edges)
+        NetworkEvent dicts with ``provenance="github-verified"``, stable
+        ``id`` (= sha1 of github+locator from the poller), deduped by id.
+        Edges from ``derive_edges`` on the same PR-lane activity events
+        (unknown / null actors never create false edges).
+
+    Allowlist is enforced upstream by ``GitHubPoller`` (``ALLOWED_REPOS``);
+    this function does not fetch.
+    """
+    bots = roster if roster is not None else load_bots()
+    raw_events = _normalize_gh_events(gh_data)
+    lane_activity: list[dict[str, Any]] = []
+    network: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    for evt in raw_events:
+        if not _is_pr_lane_event(evt):
+            continue
+        # Ensure github-verified even if caller passed legacy events.
+        stamped = dict(evt)
+        stamped["provenance"] = GITHUB_PROVENANCE
+        eid = str(stamped.get("id") or "")
+        if not eid or eid in seen_ids:
+            continue
+        ne = activity_event_to_network_event(stamped, bots)
+        if ne is None:
+            continue
+        seen_ids.add(eid)
+        lane_activity.append(stamped)
+        network.append(ne)
+
+    edges = derive_edges(lane_activity)
+    return network, edges
 
 
 def _append_unique(
