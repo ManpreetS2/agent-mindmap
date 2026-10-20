@@ -7,6 +7,7 @@ cd "$REPO_ROOT"
 
 PORT="${MINDMAP_PORT:-8787}"
 REBUILD=false
+DEMO_MODE=false
 
 usage() {
   cat <<'EOF'
@@ -17,7 +18,7 @@ Start the MINDMAP live daemon on http://127.0.0.1:8787 (override with MINDMAP_PO
 Options:
   --help      Show this help and exit.
   --rebuild   Force `npm ci` + `npm run build` in web/ even if web/dist exists.
-  --demo      Reserved (MM-020i); not implemented yet.
+  --demo      Demo mode (MM-020i) when ingest.live supports --demo.
 
 Environment:
   MINDMAP_LEDGER          Path to task-ledger.md (if unset, ledger is read from gh:data/ledger).
@@ -42,8 +43,8 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --demo)
-      echo "not yet supported (MM-020i)" >&2
-      exit 2
+      DEMO_MODE=true
+      shift
       ;;
     *)
       echo "error: unknown option: $1 (try --help)" >&2
@@ -176,6 +177,23 @@ resolve_events_source() {
   esac
 }
 
+live_supports_demo_flag() {
+  local py="$1"
+  "$py" -m ingest.live --help 2>&1 | grep -qE '(^|[[:space:]])--demo([[:space:],]|$)'
+}
+
+# ----- MM-020i: --demo passthrough (PR #24 enables ingest.live --demo) -----
+apply_demo_flag() {
+  [[ "$DEMO_MODE" == true ]] || return 0
+  if live_supports_demo_flag "$PYTHON"; then
+    LIVE_ARGS+=(--demo)
+    return 0
+  fi
+  echo "not yet supported (MM-020i)" >&2
+  exit 2
+}
+# ----- end MM-020i stub -----
+
 PYTHON="$(ensure_venv_python)"
 ensure_web_dist
 check_port_free
@@ -198,6 +216,8 @@ if [[ -n "${MINDMAP_LEDGER:-}" ]]; then
 else
   LIVE_ARGS+=(--ledger-source gh)
 fi
+
+apply_demo_flag
 
 # Live daemon polls GitHub PRs and data/events via gh (read-only).
 require_gh_auth
