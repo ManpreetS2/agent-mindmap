@@ -1,6 +1,6 @@
 os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
 python: Python 3.12.3
-node: 
+node: v22.23.3
 npm: npm <command>
 
 Usage:
