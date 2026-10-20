@@ -93,7 +93,7 @@
     },
     "verdict": {
       "type": "string",
-      "enum": ["PASS", "FAIL", "CHANGES"]
+      "enum": ["PASS", "FAIL", "CHANGES", "CONDITIONAL", "BLOCKED", "INCONCLUSIVE"]
     },
     "attribution": {
       "type": "object",
@@ -207,6 +207,11 @@
           "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/taskId" }]
         },
         "pr": { "type": "integer", "minimum": 1 },
+        "repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+          "description": "owner/name; PR joins use (repo, number), never number alone"
+        },
         "sha": {
           "type": "string",
           "pattern": "^[0-9a-f]{7,40}$"

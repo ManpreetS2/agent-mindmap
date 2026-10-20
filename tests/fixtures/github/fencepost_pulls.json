@@ -9,7 +9,11 @@
     "updated_at": "2026-10-19T21:39:00-07:00",
     "merged_at": "2026-10-19T21:39:00-07:00",
     "merge_commit_sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+    "merged_by": { "login": "ManpreetS2" },
     "head": { "ref": "feat/RP-005-ingest-hardening", "sha": "aaa1111bbbbbbbccccccccdddddddddeeeeeeee" },
+    "base": {
+      "repo": { "id": 111001, "full_name": "ManpreetS2/fencepost" }
+    },
     "user": { "login": "ManpreetS2" }
   },
   {

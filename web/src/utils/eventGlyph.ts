@@ -7,11 +7,24 @@ export interface EventGlyph {
   fill: string;
 }
 
-function verdictLabel(verdict: Verdict | null | undefined): string {
-  if (verdict === "PASS") return "PASS";
-  if (verdict === "FAIL") return "FAIL";
-  if (verdict === "CHANGES") return "CHG";
-  return "VER";
+const KNOWN_VERDICT_LABELS: Record<string, string> = {
+  PASS: "PASS",
+  FAIL: "FAIL",
+  CHANGES: "CHG",
+  CONDITIONAL: "COND",
+  BLOCKED: "BLK",
+  INCONCLUSIVE: "INC",
+};
+
+/**
+ * Map a verdict token to a short glyph label.
+ * Unknown / future values fall back to "VER" so the UI never breaks
+ * (Director: widened enum OK iff UI falls back cleanly).
+ */
+export function verdictLabel(verdict: Verdict | string | null | undefined): string {
+  if (verdict == null || verdict === "") return "VER";
+  const key = String(verdict).toUpperCase();
+  return KNOWN_VERDICT_LABELS[key] ?? "VER";
 }
 
 export function glyphForEvent(event: Event): EventGlyph {
@@ -43,7 +56,7 @@ export function glyphForEvent(event: Event): EventGlyph {
       return {
         symbol: "✓",
         label: verdictLabel(event.verdict),
-        title: `Verdict ${event.verdict ?? ""} ${baseTitle}`,
+        title: `Verdict ${event.verdict ?? "unknown"} ${baseTitle}`,
         fill: "var(--edge-verdict)",
       };
     case "merged":

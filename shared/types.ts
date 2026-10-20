@@ -27,7 +27,13 @@ export type EventType =
 
 export type EdgeType = "handoff" | "verdict" | "pr" | "merge";
 
-export type Verdict = "PASS" | "FAIL" | "CHANGES";
+export type Verdict =
+  | "PASS"
+  | "FAIL"
+  | "CHANGES"
+  | "CONDITIONAL"
+  | "BLOCKED"
+  | "INCONCLUSIVE";
 
 export type AttributionMethod = "signature" | "ledger_owner" | "unknown";
 
@@ -77,8 +83,11 @@ export interface Event {
   /** Same pattern as {@link TaskId}. */
   task_id: TaskId | null;
   pr?: number;
+  /** owner/name — PR joins use (repo, number), never number alone. */
+  repo?: string;
   sha?: string;
-  verdict?: Verdict | null;
+  /** Known tokens preferred; UI must fall back cleanly on unknown strings. */
+  verdict?: Verdict | (string & {}) | null;
   attribution: Attribution;
   source_url: string;
   source_time: string;

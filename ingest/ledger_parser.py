@@ -111,7 +111,10 @@ HANDOFF_RE = re.compile(
     r"(?:GO\s+for|assigned\s+to|handed\s+to)\s+([A-Za-z0-9 /&]+?)(?:\s+for\b|\s+on\b|[.;,]|$)",
     re.IGNORECASE,
 )
-VERDICT_RE = re.compile(r"\b(PASS|FAIL|CHANGES)\b", re.IGNORECASE)
+VERDICT_RE = re.compile(
+    r"\b(PASS|FAIL|CHANGES|CONDITIONAL|INCONCLUSIVE)\b",
+    re.IGNORECASE,
+)
 BLOCKED_RE = re.compile(r"\bBLOCKED\w*\b", re.IGNORECASE)
 
 STATUS_RULES: list[tuple[re.Pattern[str], str]] = [
@@ -258,6 +261,44 @@ def extract_prs(*texts: str) -> list[int]:
     return nums
 
 
+_GITHUB_PR_URL_RE = re.compile(
+    r"github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/(\d+)",
+    re.IGNORECASE,
+)
+_NAMED_REPO_PR_RE = re.compile(
+    r"\b(agent-mindmap|fencepost)\s+PR\s+#?(\d+)\b",
+    re.IGNORECASE,
+)
+_DEFAULT_REPO = "ManpreetS2/fencepost"
+_NAMED_REPO_MAP = {
+    "agent-mindmap": "ManpreetS2/agent-mindmap",
+    "fencepost": "ManpreetS2/fencepost",
+}
+
+
+def extract_repo_for_pr(*texts: str, pr: int | None = None) -> str | None:
+    """
+    Resolve owner/name for a PR mention (QA-MM004-8).
+
+    Prefer github.com/<owner>/<repo>/pull/N, then 'agent-mindmap PR #N' /
+    'fencepost PR #N', else default fencepost when a bare PR number is present.
+    """
+    joined = "\n".join(t for t in texts if t)
+    if not joined:
+        return None
+    url_m = _GITHUB_PR_URL_RE.search(joined)
+    if url_m:
+        if pr is None or int(url_m.group(2)) == int(pr):
+            return url_m.group(1)
+    named = _NAMED_REPO_PR_RE.search(joined)
+    if named:
+        if pr is None or int(named.group(2)) == int(pr):
+            return _NAMED_REPO_MAP[named.group(1).lower()]
+    if pr is not None or extract_prs(joined):
+        return _DEFAULT_REPO
+    return None
+
+
 def extract_task_id(text: str) -> str | None:
     m = TASK_ID_ANY.search(text)
     return m.group(0) if m else None
@@ -310,10 +351,17 @@ def classify_note_text(
     prs = extract_prs(text)
     if prs:
         extra["pr"] = prs[0]
+        repo = extract_repo_for_pr(text, pr=prs[0])
+        if repo:
+            extra["repo"] = repo
 
     sha_m = SHA_RE.search(text)
     if sha_m:
         extra["sha"] = sha_m.group(1).lower()
+        if "repo" not in extra:
+            repo = extract_repo_for_pr(text, pr=extra.get("pr"))
+            if repo:
+                extra["repo"] = repo
         return "merged", actor_id, extra
 
     verdict_m = VERDICT_RE.search(text)
@@ -412,7 +460,7 @@ def _make_event(
         "raw": raw,
     }
     if extra:
-        for key in ("pr", "sha", "verdict"):
+        for key in ("pr", "repo", "sha", "verdict"):
             if key in extra and extra[key] is not None:
                 evt[key] = extra[key]
     return evt

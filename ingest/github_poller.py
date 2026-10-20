@@ -50,16 +50,32 @@ def event_id(source: str, locator: str) -> str:
 
 
 def repo_id_from_item(item: dict[str, Any]) -> int | None:
-    """Best-effort numeric repository id from a PR/issue-like JSON object."""
-    for key in ("repository", "base", "head"):
-        node = item.get(key)
-        if isinstance(node, dict):
-            repo = node.get("repo") if key in {"base", "head"} else node
-            if isinstance(repo, dict) and isinstance(repo.get("id"), int):
-                return int(repo["id"])
-            if key == "repository" and isinstance(node.get("id"), int):
-                return int(node["id"])
+    """
+    Numeric repository id from a PR/issue-like JSON object.
+
+    Uses `repository.id` or `base.repo.id` only — never `head.repo`
+    (fork/head ids must not be trusted for Link allowlisting).
+    """
+    repo_node = item.get("repository")
+    if isinstance(repo_node, dict) and isinstance(repo_node.get("id"), int):
+        return int(repo_node["id"])
+    base = item.get("base")
+    if isinstance(base, dict):
+        repo = base.get("repo")
+        if isinstance(repo, dict) and isinstance(repo.get("id"), int):
+            return int(repo["id"])
     return None
+
+
+def resource_suffix(api_path: str) -> str:
+    """Path after repos/<owner>/<repo>/ or repositories/<id>/ (no query)."""
+    path = api_path.split("?", 1)[0].lstrip("/")
+    parts = path.split("/")
+    if parts and parts[0] == "repos" and len(parts) >= 3:
+        return "/".join(parts[3:])
+    if parts and parts[0] == "repositories" and len(parts) >= 2:
+        return "/".join(parts[2:])
+    return path
 
 
 def next_link_path(
@@ -67,14 +83,18 @@ def next_link_path(
     *,
     allowed_repos: frozenset[str] = ALLOWED_REPOS,
     allowed_repo_ids: frozenset[int] | set[int] | None = None,
+    expected_suffix: str | None = None,
 ) -> str | None:
     """
     Extract the next page path from a GitHub Link header.
 
-    SEC-MM003-1 / QA-MM003-9: netloc must be `api.github.com`, and the path must
-    start with either `repos/<allowlisted owner/repo>/` or
-    `repositories/<allowlisted numeric id>/`.
-    Raises PaginationLinkError on foreign host/repo (caller stops + meta=error).
+    SEC-MM003-1 / QA-MM003-9 / QA-MM003-12: netloc must be `api.github.com`,
+    and the path must stay in the *requested* repo (`allowed_repos`, typically
+    a single-repo frozenset) via `repos/<owner>/<repo>/` or
+    `repositories/<that repo's numeric id>/`.
+    Rejects URLs containing '..' or '%' and paths whose resource suffix does
+    not match the request being paginated.
+    Raises PaginationLinkError on foreign/unsafe links (caller stops + meta=error).
     """
     if not link_header:
         return None
@@ -82,10 +102,22 @@ def next_link_path(
     if not m:
         return None
 
-    parsed = urlparse(m.group(1))
+    raw_url = m.group(1)
+    if ".." in raw_url or "%" in raw_url:
+        raise PaginationLinkError(
+            f"refusing pagination link with unsafe characters: {raw_url!r}"
+        )
+
+    parsed = urlparse(raw_url)
     if parsed.netloc != "api.github.com":
         raise PaginationLinkError(
             f"refusing pagination link host {parsed.netloc!r} (want api.github.com)"
+        )
+    if ".." in parsed.path or "%" in parsed.path or (
+        parsed.query and (".." in parsed.query or "%" in parsed.query)
+    ):
+        raise PaginationLinkError(
+            f"refusing pagination link with unsafe characters: {raw_url!r}"
         )
 
     path = parsed.path.lstrip("/")
@@ -113,6 +145,13 @@ def next_link_path(
             raise PaginationLinkError(f"refusing pagination link path {path!r}")
     else:
         raise PaginationLinkError(f"refusing pagination link path {path!r}")
+
+    if expected_suffix is not None:
+        got = resource_suffix(path)
+        if got != expected_suffix:
+            raise PaginationLinkError(
+                f"refusing pagination link resource {got!r} (want {expected_suffix!r})"
+            )
 
     if parsed.query:
         return f"{path}?{parsed.query}"
@@ -420,9 +459,13 @@ class GitHubPoller:
                 break
 
             try:
+                # QA-MM003-12: next link must stay in the SAME repo being paged,
+                # not merely any globally allowlisted repo.
                 path_next = next_link_path(
                     resp.headers.get("link"),
+                    allowed_repos=frozenset({repo}),
                     allowed_repo_ids=self._allowed_ids_for(repo),
+                    expected_suffix=resource_suffix(api_path),
                 )
             except PaginationLinkError as exc:
                 self._errors.append(str(exc))
@@ -462,7 +505,9 @@ class GitHubPoller:
 
     def _poll_repo(self, repo: str, seen: set[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        self._resolve_repo_id(repo)
+        if self._resolve_repo_id(repo) is None:
+            self._errors.append(f"failed to resolve numeric id for repo {repo}")
+            return out
         pulls = self._get_json_list(
             f"repos/{repo}/pulls?state=all",
             repo=repo,
@@ -472,8 +517,6 @@ class GitHubPoller:
         for pr in pulls:
             if not isinstance(pr, dict):
                 continue
-            if repo not in self._repo_ids:
-                self._remember_repo_id(repo, repo_id_from_item(pr))
             out.extend(self._events_for_pr(repo, pr, seen))
             if self._rate_limited:
                 break
@@ -501,29 +544,13 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=html,
             source_time=created,
             attribution=method,
             raw=f"Opened pull request #{number}: {title}",
         )
         _append_unique(events, seen, opened)
-
-        if pr.get("merged_at"):
-            sha = (pr.get("merge_commit_sha") or "")[:40].lower()
-            sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            merged = _event(
-                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
-                etype="merged",
-                actor=actor,
-                task_id=task_id,
-                pr=number,
-                sha=sha_val,
-                source_url=html,
-                source_time=pr.get("merged_at"),
-                attribution=method if actor else "unknown",
-                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
-            )
-            _append_unique(events, seen, merged)
 
         reviews = self._get_json_list(
             f"repos/{repo}/pulls/{number}/reviews", repo=repo
@@ -549,6 +576,29 @@ class GitHubPoller:
                 events.extend(
                     self._comment_events(repo, number, task_id, c, seen, kind="issue_comment")
                 )
+
+        if pr.get("merged_at"):
+            sha = (pr.get("merge_commit_sha") or "")[:40].lower()
+            sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
+            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a
+            # ~Bot signature on a ledger-style merged note (QA-MM004-10).
+            merger_actor, merger_method = _resolve_merger(
+                issue_comments, review_comments, self.bots
+            )
+            merged = _event(
+                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
+                etype="merged",
+                actor=merger_actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                sha=sha_val,
+                source_url=html,
+                source_time=pr.get("merged_at"),
+                attribution=merger_method,
+                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
+            )
+            _append_unique(events, seen, merged)
 
         commits = self._get_json_list(
             f"repos/{repo}/pulls/{number}/commits", repo=repo
@@ -582,6 +632,7 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=url,
             source_time=ts,
             attribution=method,
@@ -615,6 +666,7 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=url,
             source_time=ts,
             attribution=method,
@@ -624,6 +676,37 @@ class GitHubPoller:
         out: list[dict[str, Any]] = []
         _append_unique(out, seen, evt)
         return out
+
+
+# Ledger-style merged note only (QA-MM004-10) — not a casual "merged" mention.
+_LEDGER_STYLE_MERGED_RE = re.compile(
+    r"(?:squash-)?merged\s+as\s+[0-9a-f]{7,40}",
+    re.IGNORECASE,
+)
+
+
+def _resolve_merger(
+    issue_comments: list[Any],
+    review_comments: list[Any],
+    bots: list[dict[str, Any]],
+) -> tuple[str | None, str]:
+    """
+    Resolve the merger bot for a GitHub merged PR.
+
+    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).
+    QA-MM004-10: only a ~Bot signature on a ledger-style "merged as <sha>" note
+    attributes the merger. A bare merge-hint comment does not.
+    """
+    for comment in [*issue_comments, *review_comments]:
+        if not isinstance(comment, dict):
+            continue
+        body = comment.get("body") or ""
+        if not _LEDGER_STYLE_MERGED_RE.search(body):
+            continue
+        sig_actor, sig_method = attribute_from_body(body, bots)
+        if sig_actor and sig_method == "signature":
+            return sig_actor, "signature"
+    return None, "unknown"
 
 
 def _event(
@@ -640,7 +723,9 @@ def _event(
     sha: str | None = None,
     verdict: str | None = None,
     target: str | None = None,
+    repo: str | None = None,
 ) -> dict[str, Any]:
+
     evt: dict[str, Any] = {
         "id": event_id("github", locator),
         "type": etype,
@@ -654,6 +739,8 @@ def _event(
     }
     if pr is not None:
         evt["pr"] = pr
+    if repo:
+        evt["repo"] = repo
     if sha:
         evt["sha"] = sha
     if verdict:
