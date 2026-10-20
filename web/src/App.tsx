@@ -16,7 +16,8 @@ const POLL_MS = Number(
 );
 
 export function App() {
-  const { mode: serverMode } = useServerMode();
+  const { bannerState } = useServerMode();
+  const banner = <ModeBanner state={bannerState} />;
   const transport = useMemo(
     () =>
       createSseTransport({
@@ -26,8 +27,6 @@ export function App() {
   );
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
-
-  const banner = serverMode ? <ModeBanner mode={serverMode} /> : null;
 
   if (error instanceof LedgerLoadError) {
     return (

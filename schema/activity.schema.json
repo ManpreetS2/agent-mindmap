@@ -42,7 +42,7 @@
         },
         "ledger": {
           "type": "string",
-          "enum": ["ok", "error", "skipped"],
+          "enum": ["ok", "error", "skipped", "demo"],
           "description": "Ledger read status (path or gh data/ledger mirror)"
         },
         "ledger_last_entry_at": {
@@ -53,6 +53,11 @@
         "events_source": {
           "type": "string",
           "description": "Optional live events source marker (MM-020)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["demo", "live"],
+          "description": "MM-020i: server mode when snapshot was produced (demo fixtures vs live ingest)"
         }
       }
     },

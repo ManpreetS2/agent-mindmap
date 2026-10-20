@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-<<<<<<< HEAD
 # MM-020-OPS: one-command Mac startup for mindmap live (127.0.0.1).
 set -euo pipefail
 
@@ -50,42 +49,10 @@ while [[ $# -gt 0 ]]; do
     *)
       echo "error: unknown option: $1 (try --help)" >&2
       exit 2
-=======
-# MM-020i / DevOps: minimal macOS launcher (PR #22 may extend this script).
-set -euo pipefail
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON="${MINDMAP_PYTHON:-${ROOT}/.venv/bin/python}"
-if [[ ! -x "$PYTHON" ]]; then
-  PYTHON="${PYTHON_FALLBACK:-python3}"
-fi
-
-DEMO=0
-EXTRA=()
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --demo)
-      DEMO=1
-      shift
-      ;;
-    -h | --help)
-      echo "Usage: $0 [--demo] [-- extra ingest.live args...]"
-      exit 0
-      ;;
-    --)
-      shift
-      EXTRA+=("$@")
-      break
-      ;;
-    *)
-      EXTRA+=("$1")
-      shift
->>>>>>> 06e5bda (feat(MM-020i): DEMO mode for live daemon, UI banner, refresh-demo path)
       ;;
   esac
 done
 
-<<<<<<< HEAD
 find_bootstrap_python() {
   local candidate
   for candidate in python3.13 python3.12; do
@@ -252,21 +219,9 @@ fi
 
 apply_demo_flag
 
-# Live daemon polls GitHub PRs and data/events via gh (read-only).
-require_gh_auth
+if [[ "$DEMO_MODE" != true ]]; then
+  # Live daemon polls GitHub PRs and data/events via gh (read-only).
+  require_gh_auth
+fi
 
 exec "$PYTHON" "${LIVE_ARGS[@]}"
-=======
-cd "$ROOT"
-export PYTHONPATH="${ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
-
-ARGS=(-m ingest.live)
-if [[ "$DEMO" -eq 1 ]]; then
-  ARGS+=(--demo)
-fi
-if [[ ${#EXTRA[@]} -gt 0 ]]; then
-  ARGS+=("${EXTRA[@]}")
-fi
-
-exec "$PYTHON" "${ARGS[@]}"
->>>>>>> 06e5bda (feat(MM-020i): DEMO mode for live daemon, UI banner, refresh-demo path)

@@ -20,7 +20,10 @@ import pytest
 from ingest.build import main as ingest_main
 from ingest.demo_mode import (
     UnsafeActivityOutError,
+    activity_bytes_match_server_mode,
+    activity_meta_mode,
     assert_safe_activity_out_path,
+    load_demo_activity_bytes,
     load_demo_network_events,
 )
 from ingest.live import LiveDaemon, build_arg_parser, create_http_server, main as live_main
@@ -300,26 +303,28 @@ def test_live_main_demo_skips_ledger(tmp_path: Path, bots: list[dict]) -> None:
     assert args.demo is True
 
 
-def test_start_mac_demo_does_not_exit_2() -> None:
+def test_start_mac_demo_skips_gh_auth_check(tmp_path: Path) -> None:
     if not START_MAC.is_file():
         pytest.skip("start-mac.sh not present")
+    gh = tmp_path / "gh"
+    gh.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    gh.chmod(0o755)
+    text = START_MAC.read_text(encoding="utf-8")
+    assert "require_gh_auth" in text
+    assert "DEMO_MODE" in text
     proc = subprocess.run(
-        [sys.executable, "-m", "ingest.live", "--help"],
+        ["/bin/bash", str(START_MAC), "--demo"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=3,
+        env={
+            **os.environ,
+            "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
+        },
     )
-    assert proc.returncode == 0
-    proc2 = subprocess.run(
-        ["bash", "-c", f'exec bash "{START_MAC}" --demo -- --help'],
-        cwd=str(ROOT),
-        capture_output=True,
-        text=True,
-        timeout=15,
-        env={**os.environ, "MINDMAP_PYTHON": sys.executable},
-    )
-    assert proc2.returncode != 2
+    # Should not fail solely because gh auth exits 1 (demo skips require_gh_auth).
+    assert "gh is not authenticated" not in proc.stderr
 
 
 def test_live_main_unknown_flag_exits_2() -> None:
@@ -334,3 +339,47 @@ def test_live_health_includes_mode_live(live_env: dict) -> None:
     daemon = _daemon(live_env, events_source="off")
     daemon.run_poll_cycle()
     assert daemon.health().to_json()["mode"] == "live"
+
+
+def test_activity_mode_validator_demo_vs_live() -> None:
+    demo = load_demo_activity_bytes(ROOT / "fixtures", mode="demo")
+    assert activity_meta_mode(demo) == "demo"
+    assert activity_bytes_match_server_mode(demo, "demo")
+    assert not activity_bytes_match_server_mode(demo, "live")
+
+
+def test_live_serves_empty_live_not_stale_demo_on_disk(
+    live_env: dict, bots: list[dict]
+) -> None:
+    demo_body = load_demo_activity_bytes(ROOT / "fixtures", mode="demo")
+    live_env["activity"].write_bytes(demo_body)
+    daemon = LiveDaemon(
+        ledger_source="path",
+        ledger_path=live_env["ledger"].with_name("missing-ledger.md"),
+        activity_path=live_env["activity"],
+        static_dir=live_env["static"],
+        cache_dir=live_env["cache"],
+        bots=bots,
+        github_runner=MockGh(),
+        events_source="off",
+    )
+    daemon._load_activity_from_disk()
+    assert daemon.activity_body() is None
+    served = json.loads(daemon.activity_bytes_for_serve().decode())
+    assert served["meta"]["mode"] == "live"
+    assert daemon.health().mode == "live"
+
+
+def test_demo_rejects_live_artifact_bytes(demo_env: dict) -> None:
+    daemon = _demo_daemon(demo_env)
+    live_snap = json.dumps(
+        {"meta": {"mode": "live"}, "nodes": [], "tasks": [], "events": [], "edges": []}
+    ).encode()
+    assert not daemon._store_activity_bytes(live_snap)
+    daemon.bootstrap_demo()
+    served = json.loads(daemon.activity_bytes_for_serve().decode())
+    assert served["meta"]["mode"] == "demo"
+
+
+def test_live_main_rejects_demo_with_events_source_gh() -> None:
+    assert live_main(["--demo", "--events-source", "gh"]) == 2

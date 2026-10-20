@@ -53,8 +53,10 @@ from .ledger_parser import (
     parse_ledger_file,
 )
 from .demo_mode import (
+    activity_bytes_match_server_mode,
     assert_safe_activity_out_path,
     ensure_activity_out_parent,
+    empty_live_activity_bytes,
     load_demo_activity_bytes,
     load_demo_network_events,
     ServerMode,
@@ -384,6 +386,7 @@ def assemble_activity(
         "generated_at": generated_at,
         "project": "fencepost",
         "meta": {
+            "mode": "live",
             "github": gh.meta_github,
             "ledger": meta_ledger,
             "ledger_last_entry_at": ledger_last_entry_at(ledger),
@@ -476,6 +479,49 @@ class LiveDaemon:
         with self._lock:
             return self._activity_bytes
 
+    def _store_activity_bytes(self, body: bytes) -> bool:
+        """Persist in-memory activity only when ``meta.mode`` matches server mode."""
+        if not activity_bytes_match_server_mode(body, self.server_mode()):
+            return False
+        etag = _etag_for_body(body)
+        with self._lock:
+            self._activity_bytes = body
+            self._activity_etag = etag
+            self._activity_fp = hashlib.sha256(body).hexdigest()
+        return True
+
+    def _read_activity_file_bytes(self) -> bytes | None:
+        if self.demo_mode or not self.activity_path.is_file():
+            return None
+        try:
+            return self.activity_path.read_bytes()
+        except OSError:
+            return None
+
+    def activity_bytes_for_serve(self) -> bytes:
+        """Validated activity body for ``/activity.json`` (never cross-mode)."""
+        with self._lock:
+            cached = self._activity_bytes
+        if cached is not None and activity_bytes_match_server_mode(
+            cached, self.server_mode()
+        ):
+            return cached
+
+        disk = self._read_activity_file_bytes()
+        if disk is not None and self._store_activity_bytes(disk):
+            return disk
+
+        if self.demo_mode:
+            body = load_demo_activity_bytes(self.fixtures_dir, mode="demo")
+            self._store_activity_bytes(body)
+            return body
+
+        fallback = empty_live_activity_bytes(
+            self.bots, generated_at=_iso_now(self.clock)
+        )
+        self._store_activity_bytes(fallback)
+        return fallback
+
     def _append_error(self, msg: str) -> None:
         with self._lock:
             self._health.errors.append(msg)
@@ -487,14 +533,10 @@ class LiveDaemon:
     def _load_activity_from_disk(self) -> None:
         if self.demo_mode:
             return
-        if not self.activity_path.is_file():
+        body = self._read_activity_file_bytes()
+        if body is None:
             return
-        body = self.activity_path.read_bytes()
-        etag = _etag_for_body(body)
-        with self._lock:
-            self._activity_bytes = body
-            self._activity_etag = etag
-            self._activity_fp = hashlib.sha256(body).hexdigest()
+        self._store_activity_bytes(body)
 
     def _gh_runner(self) -> GhRunner:
         base = self.github_runner
@@ -1003,14 +1045,8 @@ class MindmapHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/activity.json":
-            etag = self.daemon.activity_etag()
-            body = self.daemon.activity_body()
-            if body is None and self.daemon.activity_path.is_file():
-                body = self.daemon.activity_path.read_bytes()
-                etag = _etag_for_body(body)
-            if body is None:
-                self.send_error(HTTPStatus.NOT_FOUND)
-                return
+            body = self.daemon.activity_bytes_for_serve()
+            etag = _etag_for_body(body)
             client_etag = self.headers.get("If-None-Match")
             headers = {
                 "ETag": etag or _etag_for_body(body),
@@ -1190,6 +1226,13 @@ def main(argv: list[str] | None = None) -> int:
     events_poll = args.events_poll_sec
     if events_poll is None:
         events_poll = _env_float("MINDMAP_EVENTS_POLL_SEC", DEFAULT_EVENTS_POLL_SEC)
+
+    if args.demo and args.events_source == "gh":
+        print(
+            "error: --demo cannot be used with --events-source gh (demo never polls GitHub)",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.demo:
         source, ledger_path, ledger_url = "path", None, "demo"
