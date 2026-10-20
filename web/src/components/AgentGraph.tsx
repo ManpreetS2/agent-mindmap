@@ -22,6 +22,8 @@ export interface AgentGraphProps {
   activity: Activity;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
+  lifecycleNodeIds: ReadonlySet<string> | null;
+  lifecycleEdgeIds: ReadonlySet<string> | null;
 }
 
 function isDeemphasized(node: Activity["nodes"][number]): boolean {
@@ -32,7 +34,10 @@ export function AgentGraph({
   activity,
   selectedNodeId,
   onSelectNode,
+  lifecycleNodeIds,
+  lifecycleEdgeIds,
 }: AgentGraphProps) {
+  const lifecycleActive = lifecycleNodeIds !== null;
   const frames = useMemo(
     () => buildGroupFrames(activity.nodes),
     [activity.nodes],
@@ -51,16 +56,22 @@ export function AgentGraph({
           node: n,
           selected: selectedNodeId === n.id,
           deemphasized: isDeemphasized(n),
+          lifecycleDimmed:
+            lifecycleActive && !lifecycleNodeIds!.has(n.id),
+          lifecycleHighlighted:
+            lifecycleActive && lifecycleNodeIds!.has(n.id),
           onSelect: (id: string) => onSelectNode(id),
         },
       })),
-    [activity.nodes, selectedNodeId, onSelectNode],
+    [activity.nodes, selectedNodeId, onSelectNode, lifecycleActive, lifecycleNodeIds],
   );
 
   const flowEdges: FlowEdge[] = useMemo(
     () =>
       activity.edges.map((e) => {
         const visual = EDGE_VISUALS[e.type];
+        const dimmed =
+          lifecycleActive && !lifecycleEdgeIds!.has(e.id);
         return {
           id: e.id,
           source: e.source,
@@ -72,6 +83,7 @@ export function AgentGraph({
             stroke: visual.stroke,
             strokeWidth: strokeWidthForCount(e.count),
             strokeDasharray: visual.strokeDasharray,
+            opacity: dimmed ? 0.2 : 1,
           },
           labelStyle: { fill: "var(--text-secondary)", fontSize: 11 },
           labelBgStyle: { fill: "var(--bg-card)", fillOpacity: 0.9 },
@@ -81,7 +93,7 @@ export function AgentGraph({
           },
         };
       }),
-    [activity.edges],
+    [activity.edges, lifecycleActive, lifecycleEdgeIds],
   );
 
   const onPaneClick = useCallback(() => {
