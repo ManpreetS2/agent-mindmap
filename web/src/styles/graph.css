@@ -48,10 +48,140 @@
   color: var(--text-secondary);
 }
 
+.mindmap-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .mindmap-main {
   flex: 1;
   display: flex;
   min-height: 0;
+}
+
+.timeline-region {
+  flex-shrink: 0;
+  max-height: 220px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.timeline-filters {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.timeline-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.timeline-filters__heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  min-width: 2.5rem;
+}
+
+.filter-chip {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.filter-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-card));
+}
+
+.filter-chip--compact {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chip--mono {
+  font-family: var(--font-mono);
+}
+
+.timeline-swimlanes {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-1) 0;
+}
+
+.timeline-svg {
+  display: block;
+}
+
+.timeline-lane-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  fill: var(--text-secondary);
+}
+
+.timeline-lane-line {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.timeline-axis-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+
+.timeline-glyph-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: var(--text-primary);
+}
+
+.timeline-task-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 10px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.lifecycle-banner {
+  padding: var(--space-2) var(--space-4);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.lifecycle-banner__note {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.agent-node-card.is-lifecycle-dimmed {
+  opacity: 0.35;
+}
+
+.agent-node-card.is-lifecycle-highlight {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .graph-region {
