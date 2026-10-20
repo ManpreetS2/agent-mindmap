@@ -1,0 +1,10 @@
+SHA 48a13d947517692ce17b5163d19347bdb7f70bdf
+rev 48a13d947517692ce17b5163d19347bdb7f70bdf
+O_NOFOLLOW False
+create mode line: ['flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT', 'fd = os.open(path, flags, 0o644)']
+created_mode 0o644
+symlink_wrote_through True real_size 187
+sanitize_default_cap None
+cap_len 2000
+raw_passes True len 142
+refuse SecretRefusedError summary refused: secret-like content

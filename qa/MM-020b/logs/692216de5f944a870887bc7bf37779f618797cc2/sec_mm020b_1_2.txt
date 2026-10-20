@@ -1,0 +1,29 @@
+HEAD module file: /tmp/qa-mm020b/checkout/tools/event_emit.py
+SUMMARY_MAX_CHARS 240
+JSONL_FILE_MODE 0o600
+O_NOFOLLOW in source: True
+6: Opens the JSONL path with O_NOFOLLOW (refuses symlinks) and creates new files mode 0o600.
+9: collapsed, secrets are refused (MM-010 scan), and text is capped at SUMMARY_MAX_CHARS (240)
+33: SUMMARY_MAX_CHARS = 240
+34: JSONL_FILE_MODE = 0o600
+54:     """JSONL path is a symlink or O_NOFOLLOW rejected the open."""
+88: def sanitize_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str:
+213: def _open_jsonl_append(path: Path) -> int:
+214:     """O_APPEND + O_NOFOLLOW; create with 0o600. Refuses symlink paths."""
+215:     if path.is_symlink():
+217:     flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW
+219:         return os.open(path, flags, JSONL_FILE_MODE)
+241:     fd = _open_jsonl_append(path)
+umask 0o22
+
+CREATED mode 0o600 expected 0o600
+SYMLINK refused: SymlinkRefusedError refusing symlink JSONL path: /tmp/tmpbovb5tw2/link.jsonl
+real size after refuse: 0
+
+REFUSE type SecretRefusedError
+REFUSE msg summary refused: secret-like content
+file_exists False
+
+CAP 240 endswith True
+RAW accepted then capped len 240 starts Raw message body from chat: please review @dev-1 and ship it
+RAW still contains message text True

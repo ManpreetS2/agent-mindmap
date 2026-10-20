@@ -1,0 +1,11 @@
+npm run typecheck
+
+> agent-mindmap@0.1.0 typecheck
+> tsc --noEmit
+
+cd "/tmp/qa-mm020b/checkout/web" && npm run typecheck
+
+> mindmap-web@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+TYPECHECK_EXIT:0

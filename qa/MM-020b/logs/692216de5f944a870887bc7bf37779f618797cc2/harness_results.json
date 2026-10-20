@@ -1,0 +1,228 @@
+[
+  {
+    "id": "opt_in_no_file_without_write",
+    "ok": true,
+    "expected": "no JSONL file until append/emit",
+    "actual": "exists=False",
+    "note": "API is call-gated; no env/flag opt-in beyond choosing to call emit"
+  },
+  {
+    "id": "concurrent_8proc_500",
+    "ok": true,
+    "expected_count": 4000,
+    "actual_count": 4000,
+    "unique_ids": 4000,
+    "bad": []
+  },
+  {
+    "id": "concurrent_8thread_200",
+    "ok": true,
+    "expected_count": 1600,
+    "actual_count": 1600,
+    "bad": [],
+    "thread_errors": []
+  },
+  {
+    "id": "summary_cap_SUMMARY_MAX_CHARS",
+    "ok": true,
+    "SUMMARY_MAX_CHARS": 240,
+    "summary_len": 240,
+    "line_bytes": 418,
+    "PIPE_BUF": 4096
+  },
+  {
+    "id": "line_near_pipe_buf",
+    "ok": true,
+    "bytes_written": 1145,
+    "PIPE_BUF": 4096,
+    "file_size": 1145
+  },
+  {
+    "id": "partial_trailing_line_reader",
+    "ok": true,
+    "complete_count": 2,
+    "partial_count": 1,
+    "partial_prefix": "{\"id\":\"deadbeef\",\"ts\":\"2026-10-20T12:00:02+00:00\",\"sender\":\"",
+    "note": "Emitter has no built-in reader; harness skip/flag pattern",
+    "emitter_crash_protection": "single os.write of full line under PIPE_BUF"
+  },
+  {
+    "id": "SEC-MM020b-2_refuse_not_redact",
+    "ok": true,
+    "safe": null,
+    "err": "summary refused: secret-like content",
+    "caller_sees_clear_refusal": true,
+    "nothing_written_on_refuse": true
+  },
+  {
+    "id": "secret_refuse_cli_clear_error",
+    "ok": true,
+    "returncode": 1,
+    "stderr": "error: summary refused: secret-like content",
+    "stdout": "",
+    "file_exists": false
+  },
+  {
+    "id": "secret_scanner_coverage",
+    "ok": true,
+    "refused_keys": [
+      "Bearer",
+      "escape_json",
+      "ghp_",
+      "github_pat_"
+    ],
+    "accepted_keys": [
+      "AKIA",
+      "JWT",
+      "email",
+      "long_free",
+      "private_key",
+      "raw_body",
+      "sk-",
+      "unicode_escape"
+    ],
+    "refused": {
+      "ghp_": "summary refused: secret-like content",
+      "github_pat_": "summary refused: secret-like content",
+      "Bearer": "summary refused: secret-like content",
+      "escape_json": "summary refused: secret-like content"
+    },
+    "accepted_summaries": {
+      "sk-": "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF",
+      "AKIA": "AKIAIOSFODNN7EXAMPLE",
+      "JWT": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.signature",
+      "private_key": "-----BEGIN PRIVATE KEY----- MIIEvQIBADANBg -----END PRIVATE KEY-----",
+      "email": "contact alice@example.com please",
+      "raw_body": "Full message body: Hey @dev-1 can you review? Here is the entire conversation transcript spanning many lines with lots o",
+      "long_free": "word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "unicode_escape": "safe summary with \u202e zero-width\u200b and caf\u00e9"
+    },
+    "scanner_is_denylist_regex": true,
+    "leaks": []
+  },
+  {
+    "id": "allowlist_fields_only",
+    "ok": true,
+    "keys": [
+      "group",
+      "id",
+      "provenance",
+      "sender",
+      "summary",
+      "ts",
+      "type"
+    ],
+    "extra": []
+  },
+  {
+    "id": "raw_text_and_unscanned_secrets",
+    "ok": true,
+    "raw_message_body_accepted": true,
+    "email_accepted": true,
+    "sk_refused": false,
+    "AKIA_refused": false,
+    "JWT_refused": false,
+    "private_key_refused": false,
+    "ghp_refused": true,
+    "github_pat_refused": true,
+    "Bearer_refused": true,
+    "long_free_capped": true,
+    "observation": "_looks_like_secret matches ghp_/gho_/\u2026/github_pat_/Bearer/Authorization only; sk-, AKIA, JWT, private keys, emails are NOT refused. Raw-ish free text is accepted then capped at 240."
+  },
+  {
+    "id": "recipients_not_inferred_from_mentions",
+    "ok": true,
+    "summary": "Hey @dev-1 and @qa please review this",
+    "recipients": null
+  },
+  {
+    "id": "recipients_explicit_unknown_accepted",
+    "ok": true,
+    "recipients": [
+      "dev-1",
+      "not-a-real-bot"
+    ],
+    "note": "Emitter does not validate recipient ids against bots.json"
+  },
+  {
+    "id": "SEC-MM020b-1_file_mode",
+    "ok": true,
+    "mode_octal": "0o600",
+    "JSONL_FILE_MODE": "0o600",
+    "world_writable": false,
+    "world_readable": false,
+    "source_has_O_NOFOLLOW": true
+  },
+  {
+    "id": "SEC-MM020b-1_symlink_nofollow",
+    "ok": true,
+    "source_has_O_NOFOLLOW": true,
+    "exception": "SymlinkRefusedError:refusing symlink JSONL path: /tmp/tmpbfwnvlw7/link.jsonl",
+    "wrote_through_symlink": false,
+    "link_remains_symlink": true,
+    "real_size": 0
+  },
+  {
+    "id": "path_traversal_via_names",
+    "ok": true,
+    "sender_stored_as_is": "../etc/passwd",
+    "group_stored_as_is": "../../tmp",
+    "note": "Output path is caller-controlled; names are JSON fields only"
+  },
+  {
+    "id": "permission_error_graceful",
+    "ok": true,
+    "readonly_file_exception": "PermissionError:13",
+    "unwritable_dir_exception": "PermissionError:13",
+    "crashed_unhandled_non_OSError": false
+  },
+  {
+    "id": "rotation_size_limits",
+    "ok": true,
+    "implemented": false,
+    "spec_mentions": "PIPE_BUF per-line only; no file rotation in MM-020b audit \u00a77"
+  },
+  {
+    "id": "SEC-MM020b-2_summary_cap_and_raw",
+    "ok": true,
+    "SUMMARY_MAX_CHARS": 240,
+    "over_len": 240,
+    "exact_cap_len": 240,
+    "raw_cleaned_len": 240,
+    "raw_prefix_preserved_then_capped": true,
+    "whitespace_normalized": true,
+    "observation": "Summary is free text capped at 240; raw message text that is not secret-like is accepted (then truncated). Not phrase-allowlisted."
+  },
+  {
+    "id": "mm020a_networkEvent_schema",
+    "ok": true,
+    "event": {
+      "id": "fa6297a1daea251c273e4abe67b4fd1bcc0d54d7",
+      "ts": "2026-10-20T12:00:00+00:00",
+      "sender": "architect",
+      "group": "build",
+      "type": "message",
+      "summary": "compat",
+      "provenance": "agent-reported",
+      "recipients": [
+        "dev-1"
+      ],
+      "task_id": "MM-020b"
+    },
+    "schema_path": "schema/activity.schema.json#$defs/networkEvent"
+  },
+  {
+    "id": "SEC-MM020b-1_source_open_flags",
+    "ok": true,
+    "relevant_lines": [
+      "Opens the JSONL path with O_NOFOLLOW (refuses symlinks) and creates new files mode 0o600.",
+      "\"\"\"JSONL path is a symlink or O_NOFOLLOW rejected the open.\"\"\"",
+      "\"\"\"O_APPEND + O_NOFOLLOW; create with 0o600. Refuses symlink paths.\"\"\"",
+      "flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW",
+      "return os.open(path, flags, JSONL_FILE_MODE)"
+    ],
+    "has_O_NOFOLLOW": true,
+    "JSONL_FILE_MODE": 384,
+    "SUMMARY_MAX_CHARS": 240
+  }
+]

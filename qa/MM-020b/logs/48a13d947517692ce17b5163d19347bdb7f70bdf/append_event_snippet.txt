@@ -1,0 +1,31 @@
+def append_event(
+    path: Path,
+    event: dict[str, Any],
+    *,
+    max_line_bytes: int = PIPE_BUF,
+) -> int:
+    """
+    Append one JSONL line with a single O_APPEND write.
+
+    Returns bytes written. Raises SecretRefusedError or LineTooLongError on refusal.
+    """
+    line = _fit_line_to_pipe_buf(event, max_bytes=max_line_bytes)
+    if len(line) > max_line_bytes:
+        raise LineTooLongError(f"line {len(line)} exceeds limit {max_line_bytes}")
+
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+    fd = os.open(path, flags, 0o644)
+    try:
+        written = os.write(fd, line)
+        if written != len(line):
+            raise OSError(f"short write: {written} of {len(line)}")
+        return written
+    finally:
+        os.close(fd)
+
+
+def emit_message(
+    path: Path,
+    *,
+    sender: str,
+    group: str,

@@ -1,0 +1,42 @@
+os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+python: Python 3.12.3
+node: 
+npm: npm <command>
+
+Usage:
+
+npm install        install all the dependencies in your project
+npm install <foo>  add the <foo> dependency to your project
+npm test           run this project's tests
+npm run <foo>      run the script named <foo>
+npm <command> -h   quick help on <command>
+npm -l             display usage info for all commands
+npm help <term>    search for help on <term>
+npm help npm       more involved overview
+
+All commands:
+
+    access, adduser, audit, bugs, cache, ci, completion,
+    config, dedupe, deprecate, diff, dist-tag, docs, doctor,
+    edit, exec, explain, explore, find-dupes, fund, get, help,
+    help-search, hook, init, install, install-ci-test,
+    install-test, link, ll, login, logout, ls, org, outdated,
+    owner, pack, ping, pkg, prefix, profile, prune, publish,
+    query, rebuild, repo, restart, root, run-script, sbom,
+    search, set, shrinkwrap, star, stars, start, stop, team,
+    test, token, uninstall, unpublish, unstar, update, version,
+    view, whoami
+
+Specify configs in the ini-formatted file:
+    /home/ubuntu/.npmrc
+or on the command line via: npm <command> --key=value
+
+More configuration info: npm help config
+Configuration fields: npm help 7 config
+
+npm@10.9.9 /home/ubuntu/.nvm/versions/node/v22.23.3/lib/node_modules/npm
+date_utc: 2026-10-20T08:36:52Z
+verified_head: 692216de5f944a870887bc7bf37779f618797cc2
+prior_head: 48a13d947517692ce17b5163d19347bdb7f70bdf
+base: feat/MM-020-unified-network b1fe594ec72086a1b025a7b137213b9632f35920
+pr: https://github.com/ManpreetS2/agent-mindmap/pull/17
