@@ -259,6 +259,25 @@ def prepare_events_payload(
             if warn:
                 print(msg, file=sys.stderr)
             continue
+        # Director: provenance required on new events; only allowlisted values.
+        if isinstance(obj, dict):
+            prov = obj.get("provenance")
+            if prov is None or "provenance" not in obj:
+                msg = (
+                    f"events_mirror: drop missing provenance at line {lineno}"
+                )
+                warnings_out.append(msg)
+                if warn:
+                    print(msg, file=sys.stderr)
+                continue
+            if prov not in PROVENANCE_VALUES:
+                msg = (
+                    f"events_mirror: drop invalid provenance at line {lineno}"
+                )
+                warnings_out.append(msg)
+                if warn:
+                    print(msg, file=sys.stderr)
+                continue
         ev = validate_network_event(obj)
         if ev is None:
             msg = f"events_mirror: drop invalid NetworkEvent at line {lineno}"

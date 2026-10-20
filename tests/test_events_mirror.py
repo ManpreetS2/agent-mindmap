@@ -78,10 +78,35 @@ def test_validate_network_event_ok_and_unknown_group() -> None:
 
 def test_validate_drops_bad_provenance_and_missing_fields() -> None:
     assert validate_network_event(_ev("e1", provenance="invented")) is None
+    missing = _ev("e1")
+    del missing["provenance"]
+    assert validate_network_event(missing) is None
     bad = _ev("e1")
     del bad["sender"]
     assert validate_network_event(bad) is None
     assert validate_network_event("not-a-dict") is None
+
+
+def test_missing_or_invalid_provenance_dropped_with_warning() -> None:
+    """Director: provenance required; only observed|agent-reported|github-verified."""
+    keep = _ev("keep", provenance="observed")
+    no_prov = _ev("no-prov")
+    del no_prov["provenance"]
+    bad_prov = _ev("bad-prov", provenance="invented")
+    raw = (
+        json.dumps(keep, sort_keys=True)
+        + "\n"
+        + json.dumps(no_prov, sort_keys=True)
+        + "\n"
+        + json.dumps(bad_prov, sort_keys=True)
+        + "\n"
+    )
+    text, events, warns = prepare_events_payload(raw, now=NOW, warn=False)
+    assert [e["id"] for e in events] == ["keep"]
+    assert any("missing provenance" in w for w in warns)
+    assert any("invalid provenance" in w for w in warns)
+    assert "no-prov" not in text
+    assert "bad-prov" not in text
 
 
 def test_summary_over_280_dropped_with_warning() -> None:
