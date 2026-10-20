@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { LedgerLoadError } from "./data/loadActivity";
 import { createSseTransport } from "./data/activityTransport";
 import { LedgerErrorView } from "./components/LedgerErrorView";
@@ -8,7 +8,12 @@ import { CommandCenterShell } from "./components/CommandCenterShell";
 import { ModeBanner } from "./components/ModeBanner";
 import { MindmapView } from "./views/MindmapView";
 import { useActivityFeed } from "./hooks/useActivityFeed";
+import { useMindmapRefresh } from "./hooks/useMindmapRefresh";
 import { useServerMode } from "./hooks/useServerMode";
+import {
+  type SseConnectionState,
+  buildMindmapStatusBar,
+} from "./utils/refreshFlow";
 
 const POLL_MS = Number(
   (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
@@ -18,15 +23,28 @@ const POLL_MS = Number(
 export function App() {
   const { bannerState } = useServerMode();
   const banner = <ModeBanner state={bannerState} />;
+  const [sseConnection, setSseConnection] =
+    useState<SseConnectionState>("connecting");
+  const ssePushRef = useRef<() => void>(() => {});
   const transport = useMemo(
     () =>
       createSseTransport({
         intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000,
+        onSseConnectionChange: (connected) => {
+          setSseConnection(connected ? "connected" : "disconnected");
+        },
+        onSseEvent: () => ssePushRef.current(),
       }),
     [],
   );
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
+  const activityKey = activity
+    ? `${activity.generated_at}:${activity.events.length}`
+    : "";
+  const { handleRefresh, onSsePush, refreshError, rateLimitSeconds } =
+    useMindmapRefresh(reload, activityKey);
+  ssePushRef.current = onSsePush;
 
   if (error instanceof LedgerLoadError) {
     return (
@@ -63,14 +81,22 @@ export function App() {
     );
   }
 
+  const statusBar = buildMindmapStatusBar({
+    meta: activity.meta,
+    sse: sseConnection,
+    refreshError,
+    rateLimitSeconds,
+  });
+
   return (
     <CommandCenterShell>
       {banner}
       <SkipLink />
       <MindmapView
         activity={activity}
-        onRefresh={reload}
+        onRefresh={handleRefresh}
         statusPulseNodeIds={statusPulseNodeIds}
+        statusBar={statusBar}
       />
     </CommandCenterShell>
   );
