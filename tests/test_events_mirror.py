@@ -15,12 +15,14 @@ from tools.events_mirror import (
     decide_flush,
     event_state_fingerprints,
     load_state,
+    looks_like_mirror_secret,
     mark_flushed,
     prepare_events_payload,
     secret_line_numbers,
     sha256_text,
     validate_network_event,
 )
+from ingest.github_poller import _looks_like_secret
 
 ROOT = Path(__file__).resolve().parents[1]
 MIRROR = ROOT / "tools" / "events_mirror.py"
@@ -101,7 +103,7 @@ def test_missing_or_invalid_provenance_dropped_with_warning() -> None:
         + json.dumps(bad_prov, sort_keys=True)
         + "\n"
     )
-    text, events, warns = prepare_events_payload(raw, now=NOW, warn=False)
+    text, events, warns, _ = prepare_events_payload(raw, now=NOW, warn=False)
     assert [e["id"] for e in events] == ["keep"]
     assert any("missing provenance" in w for w in warns)
     assert any("invalid provenance" in w for w in warns)
@@ -123,7 +125,7 @@ def test_summary_over_280_dropped_with_warning() -> None:
         + json.dumps(_ev("long", summary="y" * 281), sort_keys=True)
         + "\n"
     )
-    text, events, warns = prepare_events_payload(raw, now=NOW, warn=False)
+    text, events, warns, _ = prepare_events_payload(raw, now=NOW, warn=False)
     assert [e["id"] for e in events] == ["keep"]
     assert any("summary over 280" in w and "SEC-MM020b-2" in w for w in warns)
     assert "long" not in text
@@ -136,7 +138,7 @@ def test_invalid_line_drop_with_warning() -> None:
         + json.dumps(good) + "\n"
         + json.dumps({"id": "x"}) + "\n"  # incomplete NetworkEvent
     )
-    text, events, warns = prepare_events_payload(raw, now=NOW, warn=False)
+    text, events, warns, _ = prepare_events_payload(raw, now=NOW, warn=False)
     assert [e["id"] for e in events] == ["keep-me"]
     assert len(warns) >= 2
     assert "keep-me" in text
@@ -147,7 +149,7 @@ def test_dedupe_by_id_keeps_latest_ts() -> None:
     newer = _ev("same", hours_ago=1.0, summary="new")
     # File order: newer first, then older — still keep latest ts.
     raw = _jsonl([newer, older])
-    _, events, _ = prepare_events_payload(raw, now=NOW, warn=False)
+    _, events, _, _ = prepare_events_payload(raw, now=NOW, warn=False)
     assert len(events) == 1
     assert events[0]["summary"] == "new"
 
@@ -157,7 +159,7 @@ def test_seven_day_retention() -> None:
     edge = _ev("edge", hours_ago=RETENTION_DAYS * 24 - 1)
     outside = _ev("out", hours_ago=RETENTION_DAYS * 24 + 12)
     raw = _jsonl([inside, edge, outside])
-    _, events, _ = prepare_events_payload(raw, now=NOW, warn=False)
+    _, events, _, _ = prepare_events_payload(raw, now=NOW, warn=False)
     ids = {e["id"] for e in events}
     assert ids == {"in", "edge"}
     assert "out" not in ids
@@ -165,34 +167,102 @@ def test_seven_day_retention() -> None:
 
 SECRET_TOKEN = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+# QA-MM020b-2 probes from qa/MM-020b harness @ 849f359 (qa_verify_mm020b.py).
+QA_MM020B2_PROBES = {
+    "ghp_": "token ghp_abcdefghijklmnopqrstuvwxyz1234567890AB",
+    "github_pat_": "token github_pat_abcdefghijklmnopqrstuvwxyz",
+    "sk-": "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF",
+    "AKIA": "AKIAIOSFODNN7EXAMPLE",
+    "Bearer": "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc.def",
+    "JWT": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.signature",
+    "private_key": (
+        "-----BEGIN PRIVATE KEY----- MIIEvQIBADANBg -----END PRIVATE KEY-----"
+    ),
+    "email": "contact alice@example.com please",
+}
+
+
+def test_qa_mm020b2_patterns_already_vs_extended() -> None:
+    """Document which QA probes shared scanner covers vs mirror extension."""
+    already = {"ghp_", "github_pat_", "Bearer"}
+    missed_before = {"sk-", "AKIA", "JWT", "private_key", "email"}
+    for name in already:
+        assert _looks_like_secret(QA_MM020B2_PROBES[name]), name
+        assert looks_like_mirror_secret(QA_MM020B2_PROBES[name]), name
+    for name in missed_before:
+        assert not _looks_like_secret(QA_MM020B2_PROBES[name]), name
+        assert looks_like_mirror_secret(QA_MM020B2_PROBES[name]), name
+
+
+def test_qa_mm020b2_secret_lines_dropped_with_warning_and_refuse_flush(
+    tmp_path: Path,
+) -> None:
+    """QA-MM020b-2: sk-/AKIA/JWT/private-key/email dropped + flush refused if present."""
+    keep = _ev("keep-clean", summary="all clear")
+    lines = [json.dumps(keep, sort_keys=True)]
+    for name, sample in QA_MM020B2_PROBES.items():
+        lines.append(json.dumps(_ev(f"bad-{name}", summary=sample), sort_keys=True))
+    raw = "\n".join(lines) + "\n"
+    text, events, warns, _ = prepare_events_payload(raw, now=NOW, warn=False)
+    assert [e["id"] for e in events] == ["keep-clean"]
+    assert sum(1 for w in warns if "secret-like content" in w) == len(QA_MM020B2_PROBES)
+    for sample in QA_MM020B2_PROBES.values():
+        assert sample not in text
+        assert sample not in "".join(warns)
+
+    # Refuse flush if secretful content reaches decide_flush (SEC-MM010-1 path).
+    dirty = _ev("leak", summary=QA_MM020B2_PROBES["sk-"])
+    dirty_line = json.dumps(dirty, sort_keys=True) + "\n"
+    decision = decide_flush(
+        content=dirty_line,
+        events=[dirty],
+        state=load_state(tmp_path / "missing.json"),
+        now=NOW_EPOCH,
+        force=True,
+    )
+    assert decision["flush"] is False
+    assert decision["reason"] == "secret_detected"
+    assert QA_MM020B2_PROBES["sk-"] not in json.dumps(decision)
+
 
 def test_secret_blocks_flush(tmp_path: Path) -> None:
     """SEC-MM010-1: secret in payload → flush false, reason secret_detected."""
     dirty = _ev("s1", summary=f"note with token {SECRET_TOKEN}")
-    content, events, _ = prepare_events_payload(_jsonl([dirty]), now=NOW, warn=False)
+    raw = _jsonl([dirty])
+    content, events, warns, secrets_seen = prepare_events_payload(
+        raw, now=NOW, warn=False
+    )
+    assert secrets_seen is True
+    assert events == []
+    assert any("secret-like content" in w for w in warns)
+    # decide_flush still refuses if secretful bytes reach it (bypass prepare).
     decision = decide_flush(
-        content=content,
-        events=events,
+        content=raw,
+        events=[dirty],
         state=load_state(tmp_path / "missing.json"),
         now=NOW_EPOCH,
         force=False,
     )
     assert decision["flush"] is False
     assert decision["reason"] == "secret_detected"
-    assert decision["lines"] == secret_line_numbers(content)
+    assert decision["lines"] == secret_line_numbers(raw)
     assert SECRET_TOKEN not in json.dumps(decision)
+    assert content == ""
 
 
 def test_secret_blocks_force(tmp_path: Path) -> None:
     dirty = _ev("s1", summary=f"assigned follow-up {SECRET_TOKEN}")
-    content, events, _ = prepare_events_payload(_jsonl([dirty]), now=NOW, warn=False)
+    raw = _jsonl([dirty])
+    _, events, _, secrets_seen = prepare_events_payload(raw, now=NOW, warn=False)
+    assert secrets_seen is True
+    assert events == []
     state = {
         "last_flushed_sha256": "other",
         "last_flushed_at": NOW_EPOCH - 10_000,
         "state_change_fingerprints": [],
     }
     decision = decide_flush(
-        content=content, events=events, state=state, now=NOW_EPOCH, force=True
+        content=raw, events=[dirty], state=state, now=NOW_EPOCH, force=True
     )
     assert decision["flush"] is False
     assert decision["reason"] == "secret_detected"
@@ -200,7 +270,7 @@ def test_secret_blocks_force(tmp_path: Path) -> None:
 
 def test_flush_gating_unchanged_no_state_under_180_and_ok(tmp_path: Path) -> None:
     first = _ev("a1")
-    content1, events1, _ = prepare_events_payload(_jsonl([first]), now=NOW, warn=False)
+    content1, events1, _, _ = prepare_events_payload(_jsonl([first]), now=NOW, warn=False)
     mark_flushed(
         state_path=tmp_path / "state.json",
         sha256=sha256_text(content1),
@@ -217,7 +287,7 @@ def test_flush_gating_unchanged_no_state_under_180_and_ok(tmp_path: Path) -> Non
 
     # New event but under 180s
     second = _ev("a2", hours_ago=0.5)
-    content2, events2, _ = prepare_events_payload(
+    content2, events2, _, _ = prepare_events_payload(
         _jsonl([first, second]), now=NOW, warn=False
     )
     d1 = decide_flush(
@@ -261,8 +331,8 @@ def test_no_state_change_when_only_known_ids(tmp_path: Path) -> None:
     """Content hash differs but every event id was already flushed → no_state_change."""
     e1 = _ev("x1", summary="v1")
     e1b = _ev("x1", summary="v2")  # same id, newer summary → different content
-    c1, ev1, _ = prepare_events_payload(_jsonl([e1]), now=NOW, warn=False)
-    c2, ev2, _ = prepare_events_payload(_jsonl([e1b]), now=NOW, warn=False)
+    c1, ev1, _, _ = prepare_events_payload(_jsonl([e1]), now=NOW, warn=False)
+    c2, ev2, _, _ = prepare_events_payload(_jsonl([e1b]), now=NOW, warn=False)
     assert sha256_text(c1) != sha256_text(c2)
     state = {
         "last_flushed_sha256": sha256_text(c1),
@@ -313,7 +383,7 @@ def test_cli_writes_payload_and_mark_flushed(tmp_path: Path) -> None:
     payload = tmp_path / "events.jsonl.payload"
     content_raw = _jsonl([_ev("c1")])
     events_path.write_text(content_raw, encoding="utf-8")
-    expected, _, _ = prepare_events_payload(content_raw, now=NOW, warn=False)
+    expected, _, _, _ = prepare_events_payload(content_raw, now=NOW, warn=False)
 
     proc = _run(
         [

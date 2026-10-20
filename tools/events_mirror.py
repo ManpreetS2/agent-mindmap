@@ -67,16 +67,39 @@ DEFAULT_EVENTS_PATH = Path(
     os.environ.get("MINDMAP_EVENTS", "/workspace/events.jsonl")
 )
 
+# QA-MM020b-2 samples (qa/MM-020b @ 849f359) beyond shared `_looks_like_secret`
+# (which only covers ghp_/gho_/…/github_pat_/Bearer/Authorization).
+_MIRROR_SECRET_EXTRA_RE = re.compile(
+    r"("
+    r"sk-[A-Za-z0-9_\-]+"  # OpenAI-style
+    r"|AKIA[0-9A-Z]{16}"  # AWS access key id
+    r"|eyJ[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+){2}"  # JWT
+    r"|-----BEGIN(?:\s+\w+)?\s+PRIVATE KEY-----"
+    r"|[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"  # email
+    r")",
+    re.IGNORECASE,
+)
+
+
+def looks_like_mirror_secret(text: str) -> bool:
+    """
+    Secret scan for events mirror: shared SEC-MM010-1 patterns plus QA-MM020b-2
+    (sk-, AKIA, JWT, private-key blocks, emails). Never return matched text.
+    """
+    if _looks_like_secret(text):
+        return True
+    return bool(_MIRROR_SECRET_EXTRA_RE.search(text))
+
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def secret_line_numbers(content: str) -> list[int]:
-    """1-based line numbers that match `_looks_like_secret` (never return text)."""
+    """1-based line numbers that match looks_like_mirror_secret (never return text)."""
     hits: list[int] = []
     for i, line in enumerate(content.splitlines(), start=1):
-        if _looks_like_secret(line):
+        if looks_like_mirror_secret(line):
             hits.append(i)
     return hits
 
@@ -224,14 +247,19 @@ def prepare_events_payload(
     now: datetime | None = None,
     retention_days: int = RETENTION_DAYS,
     warn: bool = True,
-) -> tuple[str, list[dict[str, Any]], list[str]]:
+) -> tuple[str, list[dict[str, Any]], list[str], bool]:
     """
-    Validate / dedupe / retain. Returns (jsonl_text, events, warning_messages).
+    Validate / dedupe / retain.
+
+    Returns (jsonl_text, events, warning_messages, secrets_seen).
+    secrets_seen is True when any line was dropped for secret-like content
+    (QA-MM020b-2 / SEC-MM010-1); caller must refuse flush.
     """
     now_dt = now or datetime.now(timezone.utc)
     cutoff = now_dt - timedelta(days=retention_days)
     warnings_out: list[str] = []
     parsed: list[dict[str, Any]] = []
+    secrets_seen = False
 
     for lineno, raw in enumerate(raw_text.splitlines(), start=1):
         line = raw.strip()
@@ -285,6 +313,18 @@ def prepare_events_payload(
             if warn:
                 print(msg, file=sys.stderr)
             continue
+        # QA-MM020b-2 / SEC-MM010-1: drop secret-like lines (warning only — never echo).
+        summary = ev.get("summary") if isinstance(ev.get("summary"), str) else ""
+        if looks_like_mirror_secret(summary) or looks_like_mirror_secret(line):
+            secrets_seen = True
+            msg = (
+                f"events_mirror: drop secret-like content at line {lineno} "
+                f"(QA-MM020b-2)"
+            )
+            warnings_out.append(msg)
+            if warn:
+                print(msg, file=sys.stderr)
+            continue
         parsed.append(ev)
 
     # Dedupe by id — latest ts wins; equal ts → last seen wins.
@@ -311,7 +351,7 @@ def prepare_events_payload(
 
     lines = [json.dumps(ev, sort_keys=True, separators=(",", ":")) for ev in retained]
     text = ("\n".join(lines) + ("\n" if lines else ""))
-    return text, retained, warnings_out
+    return text, retained, warnings_out, secrets_seen
 
 
 def decide_flush(
@@ -466,7 +506,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"events not found: {events_path}", file=sys.stderr)
                 return 1
             raw = events_path.read_text(encoding="utf-8")
-            content, events, _ = prepare_events_payload(raw, now=now_dt, warn=False)
+            content, events, _, _ = prepare_events_payload(
+                raw, now=now_dt, warn=False
+            )
             digest = sha256_text(content)
             if digest != args.mark_flushed:
                 print(
@@ -498,15 +540,27 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     raw = events_path.read_text(encoding="utf-8")
-    content, events, _ = prepare_events_payload(raw, now=now_dt, warn=True)
-    state = load_state(args.state)
-    decision = decide_flush(
-        content=content,
-        events=events,
-        state=state,
-        now=now,
-        force=bool(args.force),
+    content, events, _, secrets_seen = prepare_events_payload(
+        raw, now=now_dt, warn=True
     )
+    state = load_state(args.state)
+
+    # Secrets dropped from payload still refuse flush (never write payload).
+    if secrets_seen:
+        decision = {
+            "flush": False,
+            "sha256": sha256_text(content),
+            "reason": "secret_detected",
+            "lines": secret_line_numbers(raw),
+        }
+    else:
+        decision = decide_flush(
+            content=content,
+            events=events,
+            state=state,
+            now=now,
+            force=bool(args.force),
+        )
 
     out: dict[str, Any] = {
         "flush": decision["flush"],
