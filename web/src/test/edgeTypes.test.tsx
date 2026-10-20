@@ -6,7 +6,7 @@ import { EdgeLegend } from "../components/EdgeLegend";
 import { AgentGraph } from "../components/AgentGraph";
 import { buildGraphEdges } from "../utils/buildGraphEdges";
 import { EDGE_VISUALS } from "../utils/edgeStyles";
-import { tooltipForEdge } from "../utils/edgeTooltip";
+import { readEventProvenance, tooltipForEdge } from "../utils/edgeTooltip";
 import { layoutMultiGroupClusters } from "../utils/graphLayout";
 
 function makeNode(
@@ -63,6 +63,7 @@ const events: Event[] = [
     source_url: "https://example.com/ledger",
     source_time: "2026-10-20T09:00:00-07:00",
     raw: "handoff",
+    provenance: "agent-reported",
   },
 ];
 
@@ -124,6 +125,36 @@ describe("edge types (MM-020f)", () => {
     expect(tip).toMatch(/director/);
     expect(tip).toMatch(/group:Build/);
     expect(tip).toMatch(/provenance: agent-reported/);
+    // 1.1.0 events always carry provenance
+    expect(readEventProvenance(events[0])).toBe("agent-reported");
+  });
+
+  it("tolerates legacy 1.0.0 events that omit provenance on disk", () => {
+    const legacy = {
+      id: "legacy-1",
+      type: "handoff" as const,
+      actor: "architect",
+      target: "dev-1",
+      task_id: null,
+      attribution: { method: "ledger_owner" as const },
+      source_url: "",
+      source_time: "2026-10-19T12:00:00-07:00",
+      raw: "old",
+    };
+    expect(readEventProvenance(legacy as Event)).toBeUndefined();
+    const tip = tooltipForEdge(
+      {
+        id: "e-legacy",
+        source: "architect",
+        target: "dev-1",
+        type: "handoff",
+        count: 1,
+        event_ids: ["legacy-1"],
+      },
+      [legacy as Event],
+    );
+    expect(tip).toMatch(/Handoff/);
+    expect(tip).not.toMatch(/provenance:/);
   });
 
   it("buildGraphEdges uses messageEdge type and keeps handoff particles", () => {

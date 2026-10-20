@@ -2,9 +2,14 @@ import type { Activity, Edge, Event, Provenance } from "@shared/types";
 import { EDGE_VISUALS } from "./edgeStyles";
 import { isGroupTarget, labelForGroup, parseGroupTarget } from "./groupMembership";
 
-function formatProvenance(p: Provenance | undefined): string | null {
-  if (!p) return null;
-  return p;
+/**
+ * Read provenance for tooltips.
+ * Schema 1.1.0 requires it on every event; legacy 1.0.0 wire/fixtures may omit
+ * it until migrate fills values — tolerate absence only in that case.
+ */
+export function readEventProvenance(ev: Event): Provenance | undefined {
+  const value = (ev as Event & { provenance?: Provenance }).provenance;
+  return value;
 }
 
 function targetLabel(target: string): string {
@@ -13,17 +18,15 @@ function targetLabel(target: string): string {
   return target;
 }
 
-/** Build an accessible tooltip including provenance when known. */
-export function tooltipForEdge(
-  edge: Edge,
-  events: Event[],
-): string {
+/** Build an accessible tooltip including provenance when present. */
+export function tooltipForEdge(edge: Edge, events: Event[]): string {
   const visual = EDGE_VISUALS[edge.type];
   const byId = new Map(events.map((e) => [e.id, e]));
   const provenances = new Set<string>();
   for (const id of edge.event_ids) {
     const ev = byId.get(id);
-    const p = formatProvenance(ev?.provenance);
+    if (!ev) continue;
+    const p = readEventProvenance(ev);
     if (p) provenances.add(p);
   }
   const base = `${visual.label}: ${edge.source} → ${targetLabel(edge.target)} (${edge.count})`;
