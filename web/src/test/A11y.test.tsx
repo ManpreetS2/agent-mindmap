@@ -6,7 +6,7 @@ import fixture from "../../../fixtures/sample-activity.json";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 function expectNoSeriousOrCritical(results: Awaited<ReturnType<typeof axe>>) {
   const violations = results.violations.filter(

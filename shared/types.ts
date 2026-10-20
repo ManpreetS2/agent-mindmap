@@ -121,8 +121,12 @@ export interface Event {
   source_url: string;
   source_time: string;
   raw: string;
-  /** Present when known (schema ≥ 1.1.0). Never invent. */
-  provenance?: Provenance;
+  /**
+   * Required on schema 1.1.0 events. Legacy 1.0.0 fixtures omit it on disk;
+   * migrate_activity fills it (GitHub → github-verified; ledger/signature →
+   * agent-reported). Never invent recipients.
+   */
+  provenance: Provenance;
   /**
    * Explicit recipients only (schema ≥ 1.1.0). Never invent from ambient context.
    * Untargeted group messages omit this and use edge target `group:{id}`.

@@ -8,7 +8,7 @@ import {
   nodeRectsFromPositions,
 } from "../utils/graphLayout";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 describe("graphLayout (MM-012 polish)", () => {
   it("layout produces no overlapping node bounding boxes (gap >= 24px)", () => {

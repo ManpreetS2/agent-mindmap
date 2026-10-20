@@ -42,6 +42,7 @@ from .ledger_parser import (
     parse_ledger_file,
 )
 from .membership import membership_index
+from .migrate import migrate_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATIC = ROOT / "web" / "dist"
@@ -144,7 +145,7 @@ def assemble_activity(
     nodes = build_nodes(
         bots, ledger.tasks, events, membership=membership_index()
     )
-    return {
+    activity = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
         "project": "fencepost",
@@ -159,6 +160,7 @@ def assemble_activity(
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    return migrate_activity(activity)
 
 
 @dataclass

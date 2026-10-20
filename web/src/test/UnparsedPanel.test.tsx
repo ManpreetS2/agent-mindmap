@@ -14,6 +14,7 @@ const line: Event = {
   source_url: "build/task-ledger.md",
   source_time: "1970-01-01T00:00:00-08:00",
   raw: "malformed line",
+  provenance: "agent-reported",
 };
 
 describe("UnparsedPanel debug drawer", () => {

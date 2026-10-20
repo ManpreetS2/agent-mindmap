@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ManpreetS2/agent-mindmap/schema/activity.schema.json",
   "title": "MINDMAP activity snapshot",
-  "description": "activity.json: ledger + GitHub ingest output for the agent-activity dashboard. MM-020a: schema_version 1.1.0 adds message edges, optional provenance/recipients/groups; 1.0.0 fixtures remain valid.",
+  "description": "activity.json: ledger + GitHub ingest output for the agent-activity dashboard. MM-020a: schema_version 1.1.0 adds message edges, required provenance on events (filled for legacy via migrate), optional recipients/groups; 1.0.0 fixtures remain valid on disk and gain provenance through migration.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,7 +20,7 @@
     "schema_version": {
       "type": "string",
       "enum": ["1.0.0", "1.1.0"],
-      "description": "1.0.0 legacy fixtures; 1.1.0 current builds (message edges + optional live fields)"
+      "description": "1.0.0 legacy fixtures (provenance optional until migrated); 1.1.0 requires provenance on every event"
     },
     "generated_at": {
       "type": "string",
@@ -78,6 +78,36 @@
       "description": "Ledger lines that could not be fully classified; also mirrored as note events when applicable"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "schema_version": { "const": "1.1.0" } },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/event" },
+                { "required": ["provenance"] }
+              ]
+            }
+          },
+          "unparsed": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/event" },
+                { "required": ["provenance"] }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "status": {
       "type": "string",

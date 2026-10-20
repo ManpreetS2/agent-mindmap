@@ -14,6 +14,7 @@ function verdictEvent(verdict: string | null): Event {
     source_time: "2026-10-20T00:00:00Z",
     raw: "test",
     verdict: verdict as Event["verdict"],
+    provenance: "agent-reported",
   };
 }
 

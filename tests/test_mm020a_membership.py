@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 from pathlib import Path
 
 import jsonschema
@@ -14,8 +15,9 @@ from ingest.membership import (
     groups_for_bot,
     load_groups,
     membership_index,
+    resolve_membership,
 )
-from ingest.migrate import migrate_activity
+from ingest.migrate import infer_provenance, migrate_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
@@ -73,6 +75,53 @@ def test_director_architect_multi_membership() -> None:
     assert len(ids) == len(set(ids))
     assert ids.count("director") == 1
     assert ids.count("architect") == 1
+
+
+def test_qa_mm020a_1_membership_dedupes_repeated_members() -> None:
+    """QA-MM020a-1: agent listed twice in one group → groups:['build'] once."""
+    cfg = {
+        "groups": [
+            {
+                "id": "build",
+                "label": "Build",
+                "members": ["director", "director", "architect"],
+            },
+            {
+                "id": "qr",
+                "label": "Quality & Release",
+                "members": ["director", "architect", "director"],
+            },
+        ]
+    }
+    known = {"director", "architect"}
+    idx = membership_index(cfg, known_bot_ids=known)
+    assert idx["director"] == ["build", "qr"]
+    assert idx["architect"] == ["build", "qr"]
+    assert idx["director"].count("build") == 1
+    assert idx["director"].count("qr") == 1
+
+
+def test_qa_mm020a_2_unknown_members_parked_not_indexed() -> None:
+    """QA-MM020a-2: unknown members parked with warning; NOT indexed; no raise."""
+    cfg = {
+        "groups": [
+            {
+                "id": "build",
+                "label": "Build",
+                "members": ["director", "not-a-real-bot", "architect"],
+            }
+        ]
+    }
+    known = {"director", "architect"}
+    warn = StringIO()
+    result = resolve_membership(cfg, known_bot_ids=known, warn_stream=warn)
+    assert "not-a-real-bot" not in result.index
+    assert set(result.index.keys()) == {"director", "architect"}
+    assert result.unknown_members == [
+        {"bot_id": "not-a-real-bot", "group_id": "build"}
+    ]
+    assert "not-a-real-bot" in warn.getvalue()
+    assert "parking" in warn.getvalue().lower() or "QA-MM020a-2" in warn.getvalue()
 
 
 def test_message_edge_untargeted_is_sender_to_group() -> None:
@@ -205,15 +254,129 @@ def test_legacy_activity_fixtures_load_unchanged(path: Path, schema: dict) -> No
     raw = path.read_text(encoding="utf-8")
     doc = json.loads(raw)
     assert doc["schema_version"] == "1.0.0"
+    # 1.0.0 validates without provenance; compat preserved on disk.
     jsonschema.validate(instance=doc, schema=schema)
     migrated = migrate_activity(doc)
-    # Unchanged content aside from optional in-memory deepcopy equality of data.
     assert migrated["schema_version"] == "1.0.0"
     assert migrated["nodes"] == doc["nodes"]
     assert migrated["events"] == doc["events"]
     assert migrated["edges"] == doc["edges"]
-    # Disk file untouched
     assert path.read_text(encoding="utf-8") == raw
+    # Bump in memory fills provenance and satisfies 1.1.0.
+    bumped = migrate_activity(doc, bump_version=True)
+    assert bumped["schema_version"] == "1.1.0"
+    assert all("provenance" in e for e in bumped["events"])
+    assert all("provenance" in e for e in bumped["unparsed"])
+    jsonschema.validate(instance=bumped, schema=schema)
+    assert path.read_text(encoding="utf-8") == raw
+
+
+def test_migrate_fills_github_verified_provenance(schema: dict) -> None:
+    """Director: GitHub-derived legacy events → github-verified."""
+    doc = {
+        "schema_version": "1.0.0",
+        "generated_at": "2026-10-20T12:00:00-07:00",
+        "project": "fencepost",
+        "meta": {"github": "ok"},
+        "nodes": [],
+        "tasks": [],
+        "events": [
+            {
+                "id": "gh-1",
+                "type": "pr_opened",
+                "actor": "dev-1",
+                "target": None,
+                "task_id": "MM-001",
+                "pr": 14,
+                "repo": "ManpreetS2/agent-mindmap",
+                "attribution": {"method": "unknown"},
+                "source_url": "https://github.com/ManpreetS2/agent-mindmap/pull/14",
+                "source_time": "2026-10-20T12:00:00-07:00",
+                "raw": "opened PR",
+            }
+        ],
+        "edges": [],
+        "unparsed": [],
+    }
+    assert infer_provenance(doc["events"][0]) == "github-verified"
+    bumped = migrate_activity(doc, bump_version=True)
+    assert bumped["events"][0]["provenance"] == "github-verified"
+    jsonschema.validate(instance=bumped, schema=schema)
+
+
+def test_migrate_fills_agent_reported_for_ledger_and_signature(schema: dict) -> None:
+    """Director: ledger or bot-signature → agent-reported."""
+    ledger_evt = {
+        "id": "led-1",
+        "type": "handoff",
+        "actor": "architect",
+        "target": "dev-1",
+        "task_id": "MM-020",
+        "attribution": {"method": "ledger_owner"},
+        "source_url": "build/task-ledger.md#L10",
+        "source_time": "2026-10-20T12:00:00-07:00",
+        "raw": "handoff to DEV 1",
+    }
+    sig_evt = {
+        "id": "sig-1",
+        "type": "verdict",
+        "actor": "qa-verifier",
+        "target": None,
+        "task_id": "MM-020",
+        "pr": 16,
+        "repo": "ManpreetS2/agent-mindmap",
+        "verdict": "PASS",
+        "attribution": {"method": "signature"},
+        "source_url": "https://github.com/ManpreetS2/agent-mindmap/pull/16",
+        "source_time": "2026-10-20T12:01:00-07:00",
+        "raw": "PASS ~QA / Verifier",
+    }
+    assert infer_provenance(ledger_evt) == "agent-reported"
+    assert infer_provenance(sig_evt) == "agent-reported"
+    doc = {
+        "schema_version": "1.0.0",
+        "generated_at": "2026-10-20T12:00:00-07:00",
+        "project": "fencepost",
+        "meta": {"github": "ok", "ledger": "ok"},
+        "nodes": [],
+        "tasks": [],
+        "events": [ledger_evt, sig_evt],
+        "edges": [],
+        "unparsed": [],
+    }
+    bumped = migrate_activity(doc, bump_version=True)
+    assert bumped["events"][0]["provenance"] == "agent-reported"
+    assert bumped["events"][1]["provenance"] == "agent-reported"
+    jsonschema.validate(instance=bumped, schema=schema)
+
+
+def test_schema_1_1_rejects_event_without_provenance(schema: dict) -> None:
+    """New 1.1.0 events must include provenance."""
+    activity = {
+        "schema_version": "1.1.0",
+        "generated_at": "2026-10-20T12:00:00-07:00",
+        "project": "fencepost",
+        "meta": {"github": "skipped"},
+        "nodes": [],
+        "tasks": [],
+        "events": [
+            {
+                "id": "e1",
+                "type": "note",
+                "actor": "director",
+                "target": None,
+                "task_id": None,
+                "attribution": {"method": "unknown"},
+                "source_url": "agent://emit",
+                "source_time": "2026-10-20T12:00:00-07:00",
+                "raw": "missing provenance",
+            }
+        ],
+        "edges": [],
+        "unparsed": [],
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance=activity, schema=schema)
 
 
 def test_migrate_can_bump_version_in_memory_only(schema: dict) -> None:
@@ -221,7 +384,7 @@ def test_migrate_can_bump_version_in_memory_only(schema: dict) -> None:
         doc = json.load(f)
     bumped = migrate_activity(doc, bump_version=True)
     assert bumped["schema_version"] == "1.1.0"
+    assert all("provenance" in e for e in bumped["events"])
     jsonschema.validate(instance=bumped, schema=schema)
-    # Fixture on disk still 1.0.0
     with SAMPLE.open(encoding="utf-8") as f:
         assert json.load(f)["schema_version"] == "1.0.0"

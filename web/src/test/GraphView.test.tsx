@@ -6,7 +6,7 @@ import fixture from "../../../fixtures/sample-activity.json";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 describe("Mindmap graph view", () => {
   it("renders every node from the fixture at fixed layout", () => {

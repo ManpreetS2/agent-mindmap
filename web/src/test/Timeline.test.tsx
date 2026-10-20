@@ -6,7 +6,7 @@ import fixture from "../../../fixtures/sample-activity.json";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 describe("Timeline (MM-006)", () => {
   it("renders one swim lane label per bot plus unknown", () => {

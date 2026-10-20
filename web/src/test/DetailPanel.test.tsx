@@ -44,6 +44,7 @@ describe("DetailPanel fact sources (QA-MM005-1)", () => {
         source_url: "build/task-ledger.md#line-42",
         source_time: "2026-10-19T21:20:00-07:00",
         raw: "handoff note",
+        provenance: "agent-reported",
       },
     ];
     const node = baseNode({ id: "test-bot", current_task: "RP-009" });
@@ -69,6 +70,7 @@ describe("DetailPanel fact sources (QA-MM005-1)", () => {
         source_url: "https://github.com/o/r/pull/9",
         source_time: "2026-10-19T21:20:00-07:00",
         raw: "pr opened",
+        provenance: "agent-reported",
       },
     ];
     const node = baseNode({ id: "test-bot", current_task: "RP-009" });
@@ -91,6 +93,7 @@ describe("DetailPanel fact sources (QA-MM005-1)", () => {
         source_url: "build/task-ledger.md#note-7",
         source_time: "2026-10-19T22:00:00-07:00",
         raw: "ambient note",
+        provenance: "agent-reported",
       },
     ];
     const node = baseNode({

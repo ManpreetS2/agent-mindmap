@@ -28,6 +28,7 @@ from .ledger_parser import (
     parse_ledger_file,
 )
 from .membership import membership_index
+from .migrate import migrate_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
@@ -189,7 +190,7 @@ def build_activity(
         "ledger_last_entry_at": ledger_last_entry_at(ledger),
     }
 
-    return {
+    activity = {
         "schema_version": "1.1.0",
         "generated_at": ts,
         "project": "fencepost",
@@ -200,6 +201,8 @@ def build_activity(
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    # Stamp required provenance on 1.1.0 events (Director / MM-020a migration rules).
+    return migrate_activity(activity)
 
 
 def write_activity(activity: dict[str, Any], out_path: Path) -> None:
