@@ -15,6 +15,7 @@ import signal
 import sys
 import threading
 import time
+from typing import TextIO
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from http import HTTPStatus
@@ -49,10 +50,39 @@ BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
+MIN_PYTHON_VERSION = (3, 12)
 LedgerSource = Literal["path", "gh"]
 
 Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
+
+
+def ensure_python_version(
+    version_info: tuple[int, ...] | None = None,
+    *,
+    stderr: TextIO | None = None,
+) -> int:
+    """
+    Require Python 3.12+ (matches pyproject.toml). Return 0 if ok, else 1.
+
+    Used at startup so launchd / system python3.9 fails fast with a clear log line.
+    """
+    if version_info is not None:
+        major, minor = int(version_info[0]), int(version_info[1])
+    else:
+        major, minor = sys.version_info.major, sys.version_info.minor
+    if (major, minor) < MIN_PYTHON_VERSION:
+        out = stderr if stderr is not None else sys.stderr
+        need = f"{MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]}"
+        got = f"{major}.{minor}"
+        print(
+            f"mindmap live requires Python {need}+ (interpreter reports {got}); "
+            "use REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python "
+            "(pip install -e '.[dev]' in the repo venv)",
+            file=out,
+        )
+        return 1
+    return 0
 
 
 def refuse_public_bind(host: str) -> None:
@@ -642,6 +672,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if ensure_python_version() != 0:
+        return 1
+
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 

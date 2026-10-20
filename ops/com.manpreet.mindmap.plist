@@ -6,7 +6,7 @@
 	<string>com.manpreet.mindmap</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/bin/python3</string>
+		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python</string>
 		<string>-m</string>
 		<string>ingest.live</string>
 	</array>
@@ -22,10 +22,13 @@
 	<key>RunAtLoad</key>
 	<true/>
 	<key>KeepAlive</key>
-	<true/>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
 	<key>StandardOutPath</key>
-	<string>/Users/manpreet/Library/Logs/mindmap/live.stdout.log</string>
+	<string>REPLACE_WITH_ABSOLUTE_LOG_DIR/live.stdout.log</string>
 	<key>StandardErrorPath</key>
-	<string>/Users/manpreet/Library/Logs/mindmap/live.stderr.log</string>
+	<string>REPLACE_WITH_ABSOLUTE_LOG_DIR/live.stderr.log</string>
 </dict>
 </plist>

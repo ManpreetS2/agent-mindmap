@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import platform
 import shutil
@@ -21,6 +22,7 @@ from ingest.live import (
     BIND_HOST,
     LiveDaemon,
     create_http_server,
+    ensure_python_version,
     refuse_public_bind,
     resolve_live_ledger,
 )
@@ -247,6 +249,22 @@ def test_resolve_live_ledger_gh() -> None:
     assert source == "gh"
     assert path is None
     assert "agent-mindmap" in url
+
+
+def test_ensure_python_version_rejects_below_312() -> None:
+    assert ensure_python_version((3, 9, 6), stderr=io.StringIO()) == 1
+
+
+def test_ensure_python_version_accepts_312() -> None:
+    assert ensure_python_version((3, 12, 0), stderr=io.StringIO()) == 0
+
+
+def test_plist_uses_repo_venv_python() -> None:
+    text = PLIST.read_text(encoding="utf-8")
+    assert "REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python" in text
+    assert "/usr/bin/python3" not in text
+    assert "REPLACE_WITH_ABSOLUTE_LOG_DIR" in text
+    assert "SuccessfulExit" in text
 
 
 # AC6
