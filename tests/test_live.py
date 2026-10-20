@@ -282,9 +282,10 @@ def test_ensure_python_version_accepts_312() -> None:
     assert ensure_python_version((3, 12, 0), stderr=io.StringIO()) == 0
 
 
-def test_plist_uses_repo_venv_python() -> None:
+def test_plist_uses_start_mac_wrapper() -> None:
     text = PLIST.read_text(encoding="utf-8")
-    assert "REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python" in text
+    assert "/bin/bash" in text
+    assert "REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/scripts/start-mac.sh" in text
     assert "/usr/bin/python3" not in text
     assert "REPLACE_WITH_ABSOLUTE_LOG_DIR" in text
     assert "SuccessfulExit" in text

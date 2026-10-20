@@ -9,6 +9,8 @@ on:
       - "fixtures/**"
       - "schema/**"
       - "config/**"
+      - "scripts/**"
+      - "ops/**"
       - "pyproject.toml"
       - "requirements-dev.txt"
       - ".github/workflows/python.yml"
@@ -19,6 +21,8 @@ on:
       - "fixtures/**"
       - "schema/**"
       - "config/**"
+      - "scripts/**"
+      - "ops/**"
       - "pyproject.toml"
       - "requirements-dev.txt"
       - ".github/workflows/python.yml"
@@ -45,6 +49,17 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - name: Install test dependencies
         run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: Shellcheck startup scripts
+        env:
+          SHELLCHECK_VERSION: "0.9.0"
+          SHELLCHECK_SHA256: "700324c6dd0ebea0117591c6cc9d7350d9c7c5c287acbad7630fa17b1d4d9e2f"
+        run: |
+          set -euo pipefail
+          url="https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          curl -fsSL -o /tmp/shellcheck.tar.xz "$url"
+          echo "${SHELLCHECK_SHA256}  /tmp/shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/shellcheck.tar.xz -C /tmp
+          /tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck scripts/start-mac.sh scripts/install-launchagent.sh
       - name: Run pytest
         run: |
           set -euo pipefail
