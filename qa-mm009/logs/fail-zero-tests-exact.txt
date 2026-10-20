@@ -1,0 +1,13 @@
+# Simulation of .github/workflows/python.yml "Run pytest" gate
+# against an empty tests/ directory (no test files).
+# Environment: local Ubuntu, Python 3.12.3, pytest 9.1.1
+# Command: exact workflow bash snippet with set -euo pipefail
+# Result: workflow_snippet_EXIT=5
+# Mechanism: pytest --collect-only exits 5 ("no tests collected");
+#   pipefail causes the collected=$(...) pipeline to fail before the
+#   explicit count check. The job still fails, matching required semantics.
+#
+# Captured output from exact workflow snippet:
+
+no tests collected in 0.00s
+workflow_snippet_EXIT=5

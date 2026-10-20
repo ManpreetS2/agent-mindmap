@@ -1,0 +1,4 @@
+/workspace/qa-mm009/logs/ci-run-39384233405.log:23:pytest	Set up job	2026-10-20T07:05:05.0964441Z Contents: read
+/workspace/qa-mm009/logs/ci-run-39384233405-excerpt.txt:5:272:pytest	Run pytest	2026-10-20T07:05:15.7629178Z 69 tests collected in 0.29s
+/workspace/qa-mm009/logs/ci-run-39384233405-excerpt.txt:6:273:pytest	Run pytest	2026-10-20T07:05:15.7793542Z Collected 69 tests
+/workspace/qa-mm009/logs/ci-run-39384233405-excerpt.txt:7:275:pytest	Run pytest	2026-10-20T07:05:17.3923414Z 69 passed in 1.43s
