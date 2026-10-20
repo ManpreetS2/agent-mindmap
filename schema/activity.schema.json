@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ManpreetS2/agent-mindmap/schema/activity.schema.json",
+  "title": "MINDMAP activity snapshot",
+  "description": "activity.json: ledger + GitHub ingest output for the agent-activity dashboard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "project",
+    "meta",
+    "nodes",
+    "tasks",
+    "events",
+    "edges",
+    "unparsed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this snapshot was written"
+    },
+    "project": {
+      "type": "string",
+      "const": "fencepost"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["github"],
+      "properties": {
+        "github": {
+          "type": "string",
+          "enum": ["ok", "error", "skipped"]
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "unparsed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" },
+      "description": "Ledger lines that could not be fully classified; also mirrored as note events when applicable"
+    }
+  },
+  "$defs": {
+    "status": {
+      "type": "string",
+      "enum": ["IDLE", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE", "UNKNOWN"]
+    },
+    "nodeGroup": {
+      "type": "string",
+      "enum": ["owner", "build", "qr", "radar"]
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "handoff",
+        "pr_opened",
+        "pr_updated",
+        "verdict",
+        "merged",
+        "blocker",
+        "ci",
+        "note",
+        "unparsed"
+      ]
+    },
+    "edgeType": {
+      "type": "string",
+      "enum": ["handoff", "verdict", "pr", "merge"]
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "CHANGES"]
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["signature", "ledger_owner", "unknown"]
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "group", "status", "agent_links", "layout"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "group": { "$ref": "#/$defs/nodeGroup" },
+        "status": { "$ref": "#/$defs/status" },
+        "current_task": { "type": "string" },
+        "last_activity_ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "agent_links": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "layout": { "$ref": "#/$defs/layout" }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "project",
+        "owner",
+        "status_raw",
+        "status",
+        "prs",
+        "source_url"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^RP-\\d{3}[A-Z]?$"
+        },
+        "title": { "type": "string" },
+        "project": { "type": "string" },
+        "owner": { "type": "string" },
+        "status_raw": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "prs": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "source_url": { "type": "string", "minLength": 1 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "actor",
+        "target",
+        "task_id",
+        "attribution",
+        "source_url",
+        "source_time",
+        "raw"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable id, typically sha1(source + locator)"
+        },
+        "type": { "$ref": "#/$defs/eventType" },
+        "actor": {
+          "type": ["string", "null"]
+        },
+        "target": {
+          "type": ["string", "null"]
+        },
+        "task_id": {
+          "type": ["string", "null"],
+          "pattern": "^RP-\\d{3}[A-Z]?$"
+        },
+        "pr": { "type": "integer", "minimum": 1 },
+        "sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "verdict": {
+          "oneOf": [{ "$ref": "#/$defs/verdict" }, { "type": "null" }]
+        },
+        "attribution": { "$ref": "#/$defs/attribution" },
+        "source_url": { "type": "string", "minLength": 1 },
+        "source_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 with offset; ledger times parsed as America/Los_Angeles"
+        },
+        "raw": { "type": "string" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "target", "type", "count", "event_ids"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "type": { "$ref": "#/$defs/edgeType" },
+        "count": { "type": "integer", "minimum": 1 },
+        "event_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

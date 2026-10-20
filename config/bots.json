@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0.0",
+  "bots": [
+    {
+      "id": "manpreet",
+      "display_name": "Manpreet",
+      "aliases": ["Manpreet", "owner"],
+      "group": "owner",
+      "layout": { "x": 400, "y": 0 }
+    },
+    {
+      "id": "director",
+      "display_name": "Director",
+      "aliases": ["Director", "~Director"],
+      "group": "build",
+      "layout": { "x": 400, "y": 72 }
+    },
+    {
+      "id": "architect",
+      "display_name": "Architect",
+      "aliases": ["Architect", "~Architect", "~Architect 🛠️", "🛠️"],
+      "group": "build",
+      "layout": { "x": 400, "y": 144 }
+    },
+    {
+      "id": "dev-1",
+      "display_name": "DEV 1",
+      "aliases": ["DEV 1", "~DEV 1", "~DEV 1 ⚙️", "⚙️"],
+      "group": "build",
+      "layout": { "x": 80, "y": 256 }
+    },
+    {
+      "id": "dev-2",
+      "display_name": "DEV 2",
+      "aliases": ["DEV 2", "~DEV 2", "~DEV 2 ⚙️"],
+      "group": "build",
+      "layout": { "x": 240, "y": 256 }
+    },
+    {
+      "id": "ui-ux-maker",
+      "display_name": "UI/UX Maker",
+      "aliases": ["UI/UX Maker", "UI/UX", "~UI/UX Maker"],
+      "group": "build",
+      "layout": { "x": 400, "y": 256 }
+    },
+    {
+      "id": "documentation",
+      "display_name": "Documentation",
+      "aliases": ["Documentation", "Docs", "~Documentation"],
+      "group": "build",
+      "layout": { "x": 560, "y": 256 }
+    },
+    {
+      "id": "qa-verifier",
+      "display_name": "QA / Verifier",
+      "aliases": ["QA / Verifier", "QA", "~QA / Verifier", "~QA / Verifier 🧪", "🧪"],
+      "group": "qr",
+      "layout": { "x": 800, "y": 176 }
+    },
+    {
+      "id": "security-engineer",
+      "display_name": "Security Engineer",
+      "aliases": [
+        "Security Engineer",
+        "Security",
+        "~Security Engineer",
+        "~Security Engineer 🔐",
+        "🔐"
+      ],
+      "group": "qr",
+      "layout": { "x": 800, "y": 256 }
+    },
+    {
+      "id": "devops-release",
+      "display_name": "DevOps / Release",
+      "aliases": [
+        "DevOps / Release",
+        "DevOps",
+        "~DevOps / Release",
+        "~DevOps / Release 🚀",
+        "🚀"
+      ],
+      "group": "qr",
+      "layout": { "x": 800, "y": 336 }
+    },
+    {
+      "id": "scout",
+      "display_name": "Scout",
+      "aliases": ["Scout", "~Scout"],
+      "group": "radar",
+      "layout": { "x": 80, "y": 384 }
+    },
+    {
+      "id": "skeptic",
+      "display_name": "Skeptic",
+      "aliases": ["Skeptic", "~Skeptic"],
+      "group": "radar",
+      "layout": { "x": 240, "y": 384 }
+    },
+    {
+      "id": "nomen",
+      "display_name": "NOMEN",
+      "aliases": ["NOMEN", "~NOMEN"],
+      "group": "radar",
+      "layout": { "x": 400, "y": 384 }
+    },
+    {
+      "id": "bug-fixer",
+      "display_name": "Bug fixer",
+      "aliases": ["Bug fixer", "Bug Fixer", "~Bug fixer"],
+      "group": "radar",
+      "layout": { "x": 560, "y": 384 }
+    }
+  ]
+}
