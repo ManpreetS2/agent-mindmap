@@ -3,6 +3,7 @@ import type { Event } from "@shared/types";
 import { formatSourceTime } from "../utils/format";
 import { isUndatedSourceTime } from "../utils/eventTime";
 import { isHttpSourceUrl } from "../utils/sourceUrl";
+import { plainTextForDisplay } from "../utils/plainText";
 import { UnsourcedTag } from "./UnsourcedTag";
 
 interface UnparsedPanelProps {
@@ -41,7 +42,9 @@ export function UnparsedPanel({ lines }: UnparsedPanelProps) {
                     <UnsourcedTag />
                   </span>
                 )}
-                <span className="debug-drawer__raw">{line.raw}</span>
+                <span className="debug-drawer__raw">
+                  {plainTextForDisplay(line.raw)}
+                </span>
               </li>
             ))}
           </ul>

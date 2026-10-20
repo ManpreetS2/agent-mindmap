@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { LedgerLoadError } from "./data/loadActivity";
-import { createPollTransport } from "./data/activityTransport";
+import { createSseTransport } from "./data/activityTransport";
 import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
 import { CommandCenterShell } from "./components/CommandCenterShell";
+import { ModeBanner } from "./components/ModeBanner";
 import { MindmapView } from "./views/MindmapView";
 import { useActivityFeed } from "./hooks/useActivityFeed";
+import { useServerMode } from "./hooks/useServerMode";
 
 const POLL_MS = Number(
   (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
@@ -14,8 +16,13 @@ const POLL_MS = Number(
 );
 
 export function App() {
+  const { bannerState } = useServerMode();
+  const banner = <ModeBanner state={bannerState} />;
   const transport = useMemo(
-    () => createPollTransport({ intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000 }),
+    () =>
+      createSseTransport({
+        intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000,
+      }),
     [],
   );
   const { activity, error, statusPulseNodeIds, reload } =
@@ -24,6 +31,7 @@ export function App() {
   if (error instanceof LedgerLoadError) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <LedgerErrorView onRetry={reload} />
       </CommandCenterShell>
@@ -33,6 +41,7 @@ export function App() {
   if (error) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <div className="app-error" role="alert">
           {error.message}
@@ -47,6 +56,7 @@ export function App() {
   if (!activity) {
     return (
       <CommandCenterShell>
+        {banner}
         <SkipLink />
         <MindmapLoadingView />
       </CommandCenterShell>
@@ -55,6 +65,7 @@ export function App() {
 
   return (
     <CommandCenterShell>
+      {banner}
       <SkipLink />
       <MindmapView
         activity={activity}

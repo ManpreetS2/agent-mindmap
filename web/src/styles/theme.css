@@ -33,6 +33,8 @@
   --edge-verdict: #c9a227;
   --edge-pr: #6b9fff;
   --edge-merge: #5ecf8a;
+  --edge-message: #4fd1c5;
+  --edge-membership: color-mix(in srgb, hsl(187 92% 55%) 55%, #7c8a9e);
 
   --banner-bg: #2a2418;
   --banner-border: #5c4a1f;

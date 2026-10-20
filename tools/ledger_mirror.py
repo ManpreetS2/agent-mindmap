@@ -15,11 +15,12 @@ Flush is true only when:
 Idempotent: the same content sha256 never flushes twice.
 State is updated only via `--mark-flushed <sha256>`.
 
-SEC-MM010-1: before any flush, scan with ingest.github_poller._looks_like_secret.
-Secrets refuse the flush (reason=secret_detected, line numbers only); --force
-cannot bypass. Matched secret text is never printed.
+SEC-MM010-1: before any flush, scan with tools.secret_scan.looks_like_secret
+(shared denylist; SEC-MM020c-2). Secrets refuse the flush
+(reason=secret_detected, line numbers only); --force cannot bypass.
+Matched secret text is never printed.
 
-Stdlib only (+ reuse of existing ingest secret scanner; no new deps).
+Stdlib only (+ shared tools.secret_scan; no new deps).
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from ingest.github_poller import _looks_like_secret  # noqa: E402  — reuse, do not duplicate
+from tools.secret_scan import looks_like_secret  # noqa: E402  — shared scanner (SEC-MM020c-2)
 
 FLUSH_MIN_INTERVAL_S = 180
 
@@ -61,10 +62,10 @@ def sha256_text(text: str) -> str:
 
 
 def secret_line_numbers(content: str) -> list[int]:
-    """1-based line numbers that match `_looks_like_secret` (never return text)."""
+    """1-based line numbers that match looks_like_secret (never return text)."""
     hits: list[int] = []
     for i, line in enumerate(content.splitlines(), start=1):
-        if _looks_like_secret(line):
+        if looks_like_secret(line):
             hits.append(i)
     return hits
 

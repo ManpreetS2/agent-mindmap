@@ -24,13 +24,13 @@ describe("UI states (MM-007)", () => {
   });
 
   it("empty fixture shows no-activity banner with idle graph nodes", () => {
-    renderMindmap(<MindmapView activity={emptyFixture as Activity} />);
+    renderMindmap(<MindmapView activity={emptyFixture as unknown as Activity} />);
     expect(screen.getByText(/No activity recorded yet/i)).toBeInTheDocument();
     expect(screen.getByTestId("agent-node-director")).toBeInTheDocument();
   });
 
   it("empty fixture shows every bot as IDLE (QA-MM007-1)", () => {
-    const data = emptyFixture as Activity;
+    const data = emptyFixture as unknown as Activity;
     expect(data.nodes.length).toBeGreaterThan(0);
     for (const node of data.nodes) {
       expect(node.status).toBe("IDLE");
@@ -42,7 +42,7 @@ describe("UI states (MM-007)", () => {
   });
 
   it("partial GitHub fixtures carry no GitHub events (QA-MM007-2)", () => {
-    for (const partial of [partialError, partialSkipped, partialRate] as Activity[]) {
+    for (const partial of [partialError, partialSkipped, partialRate] as unknown as Activity[]) {
       for (const event of partial.events) {
         expect(event.source_url).not.toMatch(/github\.com/i);
       }
@@ -50,21 +50,21 @@ describe("UI states (MM-007)", () => {
   });
 
   it("partial GitHub error names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialError as Activity} />);
+    renderMindmap(<MindmapView activity={partialError as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/GitHub \(error\)/i);
   });
 
   it("partial GitHub skipped names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialSkipped as Activity} />);
+    renderMindmap(<MindmapView activity={partialSkipped as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/GitHub \(skipped\)/i);
   });
 
   it("partial GitHub rate_limited names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialRate as Activity} />);
+    renderMindmap(<MindmapView activity={partialRate as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/rate limited/i);
@@ -73,7 +73,7 @@ describe("UI states (MM-007)", () => {
   it("stale generated_at shows age hint", () => {
     renderMindmap(
       <MindmapView
-        activity={staleFixture as Activity}
+        activity={staleFixture as unknown as Activity}
         nowMs={STALE_NOW}
       />,
     );
@@ -82,7 +82,7 @@ describe("UI states (MM-007)", () => {
   });
 
   it("unparsed fixture renders debug drawer toggle", () => {
-    renderMindmap(<MindmapView activity={unparsedFixture as Activity} />);
+    renderMindmap(<MindmapView activity={unparsedFixture as unknown as Activity} />);
     expect(screen.getByRole("button", { name: /Debug \(\d+\)/ })).toBeInTheDocument();
   });
 

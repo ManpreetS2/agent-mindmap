@@ -8,7 +8,7 @@ import { ListView } from "../components/ListView";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 describe("Keyboard navigation (MM-007 §6)", () => {
   it("skip link targets main content", () => {

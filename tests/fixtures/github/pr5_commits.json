@@ -1,9 +1,18 @@
 [
   {
     "sha": "aaa1111bbbbbbbccccccccdddddddddeeeeeeee",
+    "author": { "login": "ManpreetS2" },
     "commit": {
       "message": "feat(RP-005): ingest hardening",
       "author": { "date": "2026-10-19T21:34:00-07:00" }
+    }
+  },
+  {
+    "sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+    "author": { "login": "ManpreetS2" },
+    "commit": {
+      "message": "squash merge RP-005",
+      "author": { "date": "2026-10-19T21:39:00-07:00" }
     }
   }
 ]

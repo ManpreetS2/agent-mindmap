@@ -1,7 +1,7 @@
-import { EDGE_VISUALS } from "../utils/edgeStyles";
+import { EDGE_VISUALS, MEMBERSHIP_EDGE_VISUAL } from "../utils/edgeStyles";
 import type { EdgeType } from "@shared/types";
 
-const ORDER: EdgeType[] = ["handoff", "verdict", "pr", "merge"];
+const ORDER: EdgeType[] = ["handoff", "verdict", "pr", "merge", "message"];
 
 export function EdgeLegend() {
   return (
@@ -25,6 +25,20 @@ export function EdgeLegend() {
           </div>
         );
       })}
+      <div className="edge-legend__item" role="listitem">
+        <svg width="32" height="12" aria-hidden="true">
+          <line
+            x1="0"
+            y1="6"
+            x2="32"
+            y2="6"
+            style={{ stroke: MEMBERSHIP_EDGE_VISUAL.stroke }}
+            strokeWidth={1.5}
+            strokeDasharray={MEMBERSHIP_EDGE_VISUAL.strokeDasharray}
+          />
+        </svg>
+        <span>{MEMBERSHIP_EDGE_VISUAL.label}</span>
+      </div>
     </div>
   );
 }

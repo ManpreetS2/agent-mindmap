@@ -30,6 +30,7 @@ const baseActivity = (overrides: Partial<Activity> = {}): Activity => ({
       source_url: "https://example.com/1",
       source_time: "2026-10-19T21:00:00-07:00",
       raw: "h",
+      provenance: "agent-reported",
     },
   ],
   edges: [
@@ -72,6 +73,7 @@ describe("activityDiff patchActivity (MM-012)", () => {
           source_url: "https://example.com/2",
           source_time: "2026-10-19T22:00:00-07:00",
           raw: "n",
+          provenance: "agent-reported",
         },
       ],
     });

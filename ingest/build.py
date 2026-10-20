@@ -27,6 +27,8 @@ from .ledger_parser import (
     parse_ledger,
     parse_ledger_file,
 )
+from .membership import membership_index
+from .migrate import migrate_activity
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
@@ -59,8 +61,14 @@ def build_nodes(
     bots: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     events: list[dict[str, Any]],
+    *,
+    membership: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Roster nodes at fixed layout positions with best-effort status/task."""
+    """Roster nodes at fixed layout positions with best-effort status/task.
+
+    One node per bot identity. `group` remains the layout/home group;
+    `groups` carries full membership from config/groups.json (MM-020a).
+    """
     tasks_by_owner: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
         bot_id = _owner_to_bot_id(str(task.get("owner", "")), bots)
@@ -85,13 +93,17 @@ def build_nodes(
                 if m.group(0) not in agent_links[str(actor)]:
                     agent_links[str(actor)].append(m.group(0))
 
+    member_of = membership if membership is not None else membership_index()
+
     nodes: list[dict[str, Any]] = []
     for bot in bots:
         bot_id = bot["id"]
+        groups = list(member_of.get(bot_id, []))
         node: dict[str, Any] = {
             "id": bot_id,
             "label": bot["display_name"],
             "group": bot["group"],
+            "groups": groups,
             "status": "IDLE",
             "agent_links": agent_links.get(bot_id, []),
             "layout": dict(bot["layout"]),
@@ -178,8 +190,8 @@ def build_activity(
         "ledger_last_entry_at": ledger_last_entry_at(ledger),
     }
 
-    return {
-        "schema_version": "1.0.0",
+    activity = {
+        "schema_version": "1.1.0",
         "generated_at": ts,
         "project": "fencepost",
         "meta": meta,
@@ -189,6 +201,8 @@ def build_activity(
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    # Stamp required provenance on 1.1.0 events (Director / MM-020a migration rules).
+    return migrate_activity(activity)
 
 
 def write_activity(activity: dict[str, Any], out_path: Path) -> None:
@@ -237,7 +251,14 @@ def main(argv: list[str] | None = None) -> int:
         default="path",
         help="path (default) or gh (data/ledger mirror via gh api)",
     )
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--out",
+        "--activity-out",
+        type=Path,
+        dest="out",
+        default=DEFAULT_OUT,
+        help="Output activity.json path",
+    )
     parser.add_argument("--cache-dir", type=Path, default=None)
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--skip-github", action="store_true")

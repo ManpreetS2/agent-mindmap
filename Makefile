@@ -5,6 +5,7 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT ?= $(ROOT)/web/public/activity.json
+ACTIVITY_OUT ?= $(OUT)
 PYTHON ?= python3
 
 help:
@@ -35,7 +36,7 @@ refresh-gh-ledger:
 refresh-demo:
 	$(PYTHON) -m ingest \
 		--ledger "$(ROOT)/tests/fixtures/ledger-sample.md" \
-		--out "$(OUT)" \
+		--activity-out "$(ACTIVITY_OUT)" \
 		--skip-github
 
 # Long-running: path ledger via MINDMAP_LEDGER, or gh mirror when unset.

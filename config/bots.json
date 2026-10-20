@@ -1,5 +1,6 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
+  "description": "MM-020a: identity model (id, display_name, aliases, layout). Membership is config/groups.json. Primary `group` is layout/home for backward-compatible activity nodes — not sole membership.",
   "bots": [
     {
       "id": "manpreet",
@@ -109,7 +110,8 @@
       "display_name": "Bug fixer",
       "aliases": ["Bug fixer", "Bug Fixer", "~Bug fixer"],
       "group": "radar",
-      "layout": { "x": 560, "y": 384 }
+      "layout": { "x": 560, "y": 384 },
+      "note": "Identity retained; not a Research member. Add id to config/groups.json radar.members to include by config alone."
     }
   ]
 }

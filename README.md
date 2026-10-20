@@ -8,6 +8,46 @@ MINDMAP never posts, merges, or writes to the ledger. It never stores GitHub cre
 
 ---
 
+## Run on a Mac (MM-020-OPS)
+
+**Prerequisites:** Python 3.12+ (`brew install python@3.12`), Node 20+, and [`gh`](https://cli.github.com/) logged in (`gh auth status` — the startup script never runs `gh auth login`).
+
+```bash
+# From the repo root (creates .venv, builds web/dist if needed, starts live daemon)
+./scripts/start-mac.sh
+# → http://127.0.0.1:8787  (override port with MINDMAP_PORT)
+
+# Local ledger file (optional; otherwise ledger is read from gh:data/ledger)
+export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
+./scripts/start-mac.sh
+
+# Force a fresh web build
+./scripts/start-mac.sh --rebuild
+```
+
+**Stop:** `Ctrl+C` in the terminal where the script is running.
+
+**launchd autostart (optional):**
+
+The template `ops/com.manpreet.mindmap.plist` runs **`/bin/bash` → `scripts/start-mac.sh`** (not `.venv/bin/python` directly). `install-launchagent.sh` renders it with `plistlib` into `~/Library/LaunchAgents/`.
+
+```bash
+export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
+./scripts/install-launchagent.sh
+# Creates ~/Library/Logs/mindmap, writes the plist, validates it, then prints:
+#   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist
+#   launchctl bootout gui/$(id -u)/com.manpreet.mindmap
+# (It does not run bootstrap/bootout for you.)
+
+# Optional: MINDMAP_EVENTS_SOURCE=gh|off (default gh) is passed through to ingest.live.
+```
+
+**Stop (launchd):** `launchctl bootout gui/$(id -u)/com.manpreet.mindmap`
+
+See also **Running live (MM-011)** below for poll intervals and endpoints.
+
+---
+
 ## Setup
 
 Python 3.12+ and Node 20+ recommended.
@@ -113,22 +153,30 @@ make live
 # or: python3 -m ingest.live --ledger "$MINDMAP_LEDGER"
 # gh mirror (MM-010): python3 -m ingest.live --ledger-source gh
 #   (or `make live` with MINDMAP_LEDGER unset)
+# MM-020d: also polls gh:data/events; SSE at GET /events (Last-Event-ID replay).
+# SEC-MM011-1: Host must be 127.0.0.1/localhost; Origin localhost-only (403 otherwise).
 ```
 
 - Ledger: `--ledger PATH` / `MINDMAP_LEDGER`, or `--ledger-source gh` for the allowlisted `data/ledger` mirror (same fetcher as `make refresh-gh-ledger`).
 - Poll intervals: `--ledger-poll-sec` / `--gh-poll-sec`, or `MINDMAP_LEDGER_POLL_SEC` / `MINDMAP_GH_POLL_SEC` (defaults 30s / 60s).
 - Endpoints: `/` (static `web/dist`), `/activity.json` (ETag + `If-None-Match` → 304), `/healthz` (poll timestamps + errors).
 - GitHub: same read-only `gh api` allowlist as ingest; no tokens stored or logged.
-- macOS autostart (Python **3.12+** only — not `/usr/bin/python3` on macOS):
-  1. In the repo: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (and `cd web && npm run build`).
-  2. `mkdir -p ~/Library/Logs/mindmap` (launchd does not create the log directory).
-  3. Copy `ops/com.manpreet.mindmap.plist` to `~/Library/LaunchAgents/` and replace placeholders:
-     - `REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT` → absolute path to this repo (used for `WorkingDirectory`, `PYTHONPATH`, and **`.venv/bin/python`** in `ProgramArguments`).
-     - `REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md` → ledger file (or remove `MINDMAP_LEDGER` and pass `--ledger-source gh` via a wrapper if you customize `ProgramArguments`).
-     - `REPLACE_WITH_ABSOLUTE_LOG_DIR` → e.g. `/Users/you/Library/Logs/mindmap`.
-  4. `plutil -lint ~/Library/LaunchAgents/com.manpreet.mindmap.plist`
-  5. `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist` (unload: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist`).
-  - `ingest.live` exits immediately with a clear stderr message if the interpreter is older than 3.12 (belt-and-suspenders if the wrong binary is configured).
+- macOS autostart: use **Run on a Mac (MM-020-OPS)** above (`./scripts/start-mac.sh` for manual runs; `./scripts/install-launchagent.sh` for launchd). The plist invokes `scripts/start-mac.sh`, which creates a hash-locked `.venv`, builds `web/dist` when needed, and enforces Python **3.12+** before `ingest.live` starts.
+
+---
+
+## NetworkEvent emitter (MM-020b)
+
+Bots may append opt-in live messages with `tools/event_emit.py` (JSONL, one `O_APPEND` write per line, ≤ `PIPE_BUF` bytes).
+
+- **Summary:** short sanitized summary only — never raw chat transcripts. Whitespace collapsed, secret patterns refused via `tools.secret_scan.looks_like_secret` (shared denylist from MM-020c), **max 240 characters** (truncated with `…` if longer).
+- **Recipients:** only when explicit; ids not in `config/bots.json` are listed under `unknown_recipients` (event still emitted; warning logged).
+- **File:** opens with `O_NOFOLLOW` (symlinks refused); new files created **0o600**; existing files tightened to **0o600** on open.
+
+```bash
+python3 -m tools.event_emit --out /path/to/events.jsonl \
+  --sender dev-1 --group build --summary "Handoff to QA for MM-020"
+```
 
 ---
 
@@ -183,10 +231,10 @@ python3 tools/ledger_mirror.py \
 
 Reasons: `unchanged` | `no_state_change` | `under_180s` | `state_change` | `force` | `marked` | `secret_detected`.
 
-**SEC-MM010-1:** before any flush, the payload is scanned with the same
-`_looks_like_secret` helper used by the GitHub poller. A match refuses the flush
-(`reason: secret_detected`, **line numbers only** — never the matched text),
-leaves the state file untouched, and **`--force` cannot bypass** it.
+**SEC-MM010-1 / SEC-MM020c-2:** before any flush, the payload is scanned with
+`tools.secret_scan.looks_like_secret` (shared denylist). A match refuses the
+flush (`reason: secret_detected`, **line numbers only** — never the matched
+text), leaves the state file untouched, and **`--force` cannot bypass** it.
 
 ### Ingest side
 
@@ -194,6 +242,41 @@ leaves the state file untouched, and **`--force` cannot bypass** it.
 - `--ledger-source gh` — mirrored `ledger.md` @ `data/ledger` via `gh api`
 - `activity.json` `meta.ledger`: `ok` | `error` | `skipped`
 - `meta.ledger_last_entry_at` — latest dated ledger entry (UI stale banner)
+
+---
+
+## Events mirror contract (MM-020c)
+
+Shared box JSONL of sanitized `NetworkEvent` lines (see `docs/MM-020-audit.md` §6.1)
+is mirrored as one overwritten `events.jsonl` on branch **`data/events`**
+(**never `main`**), with **7-day retention**, dedupe by `id`, and the same
+flush / SEC-MM010-1 secret rules as MM-010.
+
+### Flush helper (`tools/events_mirror.py`, stdlib only)
+
+```bash
+python3 tools/events_mirror.py \
+  --events /workspace/events.jsonl \
+  --state /path/to/events-mirror-state.json \
+  --payload /tmp/events.jsonl
+
+# → JSON: {"flush": bool, "sha256": "...", "reason": "...", "payload": "...?"}
+#
+# Invalid lines are dropped with a warning. Path default: MINDMAP_EVENTS or
+# /workspace/events.jsonl.
+
+# After a successful push to data/events:
+python3 tools/events_mirror.py \
+  --mark-flushed <sha256> \
+  --state /path/to/events-mirror-state.json \
+  --events /workspace/events.jsonl
+```
+
+### Mac fetch (`ingest/events_fetch.py`)
+
+Allowlisted read-only `gh api` contents fetch of `events.jsonl` @ `data/events`
+(ETag / sha cache). Missing branch → empty list. Entry point for the live
+daemon: `fetch_events_from_gh(repo, branch="data/events") -> list[dict]`.
 
 ---
 
@@ -208,7 +291,8 @@ npm run typecheck && cd web && npm run typecheck
 ```
 
 MM-008 integration: `tests/test_integration.py`.  
-MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.
+MM-010: `tests/test_ledger_mirror.py`, `tests/test_ledger_fetch.py`.  
+MM-020c: `tests/test_events_mirror.py`, `tests/test_events_fetch.py`.
 
 ---
 

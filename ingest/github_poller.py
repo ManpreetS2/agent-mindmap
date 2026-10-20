@@ -3,6 +3,14 @@ GitHub poller via `gh api` (read-only). No tokens in process, logs, or output.
 
 Caches ETags + bodies under ingest/.cache/ so a re-run sends If-None-Match
 and receives 304s. Allowed repos: ManpreetS2/fencepost, ManpreetS2/agent-mindmap.
+
+MM-020e / MM-013 PR lanes
+-------------------------
+``build_pr_lane_events(gh_data, roster)`` is the pure hook for live rebuild.
+``LiveDaemon.poll_github_once`` calls it and ingests NetworkEvents into the
+SSE ``/events`` log. It projects polled GitHub activity events into
+NetworkEvent rows (provenance ``github-verified``) plus edges via
+``ingest.edges.derive_edges``.
 """
 
 from __future__ import annotations
@@ -17,11 +25,12 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from .attribute import (
-    attribute_from_body,
     extract_task_id,
     extract_verdict,
     load_bots,
+    map_github_login,
 )
+from .edges import derive_edges
 
 ALLOWED_REPOS = frozenset(
     {
@@ -36,6 +45,13 @@ MAX_PAGES = 20  # sub-resource page cap
 MAX_PRS = 50  # architecture §8 — PR list hard cap
 LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
 
+# Director / SEC: PR-lane NetworkEvent summaries (MM-020e).
+SUMMARY_MAX_CHARS = 240
+PR_LANE_TYPES = frozenset({"pr_opened", "pr_updated", "verdict", "note", "merged"})
+GITHUB_PROVENANCE = "github-verified"
+AGENT_REPORTED_PROVENANCE = "agent-reported"
+UNKNOWN_SENDER = "UNKNOWN"
+
 
 class PaginationLinkError(ValueError):
     """Raised when a Link rel=next target fails host/repo allowlisting."""
@@ -47,6 +63,52 @@ def _repo_root() -> Path:
 
 def event_id(source: str, locator: str) -> str:
     return hashlib.sha1(f"{source}{locator}".encode("utf-8")).hexdigest()
+
+
+def _github_user_login(obj: dict[str, Any]) -> str | None:
+    user = obj.get("user")
+    if isinstance(user, dict):
+        login = user.get("login")
+        if isinstance(login, str) and login.strip():
+            return login.strip()
+    return None
+
+
+def _merged_by_login(pr: dict[str, Any]) -> str | None:
+    """GitHub ``merged_by.login`` on a pull request (MM-020e2)."""
+    merged_by = pr.get("merged_by")
+    if not isinstance(merged_by, dict):
+        return None
+    login = merged_by.get("login")
+    if isinstance(login, str) and login.strip():
+        return login.strip()
+    return None
+
+
+def _commit_author_login(commit: dict[str, Any]) -> str | None:
+    author = commit.get("author")
+    if isinstance(author, dict):
+        login = author.get("login")
+        if isinstance(login, str) and login.strip():
+            return login.strip()
+    return None
+
+
+def _actor_from_github_login(
+    login: str | None,
+    bots: list[dict[str, Any]],
+) -> tuple[str | None, str, str]:
+    """
+    SEC-MM020e-2: actor from verified GitHub login only (never body text).
+
+    Returns (bot_id | None, provenance, attribution method).
+    """
+    if not login:
+        return None, AGENT_REPORTED_PROVENANCE, "unknown"
+    bot_id = map_github_login(login, bots)
+    if bot_id:
+        return bot_id, GITHUB_PROVENANCE, "github_login"
+    return None, AGENT_REPORTED_PROVENANCE, "github_login_unmapped"
 
 
 def repo_id_from_item(item: dict[str, Any]) -> int | None:
@@ -199,21 +261,22 @@ class ETagCache:
             return etag, json.load(f)
 
     def put(self, key: str, etag: str | None, body: Any) -> None:
+        # QA-MM020c-3: atomic temp + fsync + os.replace (events / ledger fetch caches).
+        from tools.atomic_write import atomic_write_text
+
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.bodies_dir.mkdir(parents=True, exist_ok=True)
         safe = hashlib.sha1(key.encode("utf-8")).hexdigest()
         body_file = f"{safe}.json"
         path = self.bodies_dir / body_file
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(body, f, indent=2, sort_keys=True)
-            f.write("\n")
+        body_text = json.dumps(body, indent=2, sort_keys=True) + "\n"
+        atomic_write_text(path, body_text)
         self._index.setdefault("entries", {})[key] = {
             "etag": etag,
             "body_file": body_file,
         }
-        with self.index_path.open("w", encoding="utf-8") as f:
-            json.dump(self._index, f, indent=2, sort_keys=True)
-            f.write("\n")
+        index_text = json.dumps(self._index, indent=2, sort_keys=True) + "\n"
+        atomic_write_text(self.index_path, index_text)
 
 
 def _parse_gh_include(raw: str) -> GhResponse:
@@ -271,14 +334,13 @@ def default_gh_runner(args: list[str], *, timeout: float = 60.0) -> GhResponse:
 
 
 def _looks_like_secret(text: str) -> bool:
-    return bool(
-        re.search(
-            r"(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|Bearer\s+[A-Za-z0-9._\-]+|"
-            r"Authorization:\s*\S+)",
-            text,
-            re.IGNORECASE,
-        )
-    )
+    """
+    Thin wrapper around tools.secret_scan.looks_like_secret (QA-MM020c-2 /
+    SEC-MM020c-2). No local denylist regex — single owner is tools/secret_scan.py.
+    """
+    from tools.secret_scan import looks_like_secret
+
+    return looks_like_secret(text)
 
 
 def _is_rate_limit_response(resp: GhResponse) -> bool:
@@ -537,20 +599,31 @@ class GitHubPoller:
         task_id = extract_task_id(head_ref, title, body)
         created = pr.get("created_at") or pr.get("updated_at")
 
-        actor, method = attribute_from_body(body, self.bots)
-        opened = _event(
-            locator=f"{repo}#pr{number}:opened",
-            etype="pr_opened",
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=html,
-            source_time=created,
-            attribution=method,
-            raw=f"Opened pull request #{number}: {title}",
+        open_actor, open_prov, open_method = _actor_from_github_login(
+            _github_user_login(pr),
+            self.bots,
         )
-        _append_unique(events, seen, opened)
+        _append_unique(
+            events,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:opened",
+                etype="pr_opened",
+                actor=open_actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=html,
+                source_time=created,
+                attribution=open_method,
+                provenance=open_prov,
+                raw=f"Opened pull request #{number}: {title}",
+            ),
+        )
+
+        commits = self._get_json_list(
+            f"repos/{repo}/pulls/{number}/commits", repo=repo
+        )
 
         reviews = self._get_json_list(
             f"repos/{repo}/pulls/{number}/reviews", repo=repo
@@ -580,35 +653,93 @@ class GitHubPoller:
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
             sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a
-            # ~Bot signature on a ledger-style merged note (QA-MM004-10).
-            merger_actor, merger_method = _resolve_merger(
-                issue_comments, review_comments, self.bots
+            merger_actor, merge_prov, merger_method = _actor_from_github_login(
+                _merged_by_login(pr),
+                self.bots,
             )
-            merged = _event(
-                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
-                etype="merged",
-                actor=merger_actor,
-                task_id=task_id,
-                pr=number,
-                repo=repo,
-                sha=sha_val,
-                source_url=html,
-                source_time=pr.get("merged_at"),
-                attribution=merger_method,
-                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
+            _append_unique(
+                events,
+                seen,
+                _event(
+                    locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
+                    etype="merged",
+                    actor=merger_actor,
+                    task_id=task_id,
+                    pr=number,
+                    repo=repo,
+                    sha=sha_val,
+                    source_url=html,
+                    source_time=pr.get("merged_at"),
+                    attribution=merger_method,
+                    provenance=merge_prov,
+                    raw=(
+                        f"squash-merged as {sha_val}"
+                        if sha_val
+                        else f"Merged PR #{number}"
+                    ),
+                ),
             )
-            _append_unique(events, seen, merged)
 
-        commits = self._get_json_list(
-            f"repos/{repo}/pulls/{number}/commits", repo=repo
-        )
+        for commit in commits:
+            if isinstance(commit, dict):
+                events.extend(
+                    self._push_events(repo, number, html, task_id, commit, seen)
+                )
         if commits:
             head_sha = (commits[-1].get("sha") or "")[:40].lower()
             if pr.get("merged_at") and head_sha:
                 self._get_json(f"repos/{repo}/commits/{head_sha}/check-runs")
 
         return events
+
+    def _push_events(
+        self,
+        repo: str,
+        number: int,
+        html: str,
+        task_id: str | None,
+        commit: dict[str, Any],
+        seen: set[str],
+    ) -> list[dict[str, Any]]:
+        """PR push / commit → pr_updated (stable id by sha).
+
+        Raw sanitization / secret refusal is centralized in ``_event``
+        (QA-MM020e-1 / QA-MM020e-2).
+        """
+        sha = (commit.get("sha") or "")[:40].lower()
+        if not sha or not re.fullmatch(r"[0-9a-f]+", sha) or len(sha) < 7:
+            return []
+        commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
+        msg = str((commit_obj or {}).get("message") or "")
+        subject = msg.split("\n", 1)[0].strip() or f"Push on PR #{number} ({sha[:7]})"
+        actor, prov, method = _actor_from_github_login(
+            _commit_author_login(commit),
+            self.bots,
+        )
+        ts = ""
+        author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
+        if isinstance(author, dict):
+            ts = str(author.get("date") or "")
+        out: list[dict[str, Any]] = []
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:push:{sha}",
+                etype="pr_updated",
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                sha=sha,
+                source_url=html,
+                source_time=ts or None,
+                attribution=method,
+                provenance=prov,
+                raw=subject,
+            ),
+        )
+        return out
 
     def _review_events(
         self,
@@ -620,27 +751,34 @@ class GitHubPoller:
         seen: set[str],
     ) -> list[dict[str, Any]]:
         body = rev.get("body") or ""
-        actor, method = attribute_from_body(body, self.bots)
+        actor, prov, method = _actor_from_github_login(
+            _github_user_login(rev),
+            self.bots,
+        )
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = rev.get("html_url") or html
         ts = rev.get("submitted_at") or ""
         extra = {"verdict": verdict} if verdict else {}
-        evt = _event(
-            locator=f"{repo}#pr{number}:review:{rev.get('id')}",
-            etype=etype,
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=url,
-            source_time=ts,
-            attribution=method,
-            raw=body or f"Review on PR #{number}",
-            **extra,
-        )
         out: list[dict[str, Any]] = []
-        _append_unique(out, seen, evt)
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:review:{rev.get('id')}",
+                etype=etype,
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=url,
+                source_time=ts,
+                attribution=method,
+                provenance=prov,
+                raw=body or f"Review on PR #{number}",
+                **extra,
+            ),
+        )
         return out
 
     def _comment_events(
@@ -654,59 +792,53 @@ class GitHubPoller:
         kind: str,
     ) -> list[dict[str, Any]]:
         body = comment.get("body") or ""
-        actor, method = attribute_from_body(body, self.bots)
+        actor, prov, method = _actor_from_github_login(
+            _github_user_login(comment),
+            self.bots,
+        )
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = comment.get("html_url") or f"https://github.com/{repo}/pull/{number}"
         ts = comment.get("created_at") or ""
         extra = {"verdict": verdict} if verdict else {}
-        evt = _event(
-            locator=f"{repo}#pr{number}:{kind}:{comment.get('id')}",
-            etype=etype,
-            actor=actor,
-            task_id=task_id,
-            pr=number,
-            repo=repo,
-            source_url=url,
-            source_time=ts,
-            attribution=method,
-            raw=body or f"Comment on PR #{number}",
-            **extra,
-        )
         out: list[dict[str, Any]] = []
-        _append_unique(out, seen, evt)
+        _append_unique(
+            out,
+            seen,
+            _event(
+                locator=f"{repo}#pr{number}:{kind}:{comment.get('id')}",
+                etype=etype,
+                actor=actor,
+                task_id=task_id,
+                pr=number,
+                repo=repo,
+                source_url=url,
+                source_time=ts,
+                attribution=method,
+                provenance=prov,
+                raw=body or f"Comment on PR #{number}",
+                **extra,
+            ),
+        )
         return out
 
 
-# Ledger-style merged note only (QA-MM004-10) — not a casual "merged" mention.
-_LEDGER_STYLE_MERGED_RE = re.compile(
-    r"(?:squash-)?merged\s+as\s+[0-9a-f]{7,40}",
-    re.IGNORECASE,
-)
-
-
-def _resolve_merger(
-    issue_comments: list[Any],
-    review_comments: list[Any],
-    bots: list[dict[str, Any]],
-) -> tuple[str | None, str]:
+def sanitize_pr_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str | None:
     """
-    Resolve the merger bot for a GitHub merged PR.
+    Cap summary at 240 chars; refuse (return None) if secret_scan hits.
 
-    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).
-    QA-MM004-10: only a ~Bot signature on a ledger-style "merged as <sha>" note
-    attributes the merger. A bare merge-hint comment does not.
+    Never returns secret material — caller drops the event when None.
     """
-    for comment in [*issue_comments, *review_comments]:
-        if not isinstance(comment, dict):
-            continue
-        body = comment.get("body") or ""
-        if not _LEDGER_STYLE_MERGED_RE.search(body):
-            continue
-        sig_actor, sig_method = attribute_from_body(body, bots)
-        if sig_actor and sig_method == "signature":
-            return sig_actor, "signature"
-    return None, "unknown"
+    from tools.secret_scan import looks_like_secret
+
+    cleaned = " ".join((text or "").split())
+    if not cleaned:
+        return None
+    if looks_like_secret(cleaned):
+        return None
+    if len(cleaned) > max_chars:
+        cleaned = cleaned[: max_chars - 1] + "…"
+    return cleaned
 
 
 def _event(
@@ -720,11 +852,22 @@ def _event(
     source_time: str | None,
     attribution: str,
     raw: str,
+    provenance: str = GITHUB_PROVENANCE,
     sha: str | None = None,
     verdict: str | None = None,
     target: str | None = None,
     repo: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
+    """
+    Build one activity Event, or None if ``raw`` is refused.
+
+    QA-MM020e-1 / QA-MM020e-2: every ``raw`` value is passed through
+    ``sanitize_pr_summary`` before storage. Secrets / empty → drop (None);
+    callers must skip None via ``_append_unique``.
+    """
+    safe_raw = sanitize_pr_summary(raw)
+    if safe_raw is None:
+        return None
 
     evt: dict[str, Any] = {
         "id": event_id("github", locator),
@@ -735,7 +878,8 @@ def _event(
         "attribution": {"method": attribution},
         "source_url": source_url,
         "source_time": source_time or "1970-01-01T00:00:00Z",
-        "raw": raw,
+        "raw": safe_raw,
+        "provenance": provenance,
     }
     if pr is not None:
         evt["pr"] = pr
@@ -748,11 +892,138 @@ def _event(
     return evt
 
 
+def _normalize_gh_events(gh_data: Any) -> list[dict[str, Any]]:
+    if gh_data is None:
+        return []
+    if isinstance(gh_data, GitHubPollResult):
+        return list(gh_data.events)
+    if isinstance(gh_data, dict):
+        ev = gh_data.get("events")
+        return [e for e in ev if isinstance(e, dict)] if isinstance(ev, list) else []
+    if isinstance(gh_data, list):
+        return [e for e in gh_data if isinstance(e, dict)]
+    return []
+
+
+def _is_pr_lane_event(evt: dict[str, Any]) -> bool:
+    etype = evt.get("type")
+    if etype in {"pr_opened", "pr_updated", "merged"}:
+        return True
+    if etype in {"verdict", "note"} and evt.get("pr") is not None:
+        return True
+    return False
+
+
+def _bot_home_group(bot_id: str, roster: list[dict[str, Any]]) -> str:
+    for bot in roster:
+        if str(bot.get("id")) == bot_id:
+            g = bot.get("group")
+            if isinstance(g, str) and g.strip():
+                return g.strip()
+    return "build"
+
+
+def activity_event_to_network_event(
+    evt: dict[str, Any],
+    roster: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """
+    Map one activity Event (from the poller) → NetworkEvent, or None if refused.
+
+    Unknown actors become sender UNKNOWN (no false edge — derive_edges skips
+    null actors on the activity side).
+    """
+    summary = sanitize_pr_summary(str(evt.get("raw") or ""))
+    if summary is None:
+        return None
+    actor = evt.get("actor")
+    sender = str(actor) if isinstance(actor, str) and actor.strip() else UNKNOWN_SENDER
+    group = _bot_home_group(sender, roster) if sender != UNKNOWN_SENDER else "build"
+    prov = evt.get("provenance")
+    if prov not in {GITHUB_PROVENANCE, AGENT_REPORTED_PROVENANCE, "observed"}:
+        prov = AGENT_REPORTED_PROVENANCE
+    ne: dict[str, Any] = {
+        "id": str(evt["id"]),
+        "ts": str(evt.get("source_time") or "1970-01-01T00:00:00Z"),
+        "sender": sender,
+        "group": group,
+        "type": str(evt.get("type") or "note"),
+        "summary": summary,
+        "provenance": prov,
+    }
+    if evt.get("task_id") is not None:
+        ne["task_id"] = evt.get("task_id")
+    if evt.get("related_id") is not None:
+        ne["related_id"] = evt.get("related_id")
+    # Explicit recipients only — never invent (PR lanes usually omit).
+    rec = evt.get("recipients")
+    if isinstance(rec, list) and rec:
+        ne["recipients"] = [str(x) for x in rec if isinstance(x, str) and x.strip()]
+    return ne
+
+
+def build_pr_lane_events(
+    gh_data: Any,
+    roster: list[dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Pure MM-020e / MM-013 hook for live rebuild / SSE.
+
+    Wired from ``LiveDaemon.poll_github_once`` so PR-lane NetworkEvents flow
+    through the in-memory event log and ``GET /events``.
+
+    Parameters
+    ----------
+    gh_data:
+        ``GitHubPollResult``, ``{"events": [...]}``, or a list of activity
+        Event dicts from ``poll_github`` / ``GitHubPoller.poll``.
+    roster:
+        bots.json-shaped list (``id``, ``group``, ``aliases``, …). Defaults to
+        ``load_bots()``.
+
+    Returns
+    -------
+    (network_events, edges)
+        NetworkEvent dicts with ``provenance="github-verified"``, stable
+        ``id`` (= sha1 of github+locator from the poller), deduped by id.
+        Edges from ``derive_edges`` on the same PR-lane activity events
+        (unknown / null actors never create false edges).
+
+    Allowlist is enforced upstream by ``GitHubPoller`` (``ALLOWED_REPOS``);
+    this function does not fetch.
+    """
+    bots = roster if roster is not None else load_bots()
+    raw_events = _normalize_gh_events(gh_data)
+    lane_activity: list[dict[str, Any]] = []
+    network: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    for evt in raw_events:
+        if not _is_pr_lane_event(evt):
+            continue
+        stamped = dict(evt)
+        eid = str(stamped.get("id") or "")
+        if not eid or eid in seen_ids:
+            continue
+        ne = activity_event_to_network_event(stamped, bots)
+        if ne is None:
+            continue
+        seen_ids.add(eid)
+        lane_activity.append(stamped)
+        network.append(ne)
+
+    edges = derive_edges(lane_activity)
+    return network, edges
+
+
 def _append_unique(
     events: list[dict[str, Any]],
     seen: set[str],
-    evt: dict[str, Any],
+    evt: dict[str, Any] | None,
 ) -> None:
+    """Append ``evt`` if non-None and id not yet seen (skips dropped secrets)."""
+    if evt is None:
+        return
     eid = evt["id"]
     if eid in seen:
         return

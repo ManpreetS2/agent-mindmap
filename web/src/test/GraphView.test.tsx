@@ -6,7 +6,7 @@ import fixture from "../../../fixtures/sample-activity.json";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
 
-const activity = fixture as Activity;
+const activity = fixture as unknown as Activity;
 
 describe("Mindmap graph view", () => {
   it("renders every node from the fixture at fixed layout", () => {
@@ -52,12 +52,13 @@ describe("Mindmap graph view", () => {
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 
-  it("lists all four edge types in the legend", () => {
+  it("lists edge types including message in the legend", () => {
     renderMindmap(<MindmapView activity={activity} />);
     const legend = screen.getByRole("list", { name: /Edge types legend/i });
     expect(within(legend).getByText(/Handoff/i)).toBeInTheDocument();
     expect(within(legend).getByText(/Review verdict/i)).toBeInTheDocument();
     expect(within(legend).getByText(/PR link/i)).toBeInTheDocument();
     expect(within(legend).getByText(/Merge/i)).toBeInTheDocument();
+    expect(within(legend).getByText(/^Message$/i)).toBeInTheDocument();
   });
 });

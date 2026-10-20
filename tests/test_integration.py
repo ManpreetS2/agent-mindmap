@@ -54,7 +54,7 @@ def test_e2e_fixture_pipeline_writes_schema_valid_activity(
     loaded = json.loads(out.read_text(encoding="utf-8"))
     jsonschema.validate(instance=loaded, schema=schema)
 
-    assert loaded["schema_version"] == "1.0.0"
+    assert loaded["schema_version"] == "1.1.0"
     assert loaded["project"] == "fencepost"
     assert loaded["meta"]["github"] == "ok"
     assert len(loaded["nodes"]) == len(bots)

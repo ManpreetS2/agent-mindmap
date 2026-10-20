@@ -6,9 +6,8 @@
 	<string>com.manpreet.mindmap</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python</string>
-		<string>-m</string>
-		<string>ingest.live</string>
+		<string>/bin/bash</string>
+		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/scripts/start-mac.sh</string>
 	</array>
 	<key>WorkingDirectory</key>
 	<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT</string>
@@ -16,6 +15,8 @@
 	<dict>
 		<key>MINDMAP_LEDGER</key>
 		<string>REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md</string>
+		<key>MINDMAP_EVENTS_SOURCE</key>
+		<string>gh</string>
 		<key>PYTHONPATH</key>
 		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT</string>
 	</dict>
@@ -26,6 +27,8 @@
 		<key>SuccessfulExit</key>
 		<false/>
 	</dict>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
 	<key>StandardOutPath</key>
 	<string>REPLACE_WITH_ABSOLUTE_LOG_DIR/live.stdout.log</string>
 	<key>StandardErrorPath</key>

@@ -65,6 +65,9 @@ def _fixture_map() -> dict[str, Any]:
         "repos/ManpreetS2/fencepost/commits/bbb2222cccccccdddddddddeeeeeeeeffffffff/check-runs": _load(
             "check_runs_empty.json"
         ),
+        "repos/ManpreetS2/fencepost/commits/693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901/check-runs": _load(
+            "check_runs_empty.json"
+        ),
     }
 
 
@@ -173,7 +176,8 @@ def test_pr5_merged_with_sha_693ebc7(cache_dir: Path) -> None:
     assert "pull/5" in merged[0]["source_url"]
 
 
-def test_security_review_attributed_by_signature(cache_dir: Path) -> None:
+def test_security_review_actor_from_github_login(cache_dir: Path) -> None:
+    """SEC-MM020e-2: review actor from user.login, not ~Bot signature in body."""
     result = poll_github(cache_dir=cache_dir, runner=MockGh())
     security = [
         e
@@ -181,8 +185,9 @@ def test_security_review_attributed_by_signature(cache_dir: Path) -> None:
         if e.get("pr") == 6 and e["type"] == "verdict" and e.get("verdict") == "PASS"
     ]
     assert len(security) == 1
-    assert security[0]["actor"] == "security-engineer"
-    assert security[0]["attribution"]["method"] == "signature"
+    assert security[0]["actor"] == "manpreet"
+    assert security[0]["attribution"]["method"] == "github_login"
+    assert security[0]["provenance"] == "github-verified"
 
 
 def test_unsigned_comment_is_unknown(cache_dir: Path) -> None:
@@ -193,7 +198,7 @@ def test_unsigned_comment_is_unknown(cache_dir: Path) -> None:
         if e.get("pr") == 6 and "Unsigned follow-up" in e.get("raw", "")
     ]
     assert len(notes) == 1
-    assert notes[0]["attribution"]["method"] == "unknown"
+    assert notes[0]["attribution"]["method"] == "github_login"
 
 
 def test_second_run_gets_304s(cache_dir: Path) -> None:
@@ -633,20 +638,120 @@ def test_sibling_allowlisted_repo_link_stops_pagination(cache_dir: Path) -> None
     assert not any("agent-mindmap" in c and "reviews?page=2" in c for c in mock.calls)
 
 
-def test_merged_by_ignored_leaves_merger_unknown(cache_dir: Path) -> None:
-    """QA-MM004-7: merged_by is ignored; without ledger/~Bot note actor is None."""
+def test_merged_by_login_maps_merger_to_bot(cache_dir: Path) -> None:
+    """MM-020e2: merged actor from PR merged_by.login (bot mapping)."""
     result = poll_github(cache_dir=cache_dir, runner=MockGh())
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] is None
-    assert merged[0]["attribution"]["method"] == "unknown"
+    assert merged[0]["actor"] == "manpreet"
+    assert merged[0]["attribution"]["method"] == "github_login"
+    assert merged[0]["provenance"] == "github-verified"
     assert merged[0]["repo"] == "ManpreetS2/fencepost"
     opened = [e for e in result.events if e["type"] == "pr_opened" and e.get("pr") == 5]
-    assert opened[0]["actor"] == "dev-1"
+    assert opened[0]["actor"] == "manpreet"
+    assert opened[0]["attribution"]["method"] == "github_login"
 
 
-def test_ledger_style_signed_merge_note_attributes_merger(cache_dir: Path) -> None:
-    """QA-MM004-10: only signed ledger-style 'merged as <sha>' notes set merger."""
+def test_merged_without_merged_by_is_agent_reported_unknown(cache_dir: Path) -> None:
+    mapping = _single_pr_mapping()
+    mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
+        {
+            "number": 5,
+            "title": "feat/RP-005-ingest-hardening",
+            "body": "~DEV 1 ⚙️",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+            "created_at": "2026-10-19T21:35:00-07:00",
+            "merged_at": "2026-10-19T21:39:00-07:00",
+            "merge_commit_sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+            "head": {"ref": "feat/RP-005-ingest-hardening", "sha": "aaa"},
+            "base": {
+                "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+            },
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mapping["repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100"] = []
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=MockGh(mapping=mapping),
+        repos=("ManpreetS2/fencepost",),
+    )
+    merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
+    assert len(merged) == 1
+    assert merged[0]["actor"] is None
+    assert merged[0]["provenance"] == "agent-reported"
+    assert merged[0]["attribution"]["method"] == "unknown"
+
+
+def test_merged_squash_sha_absent_from_commits_uses_merged_by(cache_dir: Path) -> None:
+    """Squash merge SHAs are often missing from /pulls/N/commits."""
+    mapping = _single_pr_mapping()
+    mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
+        {
+            "number": 5,
+            "title": "feat/RP-005-ingest-hardening",
+            "body": "~DEV 1 ⚙️",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+            "created_at": "2026-10-19T21:35:00-07:00",
+            "merged_at": "2026-10-19T21:39:00-07:00",
+            "merge_commit_sha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+            "merged_by": {"login": "ManpreetS2"},
+            "head": {"ref": "feat/RP-005-ingest-hardening", "sha": "aaa"},
+            "base": {
+                "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+            },
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mapping["repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100"] = []
+    mapping[
+        "repos/ManpreetS2/fencepost/commits/deadbeefdeadbeefdeadbeefdeadbeefdeadbeef/check-runs"
+    ] = _load("check_runs_empty.json")
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=MockGh(mapping=mapping),
+        repos=("ManpreetS2/fencepost",),
+    )
+    merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
+    assert len(merged) == 1
+    assert merged[0]["actor"] == "manpreet"
+    assert merged[0]["provenance"] == "github-verified"
+
+
+def test_merged_by_unmapped_login_is_agent_reported(cache_dir: Path) -> None:
+    mapping = _single_pr_mapping()
+    mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
+        {
+            "number": 5,
+            "title": "feat/RP-005-ingest-hardening",
+            "body": "~DEV 1 ⚙️",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+            "created_at": "2026-10-19T21:35:00-07:00",
+            "merged_at": "2026-10-19T21:39:00-07:00",
+            "merge_commit_sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+            "merged_by": {"login": "dependabot[bot]"},
+            "head": {"ref": "feat/RP-005-ingest-hardening", "sha": "aaa"},
+            "base": {
+                "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+            },
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mapping["repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100"] = []
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=MockGh(mapping=mapping),
+        repos=("ManpreetS2/fencepost",),
+    )
+    merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
+    assert len(merged) == 1
+    assert merged[0]["actor"] is None
+    assert merged[0]["provenance"] == "agent-reported"
+    assert merged[0]["attribution"]["method"] == "github_login_unmapped"
+
+
+def test_ledger_style_merge_note_does_not_infer_merger_from_signature(cache_dir: Path) -> None:
+    """SEC-MM020e-2: ~Bot signature in merge note does not set actor (login only)."""
     mapping = _single_pr_mapping()
     mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
         {
@@ -675,6 +780,19 @@ def test_ledger_style_signed_merge_note_attributes_merger(cache_dir: Path) -> No
             "user": {"login": "ManpreetS2"},
         }
     ]
+    mapping["repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100"] = [
+        {
+            "sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+            "author": {"login": "ManpreetS2"},
+            "commit": {
+                "message": "squash merge",
+                "author": {"date": "2026-10-19T21:39:00-07:00"},
+            },
+        }
+    ]
+    mapping[
+        "repos/ManpreetS2/fencepost/commits/693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901/check-runs"
+    ] = _load("check_runs_empty.json")
     result = poll_github(
         cache_dir=cache_dir,
         runner=MockGh(mapping=mapping),
@@ -682,12 +800,13 @@ def test_ledger_style_signed_merge_note_attributes_merger(cache_dir: Path) -> No
     )
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] == "devops-release"
-    assert merged[0]["attribution"]["method"] == "signature"
+    assert merged[0]["actor"] == "manpreet"
+    assert merged[0]["attribution"]["method"] == "github_login"
+    assert merged[0]["actor"] != "devops-release"
 
 
 def test_merge_hint_alone_does_not_attribute_merger(cache_dir: Path) -> None:
-    """QA-MM004-10: a casual 'merged' mention + ~Bot is not a ledger-style note."""
+    """SEC-MM020e-2: casual merge hint + ~Bot does not infer merger from body."""
     mapping = _single_pr_mapping()
     mapping["repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"] = [
         {
@@ -716,6 +835,19 @@ def test_merge_hint_alone_does_not_attribute_merger(cache_dir: Path) -> None:
             "user": {"login": "ManpreetS2"},
         }
     ]
+    mapping["repos/ManpreetS2/fencepost/pulls/5/commits?per_page=100"] = [
+        {
+            "sha": "693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901",
+            "author": {"login": "ManpreetS2"},
+            "commit": {
+                "message": "squash merge",
+                "author": {"date": "2026-10-19T21:39:00-07:00"},
+            },
+        }
+    ]
+    mapping[
+        "repos/ManpreetS2/fencepost/commits/693ebc7a1b2c3d4e5f60718293a4b5c6d7e8f901/check-runs"
+    ] = _load("check_runs_empty.json")
     result = poll_github(
         cache_dir=cache_dir,
         runner=MockGh(mapping=mapping),
@@ -723,8 +855,9 @@ def test_merge_hint_alone_does_not_attribute_merger(cache_dir: Path) -> None:
     )
     merged = [e for e in result.events if e["type"] == "merged" and e.get("pr") == 5]
     assert len(merged) == 1
-    assert merged[0]["actor"] is None
-    assert merged[0]["attribution"]["method"] == "unknown"
+    assert merged[0]["actor"] == "manpreet"
+    assert merged[0]["attribution"]["method"] == "github_login"
+    assert merged[0]["actor"] != "devops-release"
 
 
 def test_repositories_numeric_id_link_pagination(cache_dir: Path) -> None:

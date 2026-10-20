@@ -19,6 +19,7 @@ const dated: Event = {
   source_url: "https://github.com/o/r/pull/1",
   source_time: "2026-10-19T21:20:00-07:00",
   raw: "handoff",
+  provenance: "agent-reported",
 };
 
 const undated: Event = {
@@ -44,7 +45,7 @@ describe("eventTime (MM-012 bug fixes)", () => {
     const activity = {
       events: [dated],
       unparsed: [undated],
-    } as Activity;
+    } as unknown as Activity;
     expect(allTimelineEvents(activity)).toEqual([dated]);
   });
 
