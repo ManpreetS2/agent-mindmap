@@ -167,6 +167,8 @@ export interface ActivityMeta {
   ledger?: LedgerMetaStatus;
   /** Latest dated ledger entry; preferred for the stale banner (MM-010). */
   ledger_last_entry_at?: string | null;
+  /** Present when meta.ledger is unavailable or error (MM-020-P0). */
+  ledger_error?: string;
   /** Optional live overlay marker (schema ≥ 1.1.0). */
   events_source?: string;
 }

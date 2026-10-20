@@ -46,41 +46,11 @@ export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
 export function partialGithubBanner(meta: ActivityMeta): string | null {
   const status = meta.github as string;
   if (status === "ok") return null;
-  if (status === "never_run") {
-    return "GitHub (never run) — waiting for first poll.";
-  }
   const sourceName =
     status === "rate_limited"
       ? "GitHub (rate limited)"
       : status === "skipped"
         ? "GitHub (skipped)"
         : "GitHub (error)";
-  return `${sourceName} — data may be incomplete. Retry refresh.`;
-}
-
-/** MM-020-P0: prominent banner when ledger or GitHub is not healthy. */
-export function sourceUnavailableMessage(
-  meta: ActivityMeta,
-  ledgerErrors: string[] = [],
-): string | null {
-  const ledger = meta.ledger as string | undefined;
-  const github = meta.github as string;
-  const ledgerBad =
-    ledger !== undefined &&
-    ledger !== "ok" &&
-    ledger !== "demo" &&
-    ledger !== "skipped";
-  const githubBad = github !== "ok";
-  if (!ledgerBad && !githubBad) return null;
-  const parts = ["SOURCE UNAVAILABLE"];
-  if (ledgerBad) {
-    parts.push(`ledger: ${ledger}`);
-  }
-  if (githubBad) {
-    parts.push(`GitHub: ${github}`);
-  }
-  if (ledgerErrors.length > 0) {
-    parts.push(ledgerErrors.join(" · "));
-  }
-  return parts.join(" — ");
+  return `${sourceName} — showing ledger only. Retry refresh.`;
 }

@@ -51,6 +51,10 @@
           "format": "date-time",
           "description": "Latest dated ledger entry timestamp for the stale banner"
         },
+        "ledger_error": {
+          "type": "string",
+          "description": "Human-readable ledger failure when meta.ledger is unavailable or error"
+        },
         "events_source": {
           "type": "string",
           "description": "Optional live events source marker (MM-020)"

@@ -49,24 +49,19 @@ import {
   isActivityEmpty,
   isActivityStale,
   partialGithubBanner,
-  sourceUnavailableMessage,
   staleAgeLabel,
   staleReferenceTime,
 } from "../utils/viewState";
 
 export interface MindmapViewProps {
   activity: Activity;
-  onRefresh?: () => void | Promise<void>;
+  onRefresh?: () => void;
   /** Override for tests (fixed clock). */
   nowMs?: number;
   /** Force list/graph mode (tests). */
   initialListView?: boolean;
   /** Node ids whose status just changed (pulse animation). */
   statusPulseNodeIds?: ReadonlySet<string>;
-  /** Ledger poll errors from /healthz (MM-020-P0). */
-  healthErrors?: string[];
-  /** True when SSE is down and poll fallback is active. */
-  sseDisconnected?: boolean;
 }
 
 export function MindmapView({
@@ -75,8 +70,6 @@ export function MindmapView({
   nowMs = Date.now(),
   initialListView,
   statusPulseNodeIds,
-  healthErrors = [],
-  sseDisconnected = false,
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -135,10 +128,6 @@ export function MindmapView({
   const partialBanner = useMemo(
     () => partialGithubBanner(activity.meta),
     [activity.meta],
-  );
-  const sourceUnavailable = useMemo(
-    () => sourceUnavailableMessage(activity.meta, healthErrors),
-    [activity.meta, healthErrors],
   );
   const staleRef = useMemo(() => staleReferenceTime(activity), [activity]);
   const stale = useMemo(
@@ -290,16 +279,8 @@ export function MindmapView({
         </div>
       </header>
 
-      {sourceUnavailable && (
-        <PartialSourceBanner message={sourceUnavailable} onRetry={onRefresh} />
-      )}
-      {partialBanner && !sourceUnavailable && (
+      {partialBanner && (
         <PartialSourceBanner message={partialBanner} onRetry={onRefresh} />
-      )}
-      {sseDisconnected && (
-        <div className="partial-source-banner" role="status">
-          DISCONNECTED — live event stream unavailable; using poll fallback.
-        </div>
       )}
 
       <HandoffBanner handoffCount={handoffs} threshold={3} />

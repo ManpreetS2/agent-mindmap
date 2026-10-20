@@ -136,13 +136,19 @@ def test_refresh_post_gated_rate_limited_and_polls(live_env: dict) -> None:
         status, _ = post({"Host": "evil.example"})
         assert status == HTTPStatus.FORBIDDEN
 
+        status, _ = post(
+            {"Host": f"{host}:{port}", "Origin": "https://evil.example"}
+        )
+        assert status == HTTPStatus.FORBIDDEN
+
         status, body = post({"Host": f"{host}:{port}"})
-        assert status == HTTPStatus.OK
-        assert json.loads(body.decode())["ok"] is True
+        assert status == HTTPStatus.ACCEPTED
+        assert json.loads(body.decode())["queued"] is True
 
         status, body = post({"Host": f"{host}:{port}"})
         assert status == HTTPStatus.TOO_MANY_REQUESTS
-        assert json.loads(body.decode())["error"] == "rate_limited"
+        payload = json.loads(body.decode())
+        assert payload["retry_after_s"] >= 1
     finally:
         httpd.shutdown()
         thread.join(timeout=3)
@@ -199,6 +205,84 @@ def test_assemble_partial_errored_sources(bots: list[dict]) -> None:
     )
     assert errored["meta"]["ledger"] == "error"
     assert any(e["id"] == "n1" for e in errored["events"])
+
+
+def test_try_refresh_invokes_poll_cycle(live_env: dict) -> None:
+    daemon = _daemon(live_env, events_source="off")
+    calls: list[int] = []
+    real = daemon.run_poll_cycle
+
+    def counted() -> None:
+        calls.append(1)
+        real()
+
+    daemon.run_poll_cycle = counted  # type: ignore[method-assign]
+    ok, reason, _ = daemon.try_refresh()
+    assert ok and reason == ""
+    assert calls == [1]
+
+
+def test_refresh_origin_null_denied(live_env: dict) -> None:
+    daemon = _daemon(live_env, events_source="off")
+    httpd = create_http_server(daemon, port=0, sse_heartbeat_sec=0.15)
+    thread = threading.Thread(
+        target=httpd.serve_forever, kwargs={"poll_interval": 0.2}, daemon=True
+    )
+    thread.start()
+    host, port = httpd.server_address
+    _wait_for_port(host, port)
+    url = f"http://{host}:{port}/refresh"
+    try:
+        req = urllib.request.Request(
+            url,
+            method="POST",
+            headers={"Host": f"{host}:{port}", "Origin": "null"},
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            raised = False
+        except urllib.error.HTTPError as exc:
+            raised = True
+            assert exc.code == HTTPStatus.FORBIDDEN
+        assert raised
+    finally:
+        httpd.shutdown()
+        thread.join(timeout=3)
+        httpd.server_close()
+
+
+def test_malformed_network_events_dropped_not_in_activity(
+    tmp_path: Path, bots: list[dict]
+) -> None:
+    daemon = LiveDaemon(
+        ledger_path=tmp_path / "missing.md",
+        activity_path=tmp_path / "activity.json",
+        static_dir=tmp_path,
+        cache_dir=tmp_path / "cache",
+        bots=bots,
+        ledger_source="path",
+        events_source="off",
+    )
+    daemon._meta_ledger = "unavailable"
+    daemon.ingest_network_events(
+        [
+            {"summary": "no id"},
+            {
+                "id": "ok-1",
+                "ts": "2026-10-20T12:00:00+00:00",
+                "sender": "dev-1",
+                "recipients": ["dev-2"],
+                "group": "build",
+                "type": "message",
+                "summary": "valid",
+                "provenance": "agent-reported",
+            },
+        ]
+    )
+    assert daemon.maybe_rebuild(force=True)
+    doc = json.loads(daemon.activity_path.read_text(encoding="utf-8"))
+    ids = {e["id"] for e in doc["events"]}
+    assert ids == {"ok-1"}
 
 
 def test_network_event_edges_need_explicit_recipients(bots: list[dict]) -> None:

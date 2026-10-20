@@ -53,6 +53,7 @@ def empty_live_activity_bytes(
     generated_at: str,
     meta_github: str = "never_run",
     meta_ledger: str = "unavailable",
+    meta_ledger_error: str | None = None,
 ) -> bytes:
     """Minimal live-mode snapshot when rebuild cannot run (no demo mixing)."""
     from .build import build_nodes, resolve_project_name
@@ -76,6 +77,8 @@ def empty_live_activity_bytes(
         "edges": [],
         "unparsed": [],
     }
+    if meta_ledger_error and meta_ledger in {"unavailable", "error"}:
+        doc["meta"]["ledger_error"] = meta_ledger_error
     return (json.dumps(doc, indent=2, sort_keys=False) + "\n").encode("utf-8")
 
 

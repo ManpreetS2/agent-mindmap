@@ -77,7 +77,6 @@ DEFAULT_GH_POLL_SEC = 60.0
 DEFAULT_EVENTS_POLL_SEC = 30.0
 DEFAULT_SSE_HEARTBEAT_SEC = 15.0
 REFRESH_MIN_INTERVAL_SEC = 5.0
-REFRESH_MIN_INTERVAL_SEC = 5.0
 MAX_SSE_CONNECTIONS = 8
 SSE_RETRY_AFTER_SEC = 5
 PROCESS_LOCK_MODE = 0o600
@@ -432,6 +431,7 @@ def assemble_activity(
     bots: list[dict[str, Any]],
     generated_at: str,
     meta_ledger: str = "ok",
+    meta_ledger_error: str | None = None,
     network_events: list[dict[str, Any]] | None = None,
     meta_github: str | None = None,
 ) -> dict[str, Any]:
@@ -468,6 +468,8 @@ def assemble_activity(
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    if meta_ledger_error and meta_ledger in {"unavailable", "error"}:
+        activity["meta"]["ledger_error"] = meta_ledger_error
     return migrate_activity(activity)
 
 
@@ -501,6 +503,7 @@ class LiveDaemon:
     _ledger_fp: str | None = field(default=None, init=False)
     _ledger: LedgerParseResult | None = field(default=None, init=False)
     _meta_ledger: str = field(default="unavailable", init=False)
+    _ledger_error: str | None = field(default=None, init=False)
     _last_refresh_at: float = field(default=0.0, init=False)
     _refresh_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _gh_fp: str | None = field(default=None, init=False)
@@ -599,6 +602,7 @@ class LiveDaemon:
             generated_at=_iso_now(self.clock),
             meta_github=gh_status,
             meta_ledger=ledger_status,
+            meta_ledger_error=self._ledger_error,
         )
         self._store_activity_bytes(fallback)
         return fallback
@@ -699,6 +703,11 @@ class LiveDaemon:
             with self._lock:
                 self._health.ledger_status = status
                 self._meta_ledger = status
+                self._ledger_error = (
+                    fetched.errors[0]
+                    if fetched.errors
+                    else "ledger unavailable (MM-010)"
+                )
             return False
 
         fp = _fingerprint_text(fetched.text)
@@ -716,6 +725,7 @@ class LiveDaemon:
             with self._lock:
                 self._health.ledger_status = "error"
                 self._meta_ledger = "error"
+                self._ledger_error = "ledger parse failed"
             return False
 
         changed = fp != self._ledger_fp
@@ -723,6 +733,7 @@ class LiveDaemon:
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
             self._health.ledger_status = "ok"
             self._meta_ledger = fetched.meta_ledger
+            self._ledger_error = None
             if changed:
                 self._ledger_fp = fp
                 self._ledger = parsed
@@ -783,9 +794,10 @@ class LiveDaemon:
                 self._last_good_gh = gh
         # MM-020e: PR-lane NetworkEvents → SSE /events (dedupe by id in log).
         network, _edges = build_pr_lane_events(gh, roster=self.bots)
+        network_added = False
         if network:
-            self.ingest_network_events(network)
-        return changed
+            network_added = bool(self.ingest_network_events(network))
+        return changed or network_added
 
     def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
@@ -835,22 +847,24 @@ class LiveDaemon:
         ):
             self.maybe_rebuild()
 
-    def try_refresh(self) -> tuple[bool, str]:
+    def try_refresh(self) -> tuple[bool, str, float]:
         """
         MM-020-P0: manual poll + forced rebuild (POST /refresh).
 
-        Returns (ok, reason). reason is ``rate_limited`` when throttled.
+        Returns (ok, reason, retry_after_s). reason is ``rate_limited`` when throttled.
         """
         if self.demo_mode:
-            return False, "demo"
+            return False, "demo", 0.0
         now = self.clock()
         with self._refresh_lock:
-            if now - self._last_refresh_at < REFRESH_MIN_INTERVAL_SEC:
-                return False, "rate_limited"
+            elapsed = now - self._last_refresh_at
+            if elapsed < REFRESH_MIN_INTERVAL_SEC:
+                retry = max(1.0, REFRESH_MIN_INTERVAL_SEC - elapsed)
+                return False, "rate_limited", retry
             self._last_refresh_at = now
         self.run_poll_cycle()
         self.maybe_rebuild(force=True)
-        return True, ""
+        return True, "", 0.0
 
     def start_polling(self) -> None:
         if self.demo_mode:
@@ -946,6 +960,7 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
             bots=daemon.bots,
             generated_at=_iso_now(daemon.clock),
             meta_ledger=meta_ledger if meta_ledger else "unavailable",
+            meta_ledger_error=daemon._ledger_error,
             network_events=network_events,
             meta_github=meta_github,
         )
@@ -1240,11 +1255,11 @@ class MindmapHandler(BaseHTTPRequestHandler):
         if parsed.path != "/refresh":
             self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
             return
-        ok, reason = self.daemon.try_refresh()
+        ok, reason, retry_after = self.daemon.try_refresh()
         if not ok and reason == "rate_limited":
             self._send_json(
                 HTTPStatus.TOO_MANY_REQUESTS,
-                {"ok": False, "error": "rate_limited"},
+                {"retry_after_s": int(max(1, round(retry_after)))},
             )
             return
         if not ok:
@@ -1253,7 +1268,7 @@ class MindmapHandler(BaseHTTPRequestHandler):
                 {"ok": False, "error": reason or "refresh_failed"},
             )
             return
-        self._send_json(HTTPStatus.OK, {"ok": True})
+        self._send_json(HTTPStatus.ACCEPTED, {"queued": True})
 
     def do_PUT(self) -> None:  # noqa: N802
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)

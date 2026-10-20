@@ -53,21 +53,21 @@ describe("UI states (MM-007)", () => {
     renderMindmap(<MindmapView activity={partialError as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
-    ).toMatch(/SOURCE UNAVAILABLE.*GitHub: error/i);
+    ).toMatch(/GitHub \(error\)/i);
   });
 
   it("partial GitHub skipped names the source in banner", () => {
     renderMindmap(<MindmapView activity={partialSkipped as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
-    ).toMatch(/SOURCE UNAVAILABLE.*GitHub: skipped/i);
+    ).toMatch(/GitHub \(skipped\)/i);
   });
 
   it("partial GitHub rate_limited names the source in banner", () => {
     renderMindmap(<MindmapView activity={partialRate as unknown as Activity} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
-    ).toMatch(/SOURCE UNAVAILABLE.*GitHub: rate_limited/i);
+    ).toMatch(/rate limited/i);
   });
 
   it("stale generated_at shows age hint", () => {
