@@ -98,7 +98,37 @@ export MINDMAP_LEDGER=/absolute/path/to/build/task-ledger.md
 make refresh && cd web && npm run dev
 ```
 
-The UI fetches `/activity.json` via `web/src/data/loadActivity.ts`. There is no backend server, socket, DB, or auth.
+The UI fetches `/activity.json` via `web/src/data/loadActivity.ts`. For day-to-day use on a Mac, prefer the **live daemon** (below) instead of Vite dev + manual `make refresh`.
+
+---
+
+## Running live (MM-011)
+
+One stdlib Python process polls the ledger and GitHub, keeps `web/dist/activity.json` fresh, and serves the built UI on **127.0.0.1 only** (default port **8787**).
+
+```bash
+cd web && npm run build && cd ..
+export MINDMAP_LEDGER=/absolute/path/to/build/task-ledger.md
+make live
+# or: python3 -m ingest.live --ledger "$MINDMAP_LEDGER"
+# gh mirror (MM-010): python3 -m ingest.live --ledger-source gh
+#   (or `make live` with MINDMAP_LEDGER unset)
+```
+
+- Ledger: `--ledger PATH` / `MINDMAP_LEDGER`, or `--ledger-source gh` for the allowlisted `data/ledger` mirror (same fetcher as `make refresh-gh-ledger`).
+- Poll intervals: `--ledger-poll-sec` / `--gh-poll-sec`, or `MINDMAP_LEDGER_POLL_SEC` / `MINDMAP_GH_POLL_SEC` (defaults 30s / 60s).
+- Endpoints: `/` (static `web/dist`), `/activity.json` (ETag + `If-None-Match` → 304), `/healthz` (poll timestamps + errors).
+- GitHub: same read-only `gh api` allowlist as ingest; no tokens stored or logged.
+- macOS autostart (Python **3.12+** only — not `/usr/bin/python3` on macOS):
+  1. In the repo: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (and `cd web && npm run build`).
+  2. `mkdir -p ~/Library/Logs/mindmap` (launchd does not create the log directory).
+  3. Copy `ops/com.manpreet.mindmap.plist` to `~/Library/LaunchAgents/` and replace placeholders:
+     - `REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT` → absolute path to this repo (used for `WorkingDirectory`, `PYTHONPATH`, and **`.venv/bin/python`** in `ProgramArguments`).
+     - `REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md` → ledger file (or remove `MINDMAP_LEDGER` and pass `--ledger-source gh` via a wrapper if you customize `ProgramArguments`).
+     - `REPLACE_WITH_ABSOLUTE_LOG_DIR` → e.g. `/Users/you/Library/Logs/mindmap`.
+  4. `plutil -lint ~/Library/LaunchAgents/com.manpreet.mindmap.plist`
+  5. `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist` (unload: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist`).
+  - `ingest.live` exits immediately with a clear stderr message if the interpreter is older than 3.12 (belt-and-suspenders if the wrong binary is configured).
 
 ---
 
