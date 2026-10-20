@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { LedgerLoadError } from "./data/loadActivity";
-import { createPollTransport } from "./data/activityTransport";
+import { createSseTransport } from "./data/activityTransport";
 import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
@@ -15,7 +15,10 @@ const POLL_MS = Number(
 
 export function App() {
   const transport = useMemo(
-    () => createPollTransport({ intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000 }),
+    () =>
+      createSseTransport({
+        intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000,
+      }),
     [],
   );
   const { activity, error, statusPulseNodeIds, reload } =

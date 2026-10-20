@@ -1,4 +1,9 @@
-"""Derive graph edges from activity events (handoff / verdict / pr / merge / message)."""
+"""Derive graph edges from activity events (handoff / verdict / pr / merge / message).
+
+MM-020e / MM-013: PR-lane edges come from GitHub activity events with
+provenance ``github-verified`` (see ``ingest.github_poller.build_pr_lane_events``).
+Unknown / null actors never produce edges (§8 missing-attribution).
+"""
 
 from __future__ import annotations
 
