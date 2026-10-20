@@ -32,7 +32,8 @@ ALLOWED_REPOS = frozenset(
 DEFAULT_REPOS = ("ManpreetS2/fencepost", "ManpreetS2/agent-mindmap")
 RATE_LIMIT_FLOOR = 50
 PER_PAGE = 100
-MAX_PAGES = 20
+MAX_PAGES = 20  # sub-resource page cap
+MAX_PRS = 50  # architecture §8 — PR list hard cap
 LINK_NEXT_RE = re.compile(r'<([^>]+)>\s*;\s*rel="next"', re.IGNORECASE)
 
 
@@ -48,16 +49,31 @@ def event_id(source: str, locator: str) -> str:
     return hashlib.sha1(f"{source}{locator}".encode("utf-8")).hexdigest()
 
 
+def repo_id_from_item(item: dict[str, Any]) -> int | None:
+    """Best-effort numeric repository id from a PR/issue-like JSON object."""
+    for key in ("repository", "base", "head"):
+        node = item.get(key)
+        if isinstance(node, dict):
+            repo = node.get("repo") if key in {"base", "head"} else node
+            if isinstance(repo, dict) and isinstance(repo.get("id"), int):
+                return int(repo["id"])
+            if key == "repository" and isinstance(node.get("id"), int):
+                return int(node["id"])
+    return None
+
+
 def next_link_path(
     link_header: str | None,
     *,
     allowed_repos: frozenset[str] = ALLOWED_REPOS,
+    allowed_repo_ids: frozenset[int] | set[int] | None = None,
 ) -> str | None:
     """
     Extract the next page path from a GitHub Link header.
 
-    SEC-MM003-1: only follow links whose netloc is exactly `api.github.com`
-    and whose path starts with `repos/<allowlisted owner/repo>/`.
+    SEC-MM003-1 / QA-MM003-9: netloc must be `api.github.com`, and the path must
+    start with either `repos/<allowlisted owner/repo>/` or
+    `repositories/<allowlisted numeric id>/`.
     Raises PaginationLinkError on foreign host/repo (caller stops + meta=error).
     """
     if not link_header:
@@ -74,14 +90,28 @@ def next_link_path(
 
     path = parsed.path.lstrip("/")
     parts = path.split("/")
-    # Expect: repos / <owner> / <name> / ...
-    if len(parts) < 3 or parts[0] != "repos":
+    if not parts:
         raise PaginationLinkError(f"refusing pagination link path {path!r}")
-    repo = f"{parts[1]}/{parts[2]}"
-    if repo not in allowed_repos:
-        raise PaginationLinkError(f"refusing pagination link repo {repo!r}")
-    if not path.startswith(f"repos/{repo}/") and path != f"repos/{repo}":
-        # path must be under the allowlisted repo prefix
+
+    if parts[0] == "repos":
+        if len(parts) < 3:
+            raise PaginationLinkError(f"refusing pagination link path {path!r}")
+        repo = f"{parts[1]}/{parts[2]}"
+        if repo not in allowed_repos:
+            raise PaginationLinkError(f"refusing pagination link repo {repo!r}")
+        if not path.startswith(f"repos/{repo}/") and path != f"repos/{repo}":
+            raise PaginationLinkError(f"refusing pagination link path {path!r}")
+    elif parts[0] == "repositories":
+        if len(parts) < 2 or not parts[1].isdigit():
+            raise PaginationLinkError(f"refusing pagination link path {path!r}")
+        rid = int(parts[1])
+        if not allowed_repo_ids or rid not in allowed_repo_ids:
+            raise PaginationLinkError(
+                f"refusing pagination link repository id {rid!r}"
+            )
+        if not path.startswith(f"repositories/{rid}/") and path != f"repositories/{rid}":
+            raise PaginationLinkError(f"refusing pagination link path {path!r}")
+    else:
         raise PaginationLinkError(f"refusing pagination link path {path!r}")
 
     if parsed.query:
@@ -247,6 +277,8 @@ class GitHubPoller:
         self.request_count = 0
         self._rate_limited = False
         self._errors: list[str] = []
+        # owner/repo → numeric GitHub repository id (for Link /repositories/<id>/)
+        self._repo_ids: dict[str, int] = {}
 
     def _request(self, api_path: str) -> tuple[GhResponse | None, Any | None]:
         """
@@ -316,10 +348,38 @@ class GitHubPoller:
         _resp, data = self._request(api_path)
         return data
 
-    def _get_json_list(self, api_path: str) -> list[Any]:
+    def _remember_repo_id(self, repo: str, repo_id: int | None) -> None:
+        if repo_id is None:
+            return
+        self._repo_ids[repo] = int(repo_id)
+
+    def _resolve_repo_id(self, repo: str) -> int | None:
+        """GET repos/{owner}/{repo} once; cache numeric id for Link allowlisting."""
+        if repo in self._repo_ids:
+            return self._repo_ids[repo]
+        data = self._get_json(f"repos/{repo}")
+        if isinstance(data, dict) and isinstance(data.get("id"), int):
+            self._remember_repo_id(repo, int(data["id"]))
+            return self._repo_ids[repo]
+        return None
+
+    def _allowed_ids_for(self, repo: str) -> frozenset[int]:
+        rid = self._repo_ids.get(repo)
+        return frozenset({rid}) if rid is not None else frozenset()
+
+    def _get_json_list(
+        self,
+        api_path: str,
+        *,
+        repo: str,
+        max_pages: int | None = MAX_PAGES,
+        max_items: int | None = None,
+    ) -> list[Any]:
         """
         Paginated list GET (per_page=100, follow Link rel=next).
-        Caps at MAX_PAGES. Rejected next links stop pagination and flag error.
+
+        Sub-resources: max_pages=MAX_PAGES (20).
+        PR lists: max_items=MAX_PRS (50); page cap optional/None.
         """
         items: list[Any] = []
         path = api_path
@@ -331,16 +391,21 @@ class GitHubPoller:
         page_count = 0
         while path and path not in seen_paths:
             page_count += 1
-            if page_count > MAX_PAGES:
+            if max_pages is not None and page_count > max_pages:
                 self._errors.append(
-                    f"pagination page cap ({MAX_PAGES}) exceeded for {api_path}"
+                    f"pagination page cap ({max_pages}) exceeded for {api_path}"
                 )
                 break
 
             seen_paths.add(path)
             resp, data = self._request(path)
             if isinstance(data, list):
+                if data and repo not in self._repo_ids and isinstance(data[0], dict):
+                    self._remember_repo_id(repo, repo_id_from_item(data[0]))
                 items.extend(data)
+                if max_items is not None and len(items) >= max_items:
+                    items = items[:max_items]
+                    break
             elif data is not None:
                 self._errors.append(f"unexpected list payload for {path}")
                 break
@@ -355,7 +420,10 @@ class GitHubPoller:
                 break
 
             try:
-                path_next = next_link_path(resp.headers.get("link"))
+                path_next = next_link_path(
+                    resp.headers.get("link"),
+                    allowed_repo_ids=self._allowed_ids_for(repo),
+                )
             except PaginationLinkError as exc:
                 self._errors.append(str(exc))
                 break
@@ -394,10 +462,18 @@ class GitHubPoller:
 
     def _poll_repo(self, repo: str, seen: set[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        pulls = self._get_json_list(f"repos/{repo}/pulls?state=all")
+        self._resolve_repo_id(repo)
+        pulls = self._get_json_list(
+            f"repos/{repo}/pulls?state=all",
+            repo=repo,
+            max_pages=None,
+            max_items=MAX_PRS,
+        )
         for pr in pulls:
             if not isinstance(pr, dict):
                 continue
+            if repo not in self._repo_ids:
+                self._remember_repo_id(repo, repo_id_from_item(pr))
             out.extend(self._events_for_pr(repo, pr, seen))
             if self._rate_limited:
                 break
@@ -449,26 +525,34 @@ class GitHubPoller:
             )
             _append_unique(events, seen, merged)
 
-        reviews = self._get_json_list(f"repos/{repo}/pulls/{number}/reviews")
+        reviews = self._get_json_list(
+            f"repos/{repo}/pulls/{number}/reviews", repo=repo
+        )
         for rev in reviews:
             if isinstance(rev, dict):
                 events.extend(self._review_events(repo, number, html, task_id, rev, seen))
 
-        review_comments = self._get_json_list(f"repos/{repo}/pulls/{number}/comments")
+        review_comments = self._get_json_list(
+            f"repos/{repo}/pulls/{number}/comments", repo=repo
+        )
         for c in review_comments:
             if isinstance(c, dict):
                 events.extend(
                     self._comment_events(repo, number, task_id, c, seen, kind="review_comment")
                 )
 
-        issue_comments = self._get_json_list(f"repos/{repo}/issues/{number}/comments")
+        issue_comments = self._get_json_list(
+            f"repos/{repo}/issues/{number}/comments", repo=repo
+        )
         for c in issue_comments:
             if isinstance(c, dict):
                 events.extend(
                     self._comment_events(repo, number, task_id, c, seen, kind="issue_comment")
                 )
 
-        commits = self._get_json_list(f"repos/{repo}/pulls/{number}/commits")
+        commits = self._get_json_list(
+            f"repos/{repo}/pulls/{number}/commits", repo=repo
+        )
         if commits:
             head_sha = (commits[-1].get("sha") or "")[:40].lower()
             if pr.get("merged_at") and head_sha:

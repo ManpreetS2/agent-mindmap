@@ -12,12 +12,16 @@ import pytest
 from ingest.attribute import attribute_from_body
 from ingest.github_poller import (
     MAX_PAGES,
+    MAX_PRS,
     GhResponse,
     PaginationLinkError,
     assert_no_credentials,
     next_link_path,
     poll_github,
 )
+
+FENCEPOST_REPO_ID = 111001
+AGENT_MINDMAP_REPO_ID = 111002
 
 ROOT = Path(__file__).resolve().parents[1]
 FIX = ROOT / "tests" / "fixtures" / "github"
@@ -31,6 +35,14 @@ def _load(name: str) -> Any:
 
 def _fixture_map() -> dict[str, Any]:
     return {
+        "repos/ManpreetS2/fencepost": {
+            "id": FENCEPOST_REPO_ID,
+            "full_name": "ManpreetS2/fencepost",
+        },
+        "repos/ManpreetS2/agent-mindmap": {
+            "id": AGENT_MINDMAP_REPO_ID,
+            "full_name": "ManpreetS2/agent-mindmap",
+        },
         "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100": _load("fencepost_pulls.json"),
         "repos/ManpreetS2/agent-mindmap/pulls?state=all&per_page=100": _load(
             "agent_mindmap_pulls.json"
@@ -229,6 +241,10 @@ def test_rate_limited_when_remaining_under_floor(cache_dir: Path) -> None:
 def test_rate_limited_on_403_rate_limit(cache_dir: Path) -> None:
     pulls = "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"
     mapping = {
+        "repos/ManpreetS2/fencepost": {
+            "id": FENCEPOST_REPO_ID,
+            "full_name": "ManpreetS2/fencepost",
+        },
         pulls: _load("fencepost_pulls.json"),
         "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100": _load("pr5_reviews.json"),
     }
@@ -272,6 +288,10 @@ def test_paginate_reviews_over_thirty_items(cache_dir: Path) -> None:
     p1 = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100"
     p2 = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100&page=2"
     mapping = {
+        "repos/ManpreetS2/fencepost": {
+            "id": FENCEPOST_REPO_ID,
+            "full_name": "ManpreetS2/fencepost",
+        },
         "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100": [
             {
                 "number": 5,
@@ -383,6 +403,14 @@ def test_next_link_path_helper() -> None:
     assert next_link_path(link) == (
         "repos/ManpreetS2/fencepost/pulls?page=2&per_page=100"
     )
+    # Realistic GitHub Link uses /repositories/<id>/
+    link_id = (
+        f'<https://api.github.com/repositories/{FENCEPOST_REPO_ID}/pulls/5/reviews?page=2>; '
+        'rel="next"'
+    )
+    assert next_link_path(
+        link_id, allowed_repo_ids=frozenset({FENCEPOST_REPO_ID})
+    ) == (f"repositories/{FENCEPOST_REPO_ID}/pulls/5/reviews?page=2")
 
 
 def test_next_link_rejects_foreign_host() -> None:
@@ -397,10 +425,19 @@ def test_next_link_rejects_foreign_repo() -> None:
     )
     with pytest.raises(PaginationLinkError, match="repo"):
         next_link_path(link)
+    with pytest.raises(PaginationLinkError, match="repository id"):
+        next_link_path(
+            '<https://api.github.com/repositories/999999/pulls?page=2>; rel="next"',
+            allowed_repo_ids=frozenset({FENCEPOST_REPO_ID}),
+        )
 
 
 def _single_pr_mapping() -> dict[str, Any]:
     return {
+        "repos/ManpreetS2/fencepost": {
+            "id": FENCEPOST_REPO_ID,
+            "full_name": "ManpreetS2/fencepost",
+        },
         "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100": [
             {
                 "number": 5,
@@ -411,6 +448,9 @@ def _single_pr_mapping() -> dict[str, Any]:
                 "merged_at": None,
                 "merge_commit_sha": None,
                 "head": {"ref": "feat/RP-005-ingest-hardening", "sha": "aaa"},
+                "base": {
+                    "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+                },
                 "user": {"login": "ManpreetS2"},
             }
         ],
@@ -479,6 +519,127 @@ def test_foreign_repo_link_stops_pagination_sets_error(cache_dir: Path) -> None:
     assert result.meta_github == "error"
     assert any("ok review" in e.get("raw", "") for e in result.events)
     assert not any("OtherOrg" in c for c in mock.calls)
+
+
+def test_repositories_numeric_id_link_pagination(cache_dir: Path) -> None:
+    """QA-MM003-9: follow realistic /repositories/<id>/ Link headers."""
+    p1 = "repos/ManpreetS2/fencepost/pulls/5/reviews?per_page=100"
+    p2 = f"repositories/{FENCEPOST_REPO_ID}/pulls/5/reviews?per_page=100&page=2"
+    mapping = _single_pr_mapping()
+    mapping[p1] = [
+        {
+            "id": 1,
+            "body": "id-link page1",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-1",
+            "submitted_at": "2026-10-19T21:00:00-07:00",
+            "state": "COMMENTED",
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mapping[p2] = [
+        {
+            "id": 2,
+            "body": "id-link page2",
+            "html_url": "https://github.com/ManpreetS2/fencepost/pull/5#pullrequestreview-2",
+            "submitted_at": "2026-10-19T21:01:00-07:00",
+            "state": "COMMENTED",
+            "user": {"login": "ManpreetS2"},
+        }
+    ]
+    mock = MockGh(
+        mapping=mapping,
+        links={
+            p1: (
+                f'<https://api.github.com/repositories/{FENCEPOST_REPO_ID}/'
+                'pulls/5/reviews?per_page=100&page=2>; rel="next"'
+            )
+        },
+    )
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=mock,
+        repos=("ManpreetS2/fencepost",),
+    )
+    assert result.meta_github == "ok"
+    assert p2 in mock.calls
+    assert any(e.get("raw") == "id-link page1" for e in result.events)
+    assert any(e.get("raw") == "id-link page2" for e in result.events)
+
+
+def test_max_prs_cap_stops_pr_list_pagination(cache_dir: Path) -> None:
+    """QA-MM003-10: collect at most MAX_PRS (50) PRs."""
+    page1 = [
+        {
+            "number": n,
+            "title": f"feat/RP-{n:03d}-x",
+            "body": "~DEV 1 ⚙️",
+            "html_url": f"https://github.com/ManpreetS2/fencepost/pull/{n}",
+            "created_at": "2026-10-19T21:35:00-07:00",
+            "merged_at": None,
+            "merge_commit_sha": None,
+            "head": {"ref": f"feat/RP-{n:03d}-x", "sha": "aaa"},
+            "base": {
+                "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+            },
+            "user": {"login": "ManpreetS2"},
+        }
+        for n in range(1, 41)
+    ]
+    page2 = [
+        {
+            "number": n,
+            "title": f"feat/RP-{n:03d}-x",
+            "body": "~DEV 1 ⚙️",
+            "html_url": f"https://github.com/ManpreetS2/fencepost/pull/{n}",
+            "created_at": "2026-10-19T21:35:00-07:00",
+            "merged_at": None,
+            "merge_commit_sha": None,
+            "head": {"ref": f"feat/RP-{n:03d}-x", "sha": "aaa"},
+            "base": {
+                "repo": {"id": FENCEPOST_REPO_ID, "full_name": "ManpreetS2/fencepost"}
+            },
+            "user": {"login": "ManpreetS2"},
+        }
+        for n in range(41, 81)
+    ]
+    p1 = "repos/ManpreetS2/fencepost/pulls?state=all&per_page=100"
+    p2 = f"repositories/{FENCEPOST_REPO_ID}/pulls?state=all&per_page=100&page=2"
+    mapping: dict[str, Any] = {
+        "repos/ManpreetS2/fencepost": {
+            "id": FENCEPOST_REPO_ID,
+            "full_name": "ManpreetS2/fencepost",
+        },
+        p1: page1,
+        p2: page2,
+    }
+    # Empty sub-resources for every PR we might touch (only first 50 opened).
+    for n in range(1, MAX_PRS + 1):
+        mapping[f"repos/ManpreetS2/fencepost/pulls/{n}/reviews?per_page=100"] = []
+        mapping[f"repos/ManpreetS2/fencepost/pulls/{n}/comments?per_page=100"] = []
+        mapping[f"repos/ManpreetS2/fencepost/issues/{n}/comments?per_page=100"] = []
+        mapping[f"repos/ManpreetS2/fencepost/pulls/{n}/commits?per_page=100"] = []
+
+    mock = MockGh(
+        mapping=mapping,
+        links={
+            p1: (
+                f'<https://api.github.com/repositories/{FENCEPOST_REPO_ID}/'
+                'pulls?state=all&per_page=100&page=2>; rel="next"'
+            )
+        },
+    )
+    result = poll_github(
+        cache_dir=cache_dir,
+        runner=mock,
+        repos=("ManpreetS2/fencepost",),
+    )
+    opened = [e for e in result.events if e["type"] == "pr_opened"]
+    assert len(opened) == MAX_PRS
+    # Stopped after first page once 40+ items would continue — with 40 on page1
+    # we follow next, then truncate at 50 (10 from page2). Page2 must be fetched.
+    assert p2 in mock.calls
+    assert max(e["pr"] for e in opened) == MAX_PRS
+    assert not any(e.get("pr", 0) > MAX_PRS for e in result.events)
 
 
 def test_pagination_page_cap(cache_dir: Path) -> None:
