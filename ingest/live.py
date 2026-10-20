@@ -28,6 +28,8 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Literal
 from urllib.parse import unquote, urlparse
 
+from .activity_groups import snapshot_activity_groups
+from .actor_resolve import apply_strict_attribution, resolve_network_sender_strict
 from .attribute import load_bots
 from .build import (
     DEFAULT_BOTS,
@@ -379,10 +381,9 @@ def _fingerprint_github(gh: GitHubPollResult) -> str:
 def network_event_to_activity_event(
     ne: dict[str, Any],
     bots: list[dict[str, Any]] | None = None,
+    ledger_tasks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Map NetworkEventLog entry → activity Event (never invent recipients)."""
-    from .sender_resolve import resolve_network_sender
-
     eid = ne.get("id")
     if not isinstance(eid, str) or not eid.strip():
         return None
@@ -392,16 +393,13 @@ def network_event_to_activity_event(
     ts = ne.get("ts")
     if not isinstance(ts, str) or not ts.strip():
         return None
-    actor = resolve_network_sender(ne, bots=bots)
+    actor, attribution_method = resolve_network_sender_strict(
+        ne, bots=bots, ledger_tasks=ledger_tasks
+    )
     prov = ne.get("provenance")
     if prov not in {"observed", "agent-reported", "github-verified"}:
         prov = "agent-reported"
     etype = str(ne.get("type") or "note")
-    attribution_method = (
-        "github_login"
-        if prov == "github-verified"
-        else ("signature" if actor else "unknown")
-    )
     evt: dict[str, Any] = {
         "id": eid,
         "type": etype,
@@ -444,8 +442,11 @@ def assemble_activity(
     """Same shape as build.build_activity without re-fetching sources."""
     events = merge_events(ledger, gh)
     seen = {str(e.get("id")) for e in events if e.get("id")}
+    ledger_tasks = ledger.tasks if meta_ledger == "ok" else []
     for ne in network_events or []:
-        mapped = network_event_to_activity_event(ne, bots=bots)
+        mapped = network_event_to_activity_event(
+            ne, bots=bots, ledger_tasks=ledger_tasks
+        )
         if mapped is None:
             continue
         mid = mapped["id"]
@@ -453,10 +454,18 @@ def assemble_activity(
             continue
         seen.add(mid)
         events.append(mapped)
+    unattributed = apply_strict_attribution(
+        events, bots=bots, ledger_tasks=ledger_tasks
+    )
     edges = derive_edges(events)
     nodes = build_nodes(
-        bots, ledger.tasks, events, membership=membership_index()
+        bots,
+        ledger.tasks,
+        events,
+        membership=membership_index(),
+        meta_ledger=meta_ledger,
     )
+    activity_groups, groups_reason = snapshot_activity_groups()
     gh_status = meta_github if meta_github is not None else gh.meta_github
     project = resolve_project_name()
     activity = {
@@ -469,7 +478,9 @@ def assemble_activity(
             "github": gh_status,
             "ledger": meta_ledger,
             "ledger_last_entry_at": ledger_last_entry_at(ledger),
+            "unattributed_event_count": unattributed,
         },
+        "groups": activity_groups,
         "nodes": nodes,
         "tasks": ledger.tasks,
         "events": events,
@@ -478,6 +489,8 @@ def assemble_activity(
     }
     if meta_ledger_error and meta_ledger in {"unavailable", "error"}:
         activity["meta"]["ledger_error"] = meta_ledger_error
+    if groups_reason:
+        activity["groups_reason"] = groups_reason
     return migrate_activity(activity)
 
 
@@ -786,10 +799,16 @@ class LiveDaemon:
             return False
 
         try:
+            ledger_tasks = (
+                self._ledger.tasks
+                if self._ledger is not None and self._meta_ledger == "ok"
+                else []
+            )
             gh = poll_github(
                 cache_dir=self.cache_dir,
                 bots=self.bots,
                 runner=self._gh_runner(),
+                ledger_tasks=ledger_tasks,
             )
         except Exception as exc:  # noqa: BLE001
             self._append_error(f"github poll failed: {type(exc).__name__}")
@@ -1080,11 +1099,20 @@ class MindmapHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
 
-    def _send_json(self, status: int, payload: dict[str, Any]) -> None:
+    def _send_json(
+        self,
+        status: int,
+        payload: dict[str, Any],
+        *,
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if extra_headers:
+            for key, value in extra_headers.items():
+                self.send_header(key, value)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -1358,9 +1386,11 @@ class MindmapHandler(BaseHTTPRequestHandler):
             return
         ok, reason, retry_after = self.daemon.try_refresh()
         if not ok and reason == "rate_limited":
+            retry_s = int(max(1, round(retry_after)))
             self._send_json(
                 HTTPStatus.TOO_MANY_REQUESTS,
-                {"retry_after_s": int(max(1, round(retry_after)))},
+                {"retry_after_s": retry_s},
+                extra_headers={"Retry-After": str(retry_s)},
             )
             return
         if not ok:

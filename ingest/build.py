@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .attribute import load_bots
+from .attribute import load_bots, owner_to_bot_id
 from .edges import derive_edges
 from .github_poller import GhRunner, GitHubPollResult, poll_github
 from .ledger_fetch import LEDGER_SOURCE_URL, LedgerFetchResult, fetch_ledger_from_gh
@@ -29,6 +29,8 @@ from .ledger_parser import (
     parse_ledger,
     parse_ledger_file,
 )
+from .activity_groups import snapshot_activity_groups
+from .actor_resolve import apply_strict_attribution
 from .membership import membership_index
 from .migrate import migrate_activity
 
@@ -96,22 +98,13 @@ def validate_activity(activity: dict[str, Any], schema: dict[str, Any] | None = 
     jsonschema.validate(instance=activity, schema=schema or _load_schema())
 
 
-def _owner_to_bot_id(owner: str, bots: list[dict[str, Any]]) -> str | None:
-    key = owner.strip().lower()
-    for bot in bots:
-        names = {bot["display_name"].lower(), bot["id"].lower(), *(a.lstrip("~").lower() for a in bot.get("aliases", []))}
-        if key in names or any(key.startswith(n + ",") or key.startswith(n + " ") for n in names):
-            return bot["id"]
-    # Multi-owner cells like "QA, Security, DevOps" — no single node
-    return None
-
-
 def build_nodes(
     bots: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     events: list[dict[str, Any]],
     *,
     membership: dict[str, list[str]] | None = None,
+    meta_ledger: str = "ok",
 ) -> list[dict[str, Any]]:
     """Roster nodes at fixed layout positions with best-effort status/task.
 
@@ -120,7 +113,7 @@ def build_nodes(
     """
     tasks_by_owner: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
-        bot_id = _owner_to_bot_id(str(task.get("owner", "")), bots)
+        bot_id = owner_to_bot_id(str(task.get("owner", "")), bots)
         if bot_id:
             tasks_by_owner.setdefault(bot_id, []).append(task)
 
@@ -143,6 +136,7 @@ def build_nodes(
                     agent_links[str(actor)].append(m.group(0))
 
     member_of = membership if membership is not None else membership_index()
+    ledger_ok = meta_ledger == "ok"
 
     nodes: list[dict[str, Any]] = []
     for bot in bots:
@@ -153,16 +147,18 @@ def build_nodes(
             "label": bot["display_name"],
             "group": bot["group"],
             "groups": groups,
-            "status": "IDLE",
+            "status": "UNKNOWN",
             "agent_links": agent_links.get(bot_id, []),
             "layout": dict(bot["layout"]),
         }
         owned = tasks_by_owner.get(bot_id) or []
-        if owned:
+        if owned and ledger_ok:
             # Prefer non-DONE, else last listed
             active = next((t for t in owned if t.get("status") not in {"DONE", "IDLE"}), owned[-1])
             node["current_task"] = active["id"]
             node["status"] = active.get("status") or "UNKNOWN"
+        elif bot_id in latest_by_actor:
+            node["status"] = "IN_PROGRESS"
         if bot_id in latest_by_actor:
             node["last_activity_ts"] = latest_by_actor[bot_id]
         nodes.append(node)
@@ -229,8 +225,15 @@ def build_activity(
             )
 
     events = merge_events(ledger, gh)
+    ledger_tasks = ledger.tasks if meta_ledger == "ok" else []
+    unattributed = apply_strict_attribution(
+        events, bots=bot_list, ledger_tasks=ledger_tasks
+    )
     edges = derive_edges(events)
-    nodes = build_nodes(bot_list, ledger.tasks, events)
+    nodes = build_nodes(
+        bot_list, ledger.tasks, events, meta_ledger=meta_ledger
+    )
+    activity_groups, groups_reason = snapshot_activity_groups()
     ts = generated_at or datetime.now(timezone.utc).isoformat()
 
     project = resolve_project_name()
@@ -239,6 +242,7 @@ def build_activity(
         "ledger": meta_ledger,
         "ledger_last_entry_at": ledger_last_entry_at(ledger),
         "project": project,
+        "unattributed_event_count": unattributed,
     }
 
     activity = {
@@ -246,12 +250,15 @@ def build_activity(
         "generated_at": ts,
         "project": project,
         "meta": meta,
+        "groups": activity_groups,
         "nodes": nodes,
         "tasks": ledger.tasks,
         "events": events,
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    if groups_reason:
+        activity["groups_reason"] = groups_reason
     # Stamp required provenance on 1.1.0 events (Director / MM-020a migration rules).
     return migrate_activity(activity)
 

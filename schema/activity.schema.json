@@ -68,6 +68,11 @@
           "type": "string",
           "pattern": "^[a-z][a-z0-9-]{0,63}$",
           "description": "MM-020-P0: same as top-level project; UI reads meta.project first"
+        },
+        "unattributed_event_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Events with no resolved actor after strict attribution"
         }
       }
     },
@@ -91,6 +96,27 @@
       "type": "array",
       "items": { "$ref": "#/$defs/event" },
       "description": "Ledger lines that could not be fully classified; also mirrored as note events when applicable"
+    },
+    "groups": {
+      "type": "array",
+      "description": "Group rooms from config/groups.json (id, label, members)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "members"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "members": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "groups_reason": {
+      "type": "string",
+      "description": "Present when groups is empty — explains missing config"
     }
   },
   "allOf": [
@@ -177,7 +203,8 @@
             "ledger_owner",
             "unknown",
             "github_login",
-            "github_login_unmapped"
+            "github_login_unmapped",
+            "network_from"
           ]
         }
       }

@@ -128,8 +128,8 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
       reviewer → PR author.
     - pr: each signature-attributed review/comment → PR author → reviewer,
       deduped per (author, reviewer, repo, pr).
-    - message (MM-020a): explicit recipients → sender→each recipient;
-      untargeted → sender→group:{group}. Recipients are never invented.
+    - message (MM-020a / P0): explicit recipients → sender→each recipient.
+      No recipients → no message edge. Recipients are never invented.
     """
     pr_authors: dict[tuple[str, int], str] = {}
     merges_by_pr: dict[tuple[str, int], list[dict[str, Any]]] = {}

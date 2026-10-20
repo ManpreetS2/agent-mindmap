@@ -182,6 +182,12 @@ def test_refresh_post_gated_rate_limited_and_polls(live_env: dict) -> None:
         assert status == HTTPStatus.TOO_MANY_REQUESTS
         payload = json.loads(body.decode())
         assert payload["retry_after_s"] >= 30
+
+        req2 = urllib.request.Request(url, method="POST", headers={"Host": f"{host}:{port}"})
+        try:
+            urllib.request.urlopen(req2, timeout=5)
+        except urllib.error.HTTPError as exc:
+            assert exc.headers.get("Retry-After") is not None
     finally:
         daemon.stop_polling()
         httpd.shutdown()

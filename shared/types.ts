@@ -60,7 +60,8 @@ export type AttributionMethod =
   | "ledger_owner"
   | "unknown"
   | "github_login"
-  | "github_login_unmapped";
+  | "github_login_unmapped"
+  | "network_from";
 
 /** Provenance of a live / network fact (MM-020a). */
 export type Provenance = "observed" | "agent-reported" | "github-verified";
@@ -173,6 +174,14 @@ export interface ActivityMeta {
   ledger_error?: string;
   /** Optional live overlay marker (schema ≥ 1.1.0). */
   events_source?: string;
+  /** Events with no resolved actor (strict attribution). */
+  unattributed_event_count?: number;
+}
+
+export interface ActivityGroupRoom {
+  id: string;
+  label: string;
+  members: string[];
 }
 
 /** 1.0.0 fixtures remain valid; new builds emit 1.1.0. */
@@ -183,6 +192,8 @@ export interface Activity {
   generated_at: string;
   project: string;
   meta: ActivityMeta;
+  groups?: ActivityGroupRoom[];
+  groups_reason?: string;
   nodes: Node[];
   tasks: Task[];
   events: Event[];
