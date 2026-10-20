@@ -1,0 +1,24 @@
+.........F.................................................s............ [ 98%]
+.                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_legacy_activity_fixtures_load_unchanged[activity.json] __________
+
+path = PosixPath('/tmp/qa-mm020d-full/checkout/web/public/activity.json')
+schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': 'https://github.com/ManpreetS2/agent-mindmap/schema...migrate), optional recipients/groups; 1.0.0 fixtures remain valid on disk and gain provenance through migration.', ...}
+
+    @pytest.mark.parametrize("path", _activity_fixture_paths(), ids=lambda p: p.name)
+    def test_legacy_activity_fixtures_load_unchanged(path: Path, schema: dict) -> None:
+        """Migration: every old activity.json fixture loads as-is (no rewrite)."""
+        raw = path.read_text(encoding="utf-8")
+        doc = json.loads(raw)
+>       assert doc["schema_version"] == "1.0.0"
+E       AssertionError: assert '1.1.0' == '1.0.0'
+E         
+E         - 1.0.0
+E         + 1.1.0
+
+tests/test_mm020a_membership.py:256: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_mm020a_membership.py::test_legacy_activity_fixtures_load_unchanged[activity.json]
+1 failed, 71 passed, 1 skipped in 3.72s
+EXIT:1

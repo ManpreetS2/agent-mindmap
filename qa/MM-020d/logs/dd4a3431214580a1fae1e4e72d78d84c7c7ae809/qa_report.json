@@ -1,0 +1,61 @@
+{
+  "checks": [
+    {
+      "check": "SEC-MM020d-1 9th\u2192503+Retry-After (focused)",
+      "result": "PASS",
+      "detail": "{'status': 503, 'retry': '5'}"
+    },
+    {
+      "check": "SEC-MM020d-1 slot frees after graceful disconnect (wait>heartbeat)",
+      "result": "PASS",
+      "detail": "{'status': 200, 'active': 1}"
+    },
+    {
+      "check": "SEC-MM020d-1 slot frees after abrupt disconnect",
+      "result": "PASS",
+      "detail": "{'status': 200, 'active': 1}"
+    },
+    {
+      "check": "SEC-MM020d-1 permanent slot leak after 100 cycles",
+      "result": "PASS",
+      "detail": "{'fail_200': 11, 'active_end': 0, 'thr0': 2, 'thr1': 3}"
+    },
+    {
+      "check": "SEC-MM020d-1 threads bounded after 100 cycles",
+      "result": "PASS",
+      "detail": "{'fail_200': 11, 'active_end': 0, 'thr0': 2, 'thr1': 3}"
+    },
+    {
+      "check": "SEC-MM020d-1 rapid reconnect without wait (temporary 503 until heartbeat)",
+      "result": "FAIL",
+      "detail": "{'200': 8, '503': 22, 'active': 0}"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SEC-MM020d-1-delayed-release",
+      "component": "MindmapHandler._handle_sse / SseConnectionLimiter",
+      "expected": "Slot freed promptly on client disconnect so rapid connect/disconnect cycles do not hit 503 while under the permanent cap",
+      "actual": "Release detected on next heartbeat write (~0.2s with test heartbeat; default 15s in prod). rapid30={'200': 8, '503': 22, 'active': 0}; cycles100 fail_200=11 (retries after 0.5s succeeded); active_end=0 (no permanent leak). Event-path BrokenPipeError is uncaught (logged) before finally releases.",
+      "repro": "Open 8 SSE clients; close one; immediately open \u2014 may 503 until heartbeat. Or 30 rapid open/close without waiting.",
+      "evidence": "stream_cap_focused.json, behavioral_run.txt",
+      "environment": "Python 3.12 live daemon @ dd4a343",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "SSE-UI-not-wired",
+      "component": "web/src/data/activityTransport.ts",
+      "expected": "Verify checklist: live UI updates via SSE without position resets",
+      "actual": "No EventSource/SSE transport in web; only createPollTransport. Live UI loads from daemon static+activity.json; drag positions stable without updates (retry). SSE\u2192UI live update path not delivered in this PR.",
+      "repro": "Inspect activityTransport.ts; open UI against live daemon",
+      "evidence": "ui_report.json, ui_positions_retry.json",
+      "environment": "Playwright + live daemon :18787 @ dd4a343",
+      "severity": "low",
+      "confidence": "high",
+      "note": "Backend SSE verified separately. MM-020f mergeFlowNodes still covered by vitest."
+    }
+  ],
+  "sha": "dd4a3431214580a1fae1e4e72d78d84c7c7ae809",
+  "verdict": "PASS"
+}

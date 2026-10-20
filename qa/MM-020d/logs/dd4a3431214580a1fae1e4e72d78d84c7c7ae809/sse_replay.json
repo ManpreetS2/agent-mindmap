@@ -1,0 +1,22 @@
+[
+  {
+    "id": "e3",
+    "ts": "2026-10-20T12:00:00-07:00",
+    "sender": "director",
+    "group": "build",
+    "type": "message",
+    "summary": "three",
+    "provenance": "agent-reported",
+    "_sse_id": "e3"
+  },
+  {
+    "id": "e4",
+    "ts": "2026-10-20T12:00:00-07:00",
+    "sender": "director",
+    "group": "build",
+    "type": "message",
+    "summary": "four",
+    "provenance": "agent-reported",
+    "_sse_id": "e4"
+  }
+]

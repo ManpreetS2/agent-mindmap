@@ -1,0 +1,4 @@
+rc=1
+stdout=
+stderr=error: another mindmap live instance is already running (lock: /tmp/qa-mm020d-zng1sq79/.mindmap-live.lock)
+

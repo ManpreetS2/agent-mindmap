@@ -1,0 +1,52 @@
+{
+  "ninth": {
+    "status": 503,
+    "retry": "5"
+  },
+  "after_graceful_0.6s": {
+    "status": 200,
+    "active": 1
+  },
+  "release_latency_samples": [
+    [
+      0.0,
+      503,
+      8
+    ],
+    [
+      0.05,
+      503,
+      8
+    ],
+    [
+      0.1,
+      503,
+      8
+    ],
+    [
+      0.15,
+      503,
+      8
+    ],
+    [
+      0.2,
+      200,
+      8
+    ]
+  ],
+  "after_abrupt_0.8s": {
+    "status": 200,
+    "active": 1
+  },
+  "cycles100": {
+    "fail_200": 11,
+    "active_end": 0,
+    "thr0": 2,
+    "thr1": 3
+  },
+  "rapid30": {
+    "200": 8,
+    "503": 22,
+    "active": 0
+  }
+}

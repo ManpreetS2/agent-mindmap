@@ -1,0 +1,55 @@
+........................................................................ [ 46%]
+...................................................s........F........... [ 92%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+_____________________ test_sec_mm020d_1_sse_connection_cap _____________________
+
+live_http = (LiveDaemon(activity_path=PosixPath('/tmp/pytest-of-ubuntu/pytest-5/test_sec_mm020d_1_sse_connecti0/dist/activity.json...bject at 0x7f1d7bd018b0>, sse_limiter=<ingest.live.SseConnectionLimiter object at 0x7f1d7bd01790>), '127.0.0.1', 43561)
+
+    def test_sec_mm020d_1_sse_connection_cap(live_http: tuple[LiveDaemon, str, int]) -> None:
+        _, host, port = live_http
+        headers = {"Host": f"{host}:{port}"}
+        connections: list[http.client.HTTPConnection] = []
+        try:
+            for _ in range(MAX_SSE_CONNECTIONS):
+                conn = http.client.HTTPConnection(host, port, timeout=5)
+                conn.request("GET", "/events", headers=headers)
+                resp = conn.getresponse()
+                assert resp.status == HTTPStatus.OK
+                connections.append(conn)
+    
+            overflow = http.client.HTTPConnection(host, port, timeout=5)
+            overflow.request("GET", "/events", headers=headers)
+            resp9 = overflow.getresponse()
+            assert resp9.status == HTTPStatus.SERVICE_UNAVAILABLE
+            assert resp9.getheader("Retry-After") == str(SSE_RETRY_AFTER_SEC)
+            overflow.close()
+    
+            connections[0].close()
+            time.sleep(0.2)
+    
+            replacement = http.client.HTTPConnection(host, port, timeout=5)
+            replacement.request("GET", "/events", headers=headers)
+>           assert replacement.getresponse().status == HTTPStatus.OK
+E           assert 503 == <HTTPStatus.OK: 200>
+E            +  where 503 = <http.client.HTTPResponse object at 0x7f1d7bce4460>.status
+E            +    where <http.client.HTTPResponse object at 0x7f1d7bce4460> = getresponse()
+E            +      where getresponse = <http.client.HTTPConnection object at 0x7f1d7bce6720>.getresponse
+E            +  and   <HTTPStatus.OK: 200> = HTTPStatus.OK
+
+tests/test_live.py:513: AssertionError
+----------------------------- Captured stderr call -----------------------------
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+=========================== short test summary info ============================
+FAILED tests/test_live.py::test_sec_mm020d_1_sse_connection_cap - assert 503 ...
+1 failed, 154 passed, 1 skipped in 5.16s
+EXIT:1

@@ -1,0 +1,8 @@
+{
+  "filter": 1,
+  "director": 1,
+  "xssFlag": false,
+  "consoleErrors": [],
+  "outbound": [],
+  "note": "UI has poll transport only; SSE client not wired in this PR. Position test uses poll against daemon /activity.json (may be memory-cached until rebuild)."
+}

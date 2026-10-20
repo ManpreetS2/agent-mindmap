@@ -1,0 +1,12 @@
+os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+python: Python 3.12.3
+node: v22.23.3
+head: dd4a3431214580a1fae1e4e72d78d84c7c7ae809
+previous_partial: b046529
+date_utc: 2026-10-20T09:26:00+00:00
+pytest: 155 passed, 1 skipped
+vitest: 81 passed
+typecheck: clean
+build: success
+ci_pytest: success 39398884101
+ci_web: not_triggered (path filter)

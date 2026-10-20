@@ -1,0 +1,17 @@
+mindmap live on http://127.0.0.1:18787 (ledger=tests/fixtures/ledger-sample.md, events=off)
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-Kh1Sr3nZ.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-BfOklm9d.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-BfOklm9d.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-Kh1Sr3nZ.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-Kh1Sr3nZ.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-BfOklm9d.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -

@@ -1,0 +1,3 @@
+CI web: NOT TRIGGERED on dd4a343 (PR path filter — changes are ingest/live.py, tests/test_live.py, README, ops plist).
+Local web vitest/typecheck/build still run for regression.
+CI pytest: success run 39398884101 @ dd4a343.

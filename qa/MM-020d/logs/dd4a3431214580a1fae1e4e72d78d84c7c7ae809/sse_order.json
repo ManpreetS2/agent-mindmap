@@ -1,0 +1,32 @@
+[
+  {
+    "id": "e1",
+    "ts": "2026-10-20T12:00:00-07:00",
+    "sender": "director",
+    "group": "build",
+    "type": "message",
+    "summary": "one",
+    "provenance": "agent-reported",
+    "_sse_id": "e1"
+  },
+  {
+    "id": "e2",
+    "ts": "2026-10-20T12:00:00-07:00",
+    "sender": "director",
+    "group": "build",
+    "type": "message",
+    "summary": "two",
+    "provenance": "agent-reported",
+    "_sse_id": "e2"
+  },
+  {
+    "id": "e3",
+    "ts": "2026-10-20T12:00:00-07:00",
+    "sender": "director",
+    "group": "build",
+    "type": "message",
+    "summary": "three",
+    "provenance": "agent-reported",
+    "_sse_id": "e3"
+  }
+]

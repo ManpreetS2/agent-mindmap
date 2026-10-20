@@ -1,0 +1,255 @@
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /healthz HTTP/1.1" 403 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /activity.json HTTP/1.1" 403 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /index.html HTTP/1.1" 403 -
+127.0.0.1 - "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - code 403, message Forbidden
+127.0.0.1 - "GET /events HTTP/1.1" 403 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52640)
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 746, in do_GET
+    self._handle_get_head()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 833, in _handle_get_head
+    self._handle_sse()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 814, in _handle_sse
+    self._write_sse_frame(event_id=eid, data=payload, comment=None)
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 762, in _write_sse_frame
+    self.wfile.write(f"data: {line}\n".encode("utf-8"))
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52914)
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 746, in do_GET
+    self._handle_get_head()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 833, in _handle_get_head
+    self._handle_sse()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 814, in _handle_sse
+    self._write_sse_frame(event_id=eid, data=payload, comment=None)
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 759, in _write_sse_frame
+    self.wfile.write(f"id: {event_id}\n".encode("utf-8"))
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52920)
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 746, in do_GET
+    self._handle_get_head()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 833, in _handle_get_head
+    self._handle_sse()
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 814, in _handle_sse
+    self._write_sse_frame(event_id=eid, data=payload, comment=None)
+  File "/tmp/qa-mm020d-full/checkout/ingest/live.py", line 759, in _write_sse_frame
+    self.wfile.write(f"id: {event_id}\n".encode("utf-8"))
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+127.0.0.1 - "GET /events HTTP/1.1" 503 -
+[PASS] Host/Origin allowed → 200 (/healthz) — status=200
+[PASS] Host/Origin allowed → 200 (/activity.json) — status=200
+[PASS] Host/Origin allowed → 200 (/index.html) — status=200
+[PASS] Host/Origin allowed → 200 (/events) — status=200
+[PASS] Host/Origin evil_host on /healthz → 403 — status=403
+[PASS] Host/Origin dns_rebind_host on /healthz → 403 — status=403
+[PASS] Host/Origin ip_variant_host_127_1 on /healthz → 403 — status=403
+[PASS] Host/Origin ip_variant_host_0 on /healthz → 403 — status=403
+[PASS] Host/Origin ip_variant_host_ipv6 on /healthz → 403 — status=403
+[PASS] Host/Origin missing_host on /healthz → 403 — status=403
+[PASS] Host/Origin mismatched_origin on /healthz → 403 — status=403
+[PASS] Host/Origin evil_host on /activity.json → 403 — status=403
+[PASS] Host/Origin dns_rebind_host on /activity.json → 403 — status=403
+[PASS] Host/Origin ip_variant_host_127_1 on /activity.json → 403 — status=403
+[PASS] Host/Origin ip_variant_host_0 on /activity.json → 403 — status=403
+[PASS] Host/Origin ip_variant_host_ipv6 on /activity.json → 403 — status=403
+[PASS] Host/Origin missing_host on /activity.json → 403 — status=403
+[PASS] Host/Origin mismatched_origin on /activity.json → 403 — status=403
+[PASS] Host/Origin evil_host on /index.html → 403 — status=403
+[PASS] Host/Origin dns_rebind_host on /index.html → 403 — status=403
+[PASS] Host/Origin ip_variant_host_127_1 on /index.html → 403 — status=403
+[PASS] Host/Origin ip_variant_host_0 on /index.html → 403 — status=403
+[PASS] Host/Origin ip_variant_host_ipv6 on /index.html → 403 — status=403
+[PASS] Host/Origin missing_host on /index.html → 403 — status=403
+[PASS] Host/Origin mismatched_origin on /index.html → 403 — status=403
+[PASS] Host/Origin evil_host on /events → 403 — status=403
+[PASS] Host/Origin dns_rebind_host on /events → 403 — status=403
+[PASS] Host/Origin ip_variant_host_127_1 on /events → 403 — status=403
+[PASS] Host/Origin ip_variant_host_0 on /events → 403 — status=403
+[PASS] Host/Origin ip_variant_host_ipv6 on /events → 403 — status=403
+[PASS] Host/Origin missing_host on /events → 403 — status=403
+[PASS] Host/Origin mismatched_origin on /events → 403 — status=403
+[FAIL] Origin:null policy (checklist wants 403; PR/audit allow) — statuses={'null_origin:/healthz': 200, 'null_origin:/activity.json': 200, 'null_origin:/index.html': 200, 'null_origin:/events': 200}; PR AC allows null → 200
+[FINDING:medium] origin_header_allowed: Origin: null accepted (200) — matches PR body/audit “null-or-localhost” policy, not the verify checklist 403
+[PASS] SSE streams events in order without duplicates — ids=['e1', 'e2', 'e3']
+[PASS] SSE Last-Event-ID replay — ids=['e3', 'e4']
+[PASS] SSE heartbeat comment — saw=True
+[PASS] SSE many concurrent clients (6) — ok=6 errors=[]
+[PASS] SSE disconnect cleanup (40 connect/close; fd/thread bounded) — fd_delta=-5 thr_delta=-5
+[PASS] QA-MM011-2 lock file mode 0o600 — mode=0o600
+[PASS] QA-MM011-2 second instance refused with clear message — rc=1 stderr='error: another mindmap live instance is already running (lock: /tmp/qa-mm020d-zng1sq79/.mindmap-live.lock)'
+[PASS] QA-MM011-2 kill -9 releases flock; restart works — recover_ok=True
+[PASS] QA-MM011-2 refuses symlink lock path — sym_ok=True
+[PASS] Port conflict handled (Address already in use) — OSError: [Errno 98] Address already in use
+[PASS] SEC-MM020d-1 9th SSE → 503 + Retry-After — status=503 Retry-After=5
+[FAIL] SEC-MM020d-1 slot frees after disconnect — status=503
+Traceback (most recent call last):
+  File "/tmp/qa-mm020d-full/evidence/scripts/qa_mm020d_behavioral.py", line 924, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/tmp/qa-mm020d-full/evidence/scripts/qa_mm020d_behavioral.py", line 903, in main
+    check_stream_cap(httpd_pack2, daemon2)
+  File "/tmp/qa-mm020d-full/evidence/scripts/qa_mm020d_behavioral.py", line 764, in check_stream_cap
+    abrupt.sock.shutdown(socket.SHUT_RDWR)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'shutdown'

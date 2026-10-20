@@ -1,0 +1,2 @@
+sample {"id":"manpreet","transform":"translate(40px, 40px)","html":"<div class=\"react-flow__node react-flow__node-agent nopan selectable draggable\" data-id=\"manpreet\" data-testid=\"rf__node-manpreet\" tabindex=\"0\" role=\"group\" aria-roledescription=\"node\" aria-describedb"}
+{"moved":true,"stable":true,"director":{"before":{"x":40,"y":216},"afterDrag":{"x":199.776,"y":324.42},"afterWait":{"x":199.776,"y":324.42}}}
