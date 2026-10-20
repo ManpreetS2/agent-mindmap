@@ -29,6 +29,7 @@ export function laneIdForEvent(
   return UNKNOWN_LANE_ID;
 }
 
+/** Timeline swimlanes use dated ledger/GitHub events only (not unparsed quarantine). */
 export function allTimelineEvents(activity: Activity): Event[] {
-  return [...activity.events, ...activity.unparsed];
+  return [...activity.events];
 }

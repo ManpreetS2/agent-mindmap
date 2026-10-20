@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 import type { Activity, Event } from "@shared/types";
 import { glyphForEvent } from "../utils/eventGlyph";
 import { formatAxisTime, buildTimeScale } from "../utils/timelineScale";
@@ -8,12 +16,20 @@ import {
   type TimelineLane,
 } from "../utils/timelineLanes";
 import { isLifecycleTaskId } from "../utils/taskLifecycle";
+import { plottableTimelineEvents } from "../utils/eventTime";
 import { isHttpSourceUrl } from "../utils/sourceUrl";
+import {
+  brushDomainFromRatio,
+  clampDomain,
+  zoomDomain,
+  type TimeDomain,
+} from "../utils/timelineBrush";
 import { UnsourcedTag } from "./UnsourcedTag";
 
 const LABEL_WIDTH = 108;
-const LANE_HEIGHT = 18;
+const LANE_HEIGHT = 40;
 const AXIS_HEIGHT = 20;
+const BRUSH_HEIGHT = 28;
 
 interface TimelineSwimlanesProps {
   activity: Activity;
@@ -22,6 +38,7 @@ interface TimelineSwimlanesProps {
   highlightedEventIds: ReadonlySet<string>;
   onTaskIdClick: (taskId: string) => void;
   focusedEventId: string | null;
+  nowMs?: number;
 }
 
 function EventMarker({
@@ -43,6 +60,8 @@ function EventMarker({
 }) {
   const glyph = glyphForEvent(event);
   const hasSource = isHttpSourceUrl(event.source_url);
+  const hasTaskChip =
+    Boolean(event.task_id) && isLifecycleTaskId(event.task_id!);
   const opacity = dimmed ? 0.25 : 1;
   const stroke = highlighted ? "var(--accent)" : "var(--border-subtle)";
 
@@ -96,7 +115,7 @@ function EventMarker({
       ) : (
         <g>{markerBody}</g>
       )}
-      {event.task_id && isLifecycleTaskId(event.task_id) && (
+      {hasTaskChip && (
         <foreignObject
           x={x + 12}
           y={y - 10}
@@ -116,7 +135,13 @@ function EventMarker({
         </foreignObject>
       )}
       {!hasSource && (
-        <foreignObject x={x - 8} y={y + 10} width={80} height={18} opacity={opacity}>
+        <foreignObject
+          x={hasTaskChip ? x + 88 : x + 14}
+          y={hasTaskChip ? y - 10 : y - 8}
+          width={hasTaskChip ? 88 : 100}
+          height={20}
+          opacity={opacity}
+        >
           <UnsourcedTag />
         </foreignObject>
       )}
@@ -131,9 +156,25 @@ export function TimelineSwimlanes({
   highlightedEventIds,
   onTaskIdClick,
   focusedEventId,
+  nowMs = Date.now(),
 }: TimelineSwimlanesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900);
+  const plottable = useMemo(() => plottableTimelineEvents(events), [events]);
+
+  const fullDomain = useMemo((): TimeDomain => {
+    const scale = buildTimeScale(plottable, width);
+    return { minMs: scale.minMs, maxMs: scale.maxMs };
+  }, [plottable, width]);
+
+  const [viewDomain, setViewDomain] = useState<TimeDomain | null>(null);
+  const domain = viewDomain
+    ? clampDomain(viewDomain, fullDomain)
+    : fullDomain;
+
+  useEffect(() => {
+    setViewDomain(null);
+  }, [fullDomain.minMs, fullDomain.maxMs]);
 
   const nodeIds = useMemo(
     () => new Set(activity.nodes.map((n) => n.id)),
@@ -146,9 +187,34 @@ export function TimelineSwimlanes({
     return map;
   }, [lanes]);
 
-  const scale = useMemo(() => buildTimeScale(events, width), [events, width]);
+  const scale = useMemo(() => {
+    const paddingPx = 24;
+    const inner = Math.max(1, width - paddingPx * 2);
+    const span = Math.max(1, domain.maxMs - domain.minMs);
+    return {
+      minMs: domain.minMs,
+      maxMs: domain.maxMs,
+      toX: (ms: number) => paddingPx + ((ms - domain.minMs) / span) * inner,
+    };
+  }, [domain, width]);
+
+  const brushScale = useMemo(() => {
+    const paddingPx = LABEL_WIDTH;
+    const inner = Math.max(1, width - paddingPx - 16);
+    const span = Math.max(1, fullDomain.maxMs - fullDomain.minMs);
+    return {
+      toX: (ms: number) =>
+        paddingPx + ((ms - fullDomain.minMs) / span) * inner,
+      fromClientX: (clientX: number, rectLeft: number) => {
+        const x = clientX - rectLeft;
+        const ratio = Math.min(1, Math.max(0, (x - paddingPx) / inner));
+        return ratio;
+      },
+    };
+  }, [fullDomain, width]);
 
   const svgHeight = lanes.length * LANE_HEIGHT + AXIS_HEIGHT;
+  const brushDragging = useRef<{ start: number } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -163,19 +229,72 @@ export function TimelineSwimlanes({
   }, []);
 
   const axisTicks = useMemo(() => {
-    if (events.length === 0) return [];
-    const times = events.map((e) => new Date(e.source_time).getTime());
-    const min = Math.min(...times);
-    const max = Math.max(...times);
-    const mid = (min + max) / 2;
+    if (plottable.length === 0) return [];
+    const mid = (domain.minMs + domain.maxMs) / 2;
     return [
-      { ms: min, label: formatAxisTime(new Date(min).toISOString()) },
+      { ms: domain.minMs, label: formatAxisTime(new Date(domain.minMs).toISOString()) },
       { ms: mid, label: formatAxisTime(new Date(mid).toISOString()) },
-      { ms: max, label: formatAxisTime(new Date(max).toISOString()) },
+      { ms: domain.maxMs, label: formatAxisTime(new Date(domain.maxMs).toISOString()) },
     ];
-  }, [events]);
+  }, [plottable.length, domain]);
 
   const lifecycleActive = highlightedTaskId !== null;
+  const nowX = scale.toX(nowMs);
+  const showNow =
+    nowMs >= domain.minMs - 60_000 && nowMs <= domain.maxMs + 60_000;
+
+  const onWheel = useCallback(
+    (e: ReactWheelEvent) => {
+      if (!e.ctrlKey && Math.abs(e.deltaY) < 2) return;
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 1.15 : 0.85;
+      setViewDomain((prev) =>
+        zoomDomain(prev ?? fullDomain, fullDomain, factor),
+      );
+    },
+    [fullDomain],
+  );
+
+  const onBrushPointerDown = useCallback(
+    (e: ReactPointerEvent<SVGRectElement>) => {
+      const svg = e.currentTarget.ownerSVGElement;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const ratio = brushScale.fromClientX(e.clientX, rect.left);
+      brushDragging.current = { start: ratio };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [brushScale],
+  );
+
+  const onBrushPointerMove = useCallback(
+    (e: ReactPointerEvent<SVGRectElement>) => {
+      if (!brushDragging.current) return;
+      const svg = e.currentTarget.ownerSVGElement;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const end = brushScale.fromClientX(e.clientX, rect.left);
+      setViewDomain(
+        brushDomainFromRatio(fullDomain, brushDragging.current.start, end),
+      );
+    },
+    [brushScale, fullDomain],
+  );
+
+  const onBrushPointerUp = useCallback(() => {
+    brushDragging.current = null;
+  }, []);
+
+  const brushStartRatio =
+    (domain.minMs - fullDomain.minMs) /
+    Math.max(1, fullDomain.maxMs - fullDomain.minMs);
+  const brushEndRatio =
+    (domain.maxMs - fullDomain.minMs) /
+    Math.max(1, fullDomain.maxMs - fullDomain.minMs);
+  const brushPad = LABEL_WIDTH;
+  const brushInner = Math.max(1, width - brushPad - 16);
+  const brushX = brushPad + brushStartRatio * brushInner;
+  const brushW = Math.max(8, (brushEndRatio - brushStartRatio) * brushInner);
 
   return (
     <div
@@ -183,7 +302,39 @@ export function TimelineSwimlanes({
       className="timeline-swimlanes"
       role="group"
       aria-label="Activity timeline swim lanes"
+      onWheel={onWheel}
     >
+      <div className="timeline-zoom-controls" role="toolbar" aria-label="Timeline zoom">
+        <button
+          type="button"
+          className="timeline-zoom-btn"
+          onClick={() =>
+            setViewDomain((prev) =>
+              zoomDomain(prev ?? fullDomain, fullDomain, 0.75),
+            )
+          }
+        >
+          Zoom in
+        </button>
+        <button
+          type="button"
+          className="timeline-zoom-btn"
+          onClick={() =>
+            setViewDomain((prev) =>
+              zoomDomain(prev ?? fullDomain, fullDomain, 1.35),
+            )
+          }
+        >
+          Zoom out
+        </button>
+        <button
+          type="button"
+          className="timeline-zoom-btn"
+          onClick={() => setViewDomain(null)}
+        >
+          Reset
+        </button>
+      </div>
       <svg
         width={width}
         height={svgHeight}
@@ -193,11 +344,7 @@ export function TimelineSwimlanes({
           const y = index * LANE_HEIGHT + 4;
           return (
             <g key={lane.id}>
-              <text
-                x={4}
-                y={y + 12}
-                className="timeline-lane-label"
-              >
+              <text x={4} y={y + 12} className="timeline-lane-label">
                 <title>{lane.label}</title>
                 {lane.label.length > 14
                   ? `${lane.label.slice(0, 13)}…`
@@ -213,6 +360,24 @@ export function TimelineSwimlanes({
             </g>
           );
         })}
+        {showNow && (
+          <g className="timeline-now-line" aria-hidden="true">
+            <line
+              x1={nowX}
+              y1={0}
+              x2={nowX}
+              y2={svgHeight - AXIS_HEIGHT}
+              className="timeline-now-stroke"
+            />
+            <text
+              x={nowX + 4}
+              y={12}
+              className="timeline-now-label"
+            >
+              now
+            </text>
+          </g>
+        )}
         {axisTicks.map((tick, i) => (
           <text
             key={`${tick.ms}-${i}`}
@@ -224,11 +389,13 @@ export function TimelineSwimlanes({
             {tick.label}
           </text>
         ))}
-        {events.map((event) => {
+        {plottable.map((event) => {
           const lane = laneIdForEvent(event, nodeIds);
           const index = laneIndex.get(lane) ?? lanes.length - 1;
           const y = index * LANE_HEIGHT + 12;
-          const x = scale.toX(new Date(event.source_time).getTime());
+          const t = new Date(event.source_time).getTime();
+          if (t < domain.minMs || t > domain.maxMs) return null;
+          const x = scale.toX(t);
           const highlighted = highlightedEventIds.has(event.id);
           const dimmed =
             lifecycleActive && event.task_id !== highlightedTaskId;
@@ -245,6 +412,38 @@ export function TimelineSwimlanes({
             />
           );
         })}
+      </svg>
+      <svg
+        width={width}
+        height={BRUSH_HEIGHT}
+        className="timeline-brush"
+        aria-label="Timeline brush"
+        role="slider"
+        aria-valuemin={fullDomain.minMs}
+        aria-valuemax={fullDomain.maxMs}
+        aria-valuenow={domain.minMs}
+      >
+        <rect
+          x={brushPad}
+          y={6}
+          width={brushInner}
+          height={16}
+          className="timeline-brush-track"
+          onPointerDown={onBrushPointerDown}
+          onPointerMove={onBrushPointerMove}
+          onPointerUp={onBrushPointerUp}
+        />
+        <rect
+          x={brushX}
+          y={4}
+          width={brushW}
+          height={20}
+          rx={3}
+          className="timeline-brush-window"
+          onPointerDown={onBrushPointerDown}
+          onPointerMove={onBrushPointerMove}
+          onPointerUp={onBrushPointerUp}
+        />
       </svg>
     </div>
   );
