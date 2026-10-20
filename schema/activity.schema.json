@@ -38,6 +38,16 @@
         "github": {
           "type": "string",
           "enum": ["ok", "error", "skipped", "rate_limited"]
+        },
+        "ledger": {
+          "type": "string",
+          "enum": ["ok", "error", "skipped"],
+          "description": "Ledger read status (path or gh data/ledger mirror)"
+        },
+        "ledger_last_entry_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Latest dated ledger entry timestamp for the stale banner"
         }
       }
     },

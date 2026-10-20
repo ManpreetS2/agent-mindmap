@@ -1,8 +1,9 @@
 """
-Build activity.json from the ledger parser + GitHub poller (MM-004).
+Build activity.json from the ledger parser + GitHub poller (MM-004 / MM-010).
 
 Validates against schema/activity.schema.json and writes atomically.
 No network secrets; GitHub access is via the poller's `gh api` runner.
+Ledger may be a local path or the allowlisted `data/ledger` mirror via gh.
 """
 
 from __future__ import annotations
@@ -19,7 +20,13 @@ from typing import Any
 from .attribute import load_bots
 from .edges import derive_edges
 from .github_poller import GhRunner, GitHubPollResult, poll_github
-from .ledger_parser import LedgerParseResult, parse_ledger_file
+from .ledger_fetch import LEDGER_SOURCE_URL, LedgerFetchResult, fetch_ledger_from_gh
+from .ledger_parser import (
+    LedgerParseResult,
+    ledger_last_entry_at,
+    parse_ledger,
+    parse_ledger_file,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
@@ -119,7 +126,10 @@ def merge_events(
 
 def build_activity(
     *,
-    ledger_path: Path,
+    ledger_path: Path | None = None,
+    ledger_text: str | None = None,
+    ledger_source_url: str = "build/task-ledger.md",
+    meta_ledger: str = "ok",
     bots: list[dict[str, Any]] | None = None,
     github_runner: GhRunner | None = None,
     cache_dir: Path | None = None,
@@ -133,7 +143,17 @@ def build_activity(
     meta.github set to 'error' or 'skipped'.
     """
     bot_list = bots if bots is not None else load_bots()
-    ledger = parse_ledger_file(ledger_path, source_url="build/task-ledger.md", bots=bot_list)
+
+    if ledger_text is not None:
+        ledger = parse_ledger(
+            ledger_text, source_url=ledger_source_url, bots=bot_list
+        )
+    elif ledger_path is not None:
+        ledger = parse_ledger_file(
+            ledger_path, source_url=ledger_source_url, bots=bot_list
+        )
+    else:
+        raise ValueError("ledger_path or ledger_text is required")
 
     if skip_github:
         gh = GitHubPollResult(events=[], meta_github="skipped")
@@ -152,11 +172,17 @@ def build_activity(
     nodes = build_nodes(bot_list, ledger.tasks, events)
     ts = generated_at or datetime.now(timezone.utc).isoformat()
 
+    meta: dict[str, Any] = {
+        "github": gh.meta_github,
+        "ledger": meta_ledger,
+        "ledger_last_entry_at": ledger_last_entry_at(ledger),
+    }
+
     return {
         "schema_version": "1.0.0",
         "generated_at": ts,
         "project": "fencepost",
-        "meta": {"github": gh.meta_github},
+        "meta": meta,
         "nodes": nodes,
         "tasks": ledger.tasks,
         "events": events,
@@ -205,28 +231,75 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Path to task-ledger.md (or set MINDMAP_LEDGER)",
     )
+    parser.add_argument(
+        "--ledger-source",
+        choices=("path", "gh"),
+        default="path",
+        help="path (default) or gh (data/ledger mirror via gh api)",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--cache-dir", type=Path, default=None)
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--skip-github", action="store_true")
     args = parser.parse_args(argv)
 
-    ledger = resolve_ledger_path(args.ledger)
-    if ledger is None:
-        print(
-            "error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable",
-            file=sys.stderr,
-        )
-        return 2
-    if not ledger.is_file():
-        print(f"ledger not found: {ledger}", file=sys.stderr)
-        return 1
-
     with args.bots.open(encoding="utf-8") as f:
         bots = json.load(f)["bots"]
 
+    ledger_text: str | None = None
+    ledger_path: Path | None = None
+    ledger_url = "build/task-ledger.md"
+    meta_ledger = "ok"
+
+    if args.ledger_source == "gh":
+        fetched: LedgerFetchResult = fetch_ledger_from_gh(cache_dir=args.cache_dir)
+        meta_ledger = fetched.meta_ledger
+        ledger_url = LEDGER_SOURCE_URL
+        if fetched.text is None:
+            # Ledger error: still emit a snapshot if we can skip (empty ledger)
+            # so the UI can show meta.ledger=error.
+            activity = build_activity(
+                ledger_text="",
+                ledger_source_url=ledger_url,
+                meta_ledger="error",
+                bots=bots,
+                cache_dir=args.cache_dir,
+                skip_github=args.skip_github,
+            )
+            # Re-parse empty intentionally — meta already set
+            activity["meta"]["ledger"] = "error"
+            activity["meta"]["ledger_last_entry_at"] = None
+            try:
+                write_activity(activity, args.out)
+            except Exception as exc:  # noqa: BLE001
+                print(f"failed to write activity: {exc}", file=sys.stderr)
+                return 1
+            print(
+                f"wrote {args.out} (github={activity['meta']['github']}, "
+                f"ledger=error)",
+                file=sys.stderr,
+            )
+            return 1
+        ledger_text = fetched.text
+    else:
+        ledger_path = resolve_ledger_path(args.ledger)
+        if ledger_path is None:
+            print(
+                "error: provide --ledger PATH or set the MINDMAP_LEDGER "
+                "environment variable (or use --ledger-source gh)",
+                file=sys.stderr,
+            )
+            return 2
+        if not ledger_path.is_file():
+            print(f"ledger not found: {ledger_path}", file=sys.stderr)
+            return 1
+        ledger_url = str(ledger_path).replace("\\", "/")
+
     activity = build_activity(
-        ledger_path=ledger,
+        ledger_path=ledger_path,
+        ledger_text=ledger_text,
+        ledger_source_url=ledger_url,
+        meta_ledger=meta_ledger,
         bots=bots,
         cache_dir=args.cache_dir,
         skip_github=args.skip_github,
@@ -236,7 +309,10 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"failed to write activity: {exc}", file=sys.stderr)
         return 1
-    print(f"wrote {args.out} (github={activity['meta']['github']})")
+    print(
+        f"wrote {args.out} (github={activity['meta']['github']}, "
+        f"ledger={activity['meta']['ledger']})"
+    )
     return 0
 
 

@@ -722,3 +722,20 @@ def parse_ledger_file(
     text = p.read_text(encoding="utf-8")
     url = source_url or str(p).replace("\\", "/")
     return parse_ledger(text, source_url=url, bots=bots)
+
+
+def ledger_last_entry_at(result: LedgerParseResult) -> str | None:
+    """
+    Latest dated ledger event/unparsed timestamp (MM-010 stale banner).
+
+    Skips the undated sentinel (1970-01-01).
+    """
+    best: str | None = None
+    for evt in (*result.events, *result.unparsed):
+        ts = evt.get("source_time")
+        if not ts or ts == UNDATED_SOURCE_TIME:
+            continue
+        if best is None or str(ts) > best:
+            best = str(ts)
+    return best
+

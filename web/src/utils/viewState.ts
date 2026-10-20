@@ -21,6 +21,20 @@ export function isStaleGeneratedAt(
   return nowMs - t > STALE_THRESHOLD_MS;
 }
 
+/** Prefer ledger_last_entry_at (MM-010); fall back to generated_at. */
+export function staleReferenceTime(activity: Activity): string {
+  const last = activity.meta.ledger_last_entry_at;
+  if (typeof last === "string" && last.length > 0) return last;
+  return activity.generated_at;
+}
+
+export function isActivityStale(
+  activity: Activity,
+  nowMs = Date.now(),
+): boolean {
+  return isStaleGeneratedAt(staleReferenceTime(activity), nowMs);
+}
+
 export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
   const mins = Math.round((nowMs - new Date(generatedAt).getTime()) / 60_000);
   if (mins < 60) return `${mins} minutes ago`;

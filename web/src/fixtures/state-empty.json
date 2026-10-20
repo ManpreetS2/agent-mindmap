@@ -3,7 +3,9 @@
   "generated_at": "2026-10-20T04:58:00-07:00",
   "project": "fencepost",
   "meta": {
-    "github": "ok"
+    "github": "ok",
+    "ledger": "ok",
+    "ledger_last_entry_at": "2026-10-20T04:58:00-07:00"
   },
   "nodes": [
     {

@@ -9,10 +9,11 @@ PYTHON ?= python3
 
 help:
 	@echo "Targets:"
-	@echo "  make refresh       Build activity.json from \$$MINDMAP_LEDGER via gh api"
-	@echo "  make refresh-demo  Offline: fixture ledger + mocked/skipped GitHub"
-	@echo "  make test          pytest + web vitest"
-	@echo "  make typecheck     shared + web TypeScript"
+	@echo "  make refresh          Build from \$$MINDMAP_LEDGER + gh PR poll"
+	@echo "  make refresh-gh-ledger Build from data/ledger mirror + gh PR poll"
+	@echo "  make refresh-demo     Offline: fixture ledger, skip GitHub"
+	@echo "  make test             pytest + web vitest"
+	@echo "  make typecheck        shared + web TypeScript"
 	@echo ""
 	@echo "Dev UI (after refresh):  cd web && npm run dev"
 	@echo "  (vite is bound to 127.0.0.1:5173)"
@@ -23,6 +24,10 @@ ifndef MINDMAP_LEDGER
 	$(error Set MINDMAP_LEDGER to the absolute path of task-ledger.md)
 endif
 	$(PYTHON) -m ingest --ledger "$(MINDMAP_LEDGER)" --out "$(OUT)"
+
+# Ledger from allowlisted data/ledger mirror (MM-010); still uses gh for PRs.
+refresh-gh-ledger:
+	$(PYTHON) -m ingest --ledger-source gh --out "$(OUT)"
 
 # Offline / CI-friendly: schema-valid activity.json from committed fixtures.
 # Uses --skip-github so no network or gh login is required.

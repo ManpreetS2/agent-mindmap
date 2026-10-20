@@ -3,7 +3,9 @@
   "generated_at": "2026-10-19T20:00:00-07:00",
   "project": "fencepost",
   "meta": {
-    "github": "ok"
+    "github": "ok",
+    "ledger": "ok",
+    "ledger_last_entry_at": "2026-10-19T20:00:00-07:00"
   },
   "nodes": [
     {
@@ -243,7 +245,7 @@
       },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/5#issuecomment-1",
       "source_time": "2026-10-19T21:37:00-07:00",
-      "raw": "~QA / Verifier 🧪 CHANGES on RP-005: tighten etag cache tests."
+      "raw": "~QA / Verifier \ud83e\uddea CHANGES on RP-005: tighten etag cache tests."
     },
     {
       "id": "evt-pr5-merged",
@@ -273,7 +275,7 @@
       },
       "source_url": "https://github.com/ManpreetS2/fencepost/pull/6#issuecomment-2",
       "source_time": "2026-10-19T21:15:00-07:00",
-      "raw": "~Security Engineer 🔐 PASS — no secrets in workload fixtures."
+      "raw": "~Security Engineer \ud83d\udd10 PASS \u2014 no secrets in workload fixtures."
     }
   ],
   "edges": [
