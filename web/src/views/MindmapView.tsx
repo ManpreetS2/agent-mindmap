@@ -12,7 +12,6 @@ import { DetailPanel } from "../components/DetailPanel";
 import { EdgeLegend } from "../components/EdgeLegend";
 import { HandoffBanner } from "../components/HandoffBanner";
 import { ListView } from "../components/ListView";
-import { PartialSourceBanner } from "../components/PartialSourceBanner";
 import { TimelineFilters } from "../components/TimelineFilters";
 import { TimelineSwimlanes } from "../components/TimelineSwimlanes";
 import { UnparsedPanel } from "../components/UnparsedPanel";
@@ -45,12 +44,12 @@ import {
   focusTimelineEventControl,
   orderedTimelineFocusItems,
 } from "../utils/timelineKeyboard";
+import { MindmapStatusBar } from "../components/MindmapStatusBar";
 import { displayProject } from "../utils/activityMeta";
+import type { MindmapStatusBarModel } from "../utils/refreshFlow";
 import {
   isActivityEmpty,
   isActivityStale,
-  partialGithubBanner,
-  sourceUnavailableMessage,
   staleAgeLabel,
   staleReferenceTime,
 } from "../utils/viewState";
@@ -64,12 +63,7 @@ export interface MindmapViewProps {
   initialListView?: boolean;
   /** Node ids whose status just changed (pulse animation). */
   statusPulseNodeIds?: ReadonlySet<string>;
-  /** MM-020-P0: SSE down, poll fallback active. */
-  sseDisconnected?: boolean;
-  /** Shown when POST /refresh returned 429. */
-  refreshRateLimitMessage?: string | null;
-  /** Shown when POST /refresh returned 403. */
-  refreshForbiddenMessage?: string | null;
+  statusBar?: MindmapStatusBarModel;
 }
 
 export function MindmapView({
@@ -78,9 +72,7 @@ export function MindmapView({
   nowMs = Date.now(),
   initialListView,
   statusPulseNodeIds,
-  sseDisconnected = false,
-  refreshRateLimitMessage = null,
-  refreshForbiddenMessage = null,
+  statusBar = { segments: [], retryDisabled: false, showRetry: false },
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -136,14 +128,6 @@ export function MindmapView({
     return edgeIdsForTaskLifecycle(activity, highlightedTaskId);
   }, [activity, highlightedTaskId]);
 
-  const partialBanner = useMemo(
-    () => partialGithubBanner(activity.meta),
-    [activity.meta],
-  );
-  const sourceUnavailable = useMemo(
-    () => sourceUnavailableMessage(activity.meta),
-    [activity.meta],
-  );
   const headerProject = useMemo(() => displayProject(activity), [activity]);
   const staleRef = useMemo(() => staleReferenceTime(activity), [activity]);
   const stale = useMemo(
@@ -295,26 +279,12 @@ export function MindmapView({
         </div>
       </header>
 
-      {sourceUnavailable && (
-        <PartialSourceBanner message={sourceUnavailable} onRetry={onRefresh} />
-      )}
-      {partialBanner && !sourceUnavailable && (
-        <PartialSourceBanner message={partialBanner} onRetry={onRefresh} />
-      )}
-      {sseDisconnected && (
-        <div className="partial-source-banner" role="status">
-          DISCONNECTED — live event stream unavailable; using poll fallback.
-        </div>
-      )}
-      {refreshRateLimitMessage && (
-        <div className="partial-source-banner" role="status">
-          {refreshRateLimitMessage}
-        </div>
-      )}
-      {refreshForbiddenMessage && (
-        <div className="partial-source-banner partial-source-banner--error" role="alert">
-          {refreshForbiddenMessage}
-        </div>
+      {statusBar.showRetry && (
+        <MindmapStatusBar
+          segments={statusBar.segments}
+          onRetry={onRefresh}
+          retryDisabled={statusBar.retryDisabled}
+        />
       )}
 
       <HandoffBanner handoffCount={handoffs} threshold={3} />

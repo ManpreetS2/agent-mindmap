@@ -26,4 +26,14 @@ describe("postRefresh", () => {
       status: "forbidden",
     });
   });
+
+  it("returns httpStatus 0 on network failure", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    expect(await postRefresh(fetchImpl as typeof fetch)).toEqual({
+      status: "error",
+      httpStatus: 0,
+    });
+  });
 });

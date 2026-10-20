@@ -9,7 +9,12 @@ export type PostRefreshResult =
 export async function postRefresh(
   fetchImpl: typeof fetch = fetch,
 ): Promise<PostRefreshResult> {
-  const res = await fetchImpl("/refresh", { method: "POST" });
+  let res: Response;
+  try {
+    res = await fetchImpl("/refresh", { method: "POST" });
+  } catch {
+    return { status: "error", httpStatus: 0 };
+  }
   if (res.status === 202) {
     return { status: "queued" };
   }

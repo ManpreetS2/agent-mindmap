@@ -121,6 +121,20 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     expect(FakeEventSource.instances[0].closed).toBe(true);
   });
 
+  it("error before onopen reports disconnected only", () => {
+    FakeEventSource.instances = [];
+    const connections: boolean[] = [];
+    const transport = createSseTransport({
+      fetchImpl: mockFetch(),
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+      onSseConnectionChange: (c) => connections.push(c),
+    });
+    const stop = transport.subscribe!(() => undefined);
+    FakeEventSource.instances[0].emitError();
+    expect(connections).toEqual([false]);
+    stop();
+  });
+
   it("reports SSE disconnect on error and reconnect on recovery", async () => {
     vi.useFakeTimers();
     FakeEventSource.instances = [];
@@ -134,6 +148,8 @@ describe("createSseTransport (QA-MM020d-3)", () => {
       onSseConnectionChange: (c) => connections.push(c),
     });
     const stop = transport.subscribe!(() => undefined);
+    expect(connections).toEqual([]);
+    FakeEventSource.instances[0].emitOpen();
     expect(connections).toContain(true);
     FakeEventSource.instances[0].emitError();
     expect(connections).toContain(false);

@@ -6,6 +6,7 @@ import { LedgerErrorView } from "../components/LedgerErrorView";
 import { MindmapLoadingView } from "../components/MindmapLoadingView";
 import { MindmapView } from "../views/MindmapView";
 import { LEDGER_ERROR_PATH } from "../utils/viewState";
+import { buildMindmapStatusBar } from "../utils/refreshFlow";
 import emptyFixture from "../fixtures/state-empty.json";
 import partialError from "../fixtures/state-partial-github-error.json";
 import partialRate from "../fixtures/state-partial-github-rate-limited.json";
@@ -50,21 +51,42 @@ describe("UI states (MM-007)", () => {
   });
 
   it("partial GitHub error names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialError as unknown as Activity} />);
+    const activity = partialError as unknown as Activity;
+    const statusBar = buildMindmapStatusBar({
+      meta: activity.meta,
+      sse: "connected",
+      refreshError: null,
+      rateLimitSeconds: null,
+    });
+    renderMindmap(<MindmapView activity={activity} statusBar={statusBar} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/SOURCE UNAVAILABLE.*GitHub: error/i);
   });
 
   it("partial GitHub skipped names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialSkipped as unknown as Activity} />);
+    const activity = partialSkipped as unknown as Activity;
+    const statusBar = buildMindmapStatusBar({
+      meta: activity.meta,
+      sse: "connected",
+      refreshError: null,
+      rateLimitSeconds: null,
+    });
+    renderMindmap(<MindmapView activity={activity} statusBar={statusBar} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/SOURCE UNAVAILABLE.*GitHub: skipped/i);
   });
 
   it("partial GitHub rate_limited names the source in banner", () => {
-    renderMindmap(<MindmapView activity={partialRate as unknown as Activity} />);
+    const activity = partialRate as unknown as Activity;
+    const statusBar = buildMindmapStatusBar({
+      meta: activity.meta,
+      sse: "connected",
+      refreshError: null,
+      rateLimitSeconds: null,
+    });
+    renderMindmap(<MindmapView activity={activity} statusBar={statusBar} />);
     expect(
       document.querySelector(".partial-source-banner")?.textContent,
     ).toMatch(/SOURCE UNAVAILABLE/i);

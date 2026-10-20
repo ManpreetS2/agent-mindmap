@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { LedgerLoadError } from "./data/loadActivity";
 import { createSseTransport } from "./data/activityTransport";
-import { postRefresh } from "./data/postRefresh";
 import { LedgerErrorView } from "./components/LedgerErrorView";
 import { MindmapLoadingView } from "./components/MindmapLoadingView";
 import { SkipLink } from "./components/SkipLink";
@@ -9,11 +8,12 @@ import { CommandCenterShell } from "./components/CommandCenterShell";
 import { ModeBanner } from "./components/ModeBanner";
 import { MindmapView } from "./views/MindmapView";
 import { useActivityFeed } from "./hooks/useActivityFeed";
+import { useMindmapRefresh } from "./hooks/useMindmapRefresh";
 import { useServerMode } from "./hooks/useServerMode";
 import {
-  REFRESH_FORBIDDEN_MESSAGE,
-  refreshRateLimitMessage,
-} from "./utils/viewState";
+  type SseConnectionState,
+  buildMindmapStatusBar,
+} from "./utils/refreshFlow";
 
 const POLL_MS = Number(
   (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
@@ -23,38 +23,28 @@ const POLL_MS = Number(
 export function App() {
   const { bannerState } = useServerMode();
   const banner = <ModeBanner state={bannerState} />;
-  const [sseConnected, setSseConnected] = useState(true);
-  const [refreshRateLimit, setRefreshRateLimit] = useState<string | null>(null);
-  const [refreshForbidden, setRefreshForbidden] = useState<string | null>(null);
+  const [sseConnection, setSseConnection] =
+    useState<SseConnectionState>("connecting");
+  const ssePushRef = useRef<() => void>(() => {});
   const transport = useMemo(
     () =>
       createSseTransport({
         intervalMs: Number.isFinite(POLL_MS) ? POLL_MS : 10_000,
-        onSseConnectionChange: setSseConnected,
+        onSseConnectionChange: (connected) => {
+          setSseConnection(connected ? "connected" : "disconnected");
+        },
+        onSseEvent: () => ssePushRef.current(),
       }),
     [],
   );
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshForbidden(null);
-    setRefreshRateLimit(null);
-    const result = await postRefresh();
-    if (result.status === "queued") {
-      reload();
-      return;
-    }
-    if (result.status === "rate_limited") {
-      setRefreshRateLimit(refreshRateLimitMessage(result.retryAfterS));
-      return;
-    }
-    if (result.status === "forbidden") {
-      setRefreshForbidden(REFRESH_FORBIDDEN_MESSAGE);
-      return;
-    }
-    setRefreshForbidden(`Refresh failed (${result.httpStatus}).`);
-  }, [reload]);
+  const activityKey = activity
+    ? `${activity.generated_at}:${activity.events.length}`
+    : "";
+  const { handleRefresh, onSsePush, refreshError, rateLimitSeconds } =
+    useMindmapRefresh(reload, activityKey);
+  ssePushRef.current = onSsePush;
 
   if (error instanceof LedgerLoadError) {
     return (
@@ -91,6 +81,13 @@ export function App() {
     );
   }
 
+  const statusBar = buildMindmapStatusBar({
+    meta: activity.meta,
+    sse: sseConnection,
+    refreshError,
+    rateLimitSeconds,
+  });
+
   return (
     <CommandCenterShell>
       {banner}
@@ -99,9 +96,7 @@ export function App() {
         activity={activity}
         onRefresh={handleRefresh}
         statusPulseNodeIds={statusPulseNodeIds}
-        sseDisconnected={!sseConnected}
-        refreshRateLimitMessage={refreshRateLimit}
-        refreshForbiddenMessage={refreshForbidden}
+        statusBar={statusBar}
       />
     </CommandCenterShell>
   );
