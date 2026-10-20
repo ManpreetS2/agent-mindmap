@@ -27,7 +27,7 @@ export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md   # required by the insta
 ./scripts/install-launchagent.sh
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist
 ```
-The installer only writes and lints `~/Library/LaunchAgents/com.manpreet.mindmap.plist`; it does not load it. The agent runs `scripts/start-mac.sh` at login and restarts it on failure (30 s throttle).
+The installer only writes the plist (and lints it with `plutil` if `plutil` is available) to `~/Library/LaunchAgents/com.manpreet.mindmap.plist`; it does not load it. The agent runs `scripts/start-mac.sh` at login and restarts it on failure (30 s throttle).
 
 **Stop / uninstall:** `launchctl bootout gui/$(id -u)/com.manpreet.mindmap` (then delete the plist file to remove it fully).
 
@@ -44,8 +44,18 @@ Read-only. The daemon polls:
 
 The UI updates live over SSE (`/events`). No tokens are stored; the existing `gh` login is used.
 
-## DEMO mode — **PLANNED (pending PR #24)**
-`--demo` will show sample events with a visible DEMO banner. Until PR #24 merges, `./scripts/start-mac.sh --demo` exits with `not yet supported (MM-020i)`.
+## DEMO mode
+```bash
+./scripts/start-mac.sh --demo
+```
+Shows sample events, not real activity. In this mode the script:
+- forces the events source to `off`, ignoring `MINDMAP_EVENTS_SOURCE`,
+- passes `--demo` to `ingest.live`,
+- skips the `gh auth status` check.
+
+The header banner shows the current mode: DEMO, LIVE, loading, or unknown. DEMO serves only the bundled fixtures and never calls `gh` or GitHub. The ledger is not used, but if `MINDMAP_LEDGER` is set it must still point to an existing file, or the script exits with `MINDMAP_LEDGER file not found`. Unset it to be safe.
+
+To regenerate the offline sample `activity.json` from the committed fixture ledger (no network, no `gh`), run `make refresh-demo`. It writes to `web/public/activity.json` by default; override with `ACTIVITY_OUT=/path`.
 
 ## Troubleshooting
 | Message | Fix |
@@ -53,7 +63,7 @@ The UI updates live over SSE (`/events`). No tokens are stored; the existing `gh
 | `Python 3.12+ is required but python3.13/python3.12 was not found on PATH.` | `brew install python@3.12` |
 | `.venv failed health check ... recreating` | Informational; the script rebuilds `.venv` itself. |
 | `Node.js and npm are required to build web/dist` | Install Node 20+. |
-| `port 8787 is already in use; exiting` | Another process (maybe the launchd copy) holds the port. Stop it, or set `MINDMAP_PORT`. |
+| `mindmap: port <PORT> is already in use; exiting` (the port you set, `8787` by default) | Another process (maybe the launchd copy) holds the port. Stop it, or set a different `MINDMAP_PORT`. |
 | `GitHub CLI (gh) is required for live mode` | `brew install gh` |
 | `gh is not authenticated. Run 'gh auth login' yourself` | Run `gh auth login`, then retry. |
 | `MINDMAP_LEDGER file not found` | Use an absolute path to an existing file. |
