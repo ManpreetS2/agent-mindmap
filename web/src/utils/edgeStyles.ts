@@ -19,6 +19,12 @@ export const EDGE_VISUALS: Record<EdgeType, EdgeVisual> = {
     label: "PR link",
   },
   merge: { stroke: "var(--edge-merge)", label: "Merge" },
+  // MM-020a: type compiles; legend/ORDER still lists four until MM-020f.
+  message: {
+    stroke: "var(--edge-handoff)",
+    strokeDasharray: "4 3",
+    label: "Message",
+  },
 };
 
 export function strokeWidthForCount(count: number): number {

@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "description": "MM-020a: group registry + membership (identity lives in bots.json). Add a bot to a group by appending its id to members — no code change required.",
+  "groups": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "members": ["manpreet"]
+    },
+    {
+      "id": "build",
+      "label": "Build",
+      "members": [
+        "director",
+        "architect",
+        "dev-1",
+        "dev-2",
+        "ui-ux-maker",
+        "documentation"
+      ]
+    },
+    {
+      "id": "qr",
+      "label": "Quality & Release",
+      "members": [
+        "director",
+        "architect",
+        "qa-verifier",
+        "security-engineer",
+        "devops-release"
+      ]
+    },
+    {
+      "id": "radar",
+      "label": "Research / Radar",
+      "members": ["director", "architect", "scout", "skeptic", "nomen"]
+    }
+  ]
+}

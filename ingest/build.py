@@ -27,6 +27,7 @@ from .ledger_parser import (
     parse_ledger,
     parse_ledger_file,
 )
+from .membership import membership_index
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
@@ -59,8 +60,14 @@ def build_nodes(
     bots: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     events: list[dict[str, Any]],
+    *,
+    membership: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Roster nodes at fixed layout positions with best-effort status/task."""
+    """Roster nodes at fixed layout positions with best-effort status/task.
+
+    One node per bot identity. `group` remains the layout/home group;
+    `groups` carries full membership from config/groups.json (MM-020a).
+    """
     tasks_by_owner: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
         bot_id = _owner_to_bot_id(str(task.get("owner", "")), bots)
@@ -85,13 +92,17 @@ def build_nodes(
                 if m.group(0) not in agent_links[str(actor)]:
                     agent_links[str(actor)].append(m.group(0))
 
+    member_of = membership if membership is not None else membership_index()
+
     nodes: list[dict[str, Any]] = []
     for bot in bots:
         bot_id = bot["id"]
+        groups = list(member_of.get(bot_id, []))
         node: dict[str, Any] = {
             "id": bot_id,
             "label": bot["display_name"],
             "group": bot["group"],
+            "groups": groups,
             "status": "IDLE",
             "agent_links": agent_links.get(bot_id, []),
             "layout": dict(bot["layout"]),
@@ -179,7 +190,7 @@ def build_activity(
     }
 
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "generated_at": ts,
         "project": "fencepost",
         "meta": meta,

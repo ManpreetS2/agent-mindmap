@@ -71,6 +71,7 @@ def test_bots_config_has_thirteen_bots_plus_owner() -> None:
     assert "manpreet" in ids
     assert REQUIRED_BOT_IDS <= ids
     assert len(bots_cfg["bots"]) == 14
+    assert bots_cfg["schema_version"] in {"1.0.0", "1.1.0"}
 
 
 def test_each_bot_has_signature_alias() -> None:
@@ -80,6 +81,15 @@ def test_each_bot_has_signature_alias() -> None:
         if bot["id"] == "manpreet":
             continue
         assert any(a.startswith("~") for a in bot["aliases"]), bot["id"]
+
+
+def test_schema_accepts_both_activity_versions(activity_schema: dict) -> None:
+    assert set(activity_schema["properties"]["schema_version"]["enum"]) == {
+        "1.0.0",
+        "1.1.0",
+    }
+    assert "message" in activity_schema["$defs"]["edgeType"]["enum"]
+    assert "provenance" in activity_schema["$defs"]
 
 
 @pytest.fixture(scope="module")

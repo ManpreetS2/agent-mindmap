@@ -41,6 +41,7 @@ from .ledger_parser import (
     parse_ledger,
     parse_ledger_file,
 )
+from .membership import membership_index
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATIC = ROOT / "web" / "dist"
@@ -140,9 +141,11 @@ def assemble_activity(
     """Same shape as build.build_activity without re-fetching sources."""
     events = merge_events(ledger, gh)
     edges = derive_edges(events)
-    nodes = build_nodes(bots, ledger.tasks, events)
+    nodes = build_nodes(
+        bots, ledger.tasks, events, membership=membership_index()
+    )
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "generated_at": generated_at,
         "project": "fencepost",
         "meta": {

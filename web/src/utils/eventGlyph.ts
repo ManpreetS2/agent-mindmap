@@ -87,6 +87,13 @@ export function glyphForEvent(event: Event): EventGlyph {
         title: `Note ${baseTitle}`,
         fill: "var(--text-muted)",
       };
+    case "message":
+      return {
+        symbol: "✉",
+        label: "MSG",
+        title: `Message ${baseTitle}`,
+        fill: "var(--edge-handoff)",
+      };
     case "unparsed":
       return {
         symbol: "?",

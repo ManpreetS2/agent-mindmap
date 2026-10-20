@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ManpreetS2/agent-mindmap/schema/activity.schema.json",
   "title": "MINDMAP activity snapshot",
-  "description": "activity.json: ledger + GitHub ingest output for the agent-activity dashboard",
+  "description": "activity.json: ledger + GitHub ingest output for the agent-activity dashboard. MM-020a: schema_version 1.1.0 adds message edges, optional provenance/recipients/groups; 1.0.0 fixtures remain valid.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,7 +19,8 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1.0.0"
+      "enum": ["1.0.0", "1.1.0"],
+      "description": "1.0.0 legacy fixtures; 1.1.0 current builds (message edges + optional live fields)"
     },
     "generated_at": {
       "type": "string",
@@ -48,6 +49,10 @@
           "type": ["string", "null"],
           "format": "date-time",
           "description": "Latest dated ledger entry timestamp for the stale banner"
+        },
+        "events_source": {
+          "type": "string",
+          "description": "Optional live events source marker (MM-020)"
         }
       }
     },
@@ -82,6 +87,15 @@
       "type": "string",
       "enum": ["owner", "build", "qr", "radar"]
     },
+    "groupId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Group id; v1 uses owner|build|qr|radar; later groups may be added via config"
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["observed", "agent-reported", "github-verified"]
+    },
     "eventType": {
       "type": "string",
       "enum": [
@@ -94,12 +108,13 @@
         "blocker",
         "ci",
         "note",
-        "unparsed"
+        "unparsed",
+        "message"
       ]
     },
     "edgeType": {
       "type": "string",
-      "enum": ["handoff", "verdict", "pr", "merge"]
+      "enum": ["handoff", "verdict", "pr", "merge", "message"]
     },
     "verdict": {
       "type": "string",
@@ -146,6 +161,11 @@
         "id": { "type": "string", "minLength": 1 },
         "label": { "type": "string", "minLength": 1 },
         "group": { "$ref": "#/$defs/nodeGroup" },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/groupId" },
+          "description": "Full membership (one identity across groups). Optional on 1.0.0 fixtures."
+        },
         "status": { "$ref": "#/$defs/status" },
         "current_task": { "type": "string" },
         "last_activity_ts": {
@@ -236,7 +256,17 @@
           "format": "date-time",
           "description": "ISO 8601 with offset; ledger times parsed as America/Los_Angeles"
         },
-        "raw": { "type": "string" }
+        "raw": { "type": "string" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "recipients": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Explicit recipients only — never invented"
+        },
+        "group": { "$ref": "#/$defs/groupId" },
+        "related_id": {
+          "type": ["string", "null"]
+        }
       }
     },
     "edge": {
@@ -246,7 +276,11 @@
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "source": { "type": "string", "minLength": 1 },
-        "target": { "type": "string", "minLength": 1 },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Bot id, or group:{groupId} for untargeted group messages"
+        },
         "type": { "$ref": "#/$defs/edgeType" },
         "count": { "type": "integer", "minimum": 1 },
         "event_ids": {
@@ -254,6 +288,41 @@
           "items": { "type": "string", "minLength": 1 },
           "minItems": 1
         }
+      }
+    },
+    "networkEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Live collector / SSE payload (messages model). Not required on activity.json.",
+      "required": [
+        "id",
+        "ts",
+        "sender",
+        "group",
+        "type",
+        "summary",
+        "provenance"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ts": { "type": "string", "format": "date-time" },
+        "sender": { "type": "string", "minLength": 1 },
+        "recipients": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Only when explicit — never invented"
+        },
+        "group": { "$ref": "#/$defs/groupId" },
+        "type": { "type": "string", "minLength": 1 },
+        "task_id": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/taskId" }]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Sanitized short summary; never raw transcript"
+        },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "related_id": { "type": ["string", "null"] }
       }
     }
   }

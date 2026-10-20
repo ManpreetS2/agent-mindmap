@@ -1,6 +1,13 @@
 /**
  * TypeScript mirror of schema/activity.schema.json (activity.json).
  * Keep in sync when the schema changes.
+ *
+ * MM-020a separates models:
+ * - Identity: BotConfigEntry (config/bots.json)
+ * - Membership: GroupConfig / Membership (config/groups.json)
+ * - Messages: NetworkEvent (+ activity Event of type "message")
+ * - Tasks: Task (ledger)
+ * - Activity: Activity snapshot (nodes / events / edges)
  */
 
 export type Status =
@@ -11,7 +18,18 @@ export type Status =
   | "DONE"
   | "UNKNOWN";
 
+/** Evidence-based live agent state (MM-020); maps from Status in later tasks. */
+export type AgentState =
+  | "ACTIVE"
+  | "IDLE"
+  | "BLOCKED"
+  | "COMPLETED"
+  | "UNKNOWN";
+
 export type NodeGroup = "owner" | "build" | "qr" | "radar";
+
+/** Group id string; known v1 ids are NodeGroup; later groups may be added via config. */
+export type GroupId = NodeGroup | (string & {});
 
 export type EventType =
   | "assigned"
@@ -23,9 +41,11 @@ export type EventType =
   | "blocker"
   | "ci"
   | "note"
-  | "unparsed";
+  | "unparsed"
+  | "message";
 
-export type EdgeType = "handoff" | "verdict" | "pr" | "merge";
+/** MM-020a: message edges for bot↔bot or sender→group:{id}. */
+export type EdgeType = "handoff" | "verdict" | "pr" | "merge" | "message";
 
 export type Verdict =
   | "PASS"
@@ -36,6 +56,9 @@ export type Verdict =
   | "INCONCLUSIVE";
 
 export type AttributionMethod = "signature" | "ledger_owner" | "unknown";
+
+/** Provenance of a live / network fact (MM-020a). */
+export type Provenance = "observed" | "agent-reported" | "github-verified";
 
 export interface Attribution {
   method: AttributionMethod;
@@ -49,7 +72,13 @@ export interface Layout {
 export interface Node {
   id: string;
   label: string;
+  /** Primary / layout-home group (backward compatible). */
   group: NodeGroup;
+  /**
+   * Full membership from config/groups.json (schema ≥ 1.1.0).
+   * One identity across groups — do not duplicate node ids.
+   */
+  groups?: GroupId[];
   status: Status;
   current_task?: string;
   last_activity_ts?: string;
@@ -92,11 +121,22 @@ export interface Event {
   source_url: string;
   source_time: string;
   raw: string;
+  /** Present when known (schema ≥ 1.1.0). Never invent. */
+  provenance?: Provenance;
+  /**
+   * Explicit recipients only (schema ≥ 1.1.0). Never invent from ambient context.
+   * Untargeted group messages omit this and use edge target `group:{id}`.
+   */
+  recipients?: string[];
+  /** Group context for a message event (schema ≥ 1.1.0). */
+  group?: GroupId;
+  related_id?: string | null;
 }
 
 export interface Edge {
   id: string;
   source: string;
+  /** Bot id, or `group:{groupId}` for untargeted group messages. */
   target: string;
   type: EdgeType;
   count: number;
@@ -113,10 +153,15 @@ export interface ActivityMeta {
   ledger?: LedgerMetaStatus;
   /** Latest dated ledger entry; preferred for the stale banner (MM-010). */
   ledger_last_entry_at?: string | null;
+  /** Optional live overlay marker (schema ≥ 1.1.0). */
+  events_source?: string;
 }
 
+/** 1.0.0 fixtures remain valid; new builds emit 1.1.0. */
+export type ActivitySchemaVersion = "1.0.0" | "1.1.0";
+
 export interface Activity {
-  schema_version: "1.0.0";
+  schema_version: ActivitySchemaVersion;
   generated_at: string;
   project: "fencepost";
   meta: ActivityMeta;
@@ -127,16 +172,54 @@ export interface Activity {
   unparsed: Event[];
 }
 
-/** Bot roster entry from config/bots.json (fixed layout + aliases). */
+/** Live collector / SSE payload (messages model). Not required on activity.json. */
+export interface NetworkEvent {
+  id: string;
+  ts: string;
+  sender: string;
+  /** Only when explicit; never invented. */
+  recipients?: string[];
+  group: GroupId;
+  type: string;
+  task_id?: string | null;
+  /** Sanitized short summary — never raw transcript. */
+  summary: string;
+  provenance: Provenance;
+  related_id?: string | null;
+}
+
+/** Identity entry from config/bots.json. */
 export interface BotConfigEntry {
   id: string;
   display_name: string;
   aliases: string[];
+  /** Layout / home group for backward-compatible nodes. */
   group: NodeGroup;
   layout: Layout;
+  note?: string;
 }
 
 export interface BotsConfig {
-  schema_version: "1.0.0";
+  schema_version: ActivitySchemaVersion;
+  description?: string;
   bots: BotConfigEntry[];
+}
+
+/** Membership entry from config/groups.json. */
+export interface GroupConfigEntry {
+  id: GroupId;
+  label: string;
+  members: string[];
+}
+
+export interface GroupsConfig {
+  schema_version: string;
+  description?: string;
+  groups: GroupConfigEntry[];
+}
+
+/** Logical membership row: one bot in one group. */
+export interface Membership {
+  bot_id: string;
+  group_id: GroupId;
 }

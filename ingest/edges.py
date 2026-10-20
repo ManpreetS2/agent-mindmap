@@ -1,4 +1,4 @@
-"""Derive graph edges from activity events (handoff / verdict / pr / merge)."""
+"""Derive graph edges from activity events (handoff / verdict / pr / merge / message)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from .attribute import VERDICT_TOKENS
+from .membership import group_target_id
 
 # Event types that always yield a handoff-style edge (actor → target).
 _HANDOFF_TYPES = frozenset({"handoff", "assigned"})
@@ -91,6 +92,27 @@ def _pick_merger(merge_events: list[dict[str, Any]]) -> str | None:
     return str(best["actor"])
 
 
+def _explicit_recipients(evt: dict[str, Any]) -> list[str]:
+    """
+    Return explicit recipients only — never invent.
+
+    Prefer `recipients` when present (non-empty list of strings).
+    Else a single non-null `target` that is not a group:{id} sentinel.
+    """
+    raw = evt.get("recipients")
+    if isinstance(raw, list) and raw:
+        out: list[str] = []
+        for item in raw:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip())
+        if out:
+            return out
+    target = evt.get("target")
+    if isinstance(target, str) and target.strip() and not target.startswith("group:"):
+        return [target.strip()]
+    return []
+
+
 def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Build aggregated edges from events.
@@ -103,6 +125,8 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
       reviewer → PR author.
     - pr: each signature-attributed review/comment → PR author → reviewer,
       deduped per (author, reviewer, repo, pr).
+    - message (MM-020a): explicit recipients → sender→each recipient;
+      untargeted → sender→group:{group}. Recipients are never invented.
     """
     pr_authors: dict[tuple[str, int], str] = {}
     merges_by_pr: dict[tuple[str, int], list[dict[str, Any]]] = {}
@@ -178,5 +202,22 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             isinstance(verdict, str) and verdict.upper() in VERDICT_TOKENS
         ):
             add_edge(str(reviewer), str(author), "verdict", str(evt["id"]))
+
+    # --- message edges (MM-020a) ---
+    for evt in events:
+        if evt.get("type") != "message":
+            continue
+        sender = evt.get("actor")
+        if not sender:
+            continue
+        recipients = _explicit_recipients(evt)
+        eid = str(evt["id"])
+        if recipients:
+            for dest in recipients:
+                add_edge(str(sender), dest, "message", eid)
+        else:
+            group = evt.get("group")
+            if isinstance(group, str) and group.strip():
+                add_edge(str(sender), group_target_id(group.strip()), "message", eid)
 
     return sorted(buckets.values(), key=lambda e: (e["type"], e["source"], e["target"]))

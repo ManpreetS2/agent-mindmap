@@ -45,7 +45,13 @@ def test_build_activity_validates(tmp_path: Path, bots: list[dict], schema: dict
     assert activity["nodes"]
     assert len(activity["nodes"]) == len(bots)
     edge_types = {e["type"] for e in activity["edges"]}
-    assert edge_types <= {"handoff", "verdict", "pr", "merge"}
+    assert edge_types <= {"handoff", "verdict", "pr", "merge", "message"}
+    assert activity["schema_version"] == "1.1.0"
+    # MM-020a: one identity; Director/Architect carry multi-membership
+    by_id = {n["id"]: n for n in activity["nodes"]}
+    assert set(by_id["director"]["groups"]) == {"build", "qr", "radar"}
+    assert set(by_id["architect"]["groups"]) == {"build", "qr", "radar"}
+    assert by_id["bug-fixer"]["groups"] == []
     # No self-loops anywhere
     assert all(e["source"] != e["target"] for e in activity["edges"])
 
