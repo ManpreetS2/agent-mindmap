@@ -1,0 +1,9 @@
+Pattern: (sk-[A-Za-z0-9_\-]+|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+){2}|-----BEGIN(?:\s+\w+)?\s+PRIVATE KEY-----|[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})
+'task-runner'        match='sk-runner'          mirror=True shared=False
+'risk-based'         match='sk-based'           mirror=True shared=False
+'ask-me'             match='sk-me'              mirror=True shared=False
+'desk-top'           match='sk-top'             mirror=True shared=False
+'Mask-RCNN'          match='sk-RCNN'            mirror=True shared=False
+'sk-abc'             match='sk-abc'             mirror=True shared=False
+'task runner'        match=None                 mirror=False shared=False
+'Tasks'              match=None                 mirror=False shared=False

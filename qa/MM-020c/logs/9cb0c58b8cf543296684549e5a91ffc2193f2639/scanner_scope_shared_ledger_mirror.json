@@ -1,0 +1,39 @@
+{
+  "sk-": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  },
+  "AKIA": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  },
+  "JWT": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  },
+  "private_key": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  },
+  "email": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  },
+  "ghp_": {
+    "shared__looks_like_secret": true,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": [
+      1
+    ]
+  },
+  "task-runner": {
+    "shared__looks_like_secret": false,
+    "mirror_looks_like_mirror_secret": true,
+    "ledger_secret_line_numbers": []
+  }
+}

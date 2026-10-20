@@ -1,0 +1,10 @@
+rc 0
+stdout {"flush": false, "lines": [1, 2, 3, 4, 5], "reason": "secret_detected", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+
+stderr events_mirror: drop secret-like content at line 1 (QA-MM020b-2)
+events_mirror: drop secret-like content at line 2 (QA-MM020b-2)
+events_mirror: drop secret-like content at line 3 (QA-MM020b-2)
+events_mirror: drop secret-like content at line 4 (QA-MM020b-2)
+events_mirror: drop secret-like content at line 5 (QA-MM020b-2)
+
+payload_exists False

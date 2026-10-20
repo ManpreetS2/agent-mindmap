@@ -1,0 +1,83 @@
+{"flush": true, "payload": "/tmp/tmp88nelcda/out/events.jsonl", "reason": "force", "sha256": "a258905c90de030fde9dd5862a78c31da6f00674d68a98f7d53a200e89b37f11"}
+{"flush": false, "reason": "marked", "sha256": "a258905c90de030fde9dd5862a78c31da6f00674d68a98f7d53a200e89b37f11"}
+test_cli_payload_write_and_repeat_idempotent (__main__.TestFlushIdempotentAtomic.test_cli_payload_write_and_repeat_idempotent)
+CLI force flush writes payload; repeat is unchanged (no dup content). ... ok
+test_crash_midway_partial_payload_behavior (__main__.TestFlushIdempotentAtomic.test_crash_midway_partial_payload_behavior)
+Simulate partial write of payload file; re-prepare must not duplicate ids. ... ok
+test_repeated_flush_no_duplicates (__main__.TestFlushIdempotentAtomic.test_repeated_flush_no_duplicates) ... ok
+test_state_write_atomic_replace (__main__.TestFlushIdempotentAtomic.test_state_write_atomic_replace) ... ok
+test_gh_argv_read_only_no_write_verbs (__main__.TestGhReadOnlyAndNoToken.test_gh_argv_read_only_no_write_verbs) ... ok
+test_no_token_in_logs_env_argv_mirror (__main__.TestGhReadOnlyAndNoToken.test_no_token_in_logs_env_argv_mirror) ... ok
+test_mm020a_suite_subset (__main__.TestNoRegressions020a.test_mm020a_suite_subset) ... ok
+test_mm020b_emitter_absent_on_branch (__main__.TestNoRegressions020a.test_mm020b_emitter_absent_on_branch) ... ok
+test_exact_boundary_and_timezone (__main__.TestRetention7Day.test_exact_boundary_and_timezone) ... ok
+test_pr17_emitter_has_local_stronger_not_via_shared (__main__.TestScannerScope.test_pr17_emitter_has_local_stronger_not_via_shared) ... ok
+test_shared_scanner_lacks_stronger_patterns (__main__.TestScannerScope.test_shared_scanner_lacks_stronger_patterns) ... ok
+test_false_positive_benign_words_must_not_refuse (__main__.TestSecretRefusalAndFalsePositives.test_false_positive_benign_words_must_not_refuse) ... FAIL
+test_qa_mm020b2_secrets_refuse_flush (__main__.TestSecretRefusalAndFalsePositives.test_qa_mm020b2_secrets_refuse_flush) ... ok
+
+======================================================================
+FAIL: test_false_positive_benign_words_must_not_refuse (__main__.TestSecretRefusalAndFalsePositives.test_false_positive_benign_words_must_not_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/qa-mm020c/evidence/test_qa_mm020c_behavioral.py", line 404, in test_false_positive_benign_words_must_not_refuse
+    self.assertEqual(
+AssertionError: Lists differ: [{'word': 'task-runner', 'looks_like_mirro[807 chars]ce'}] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+{'word': 'task-runner', 'looks_like_mirror_secret': True, 'shared_looks_like_secret': False, 'prepare_secrets_seen': True, 'retained': 0, 'flush': True, 'reason': 'force'}
+
+Diff is 994 characters long. Set self.maxDiff to None to see it. : benign words incorrectly refused: [
+  {
+    "word": "task-runner",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "risk-based",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "ask-me",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "desk-top",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "Mask-RCNN",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  }
+]
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.859s
+
+FAILED (failures=1)
+

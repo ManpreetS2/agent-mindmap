@@ -1,0 +1,4 @@
+main_uses_write_text_for_payload True
+save_state_uses_tmp_replace True
+save_state tmp.replace= True write_text= True
+main tmp.replace= False write_text= True

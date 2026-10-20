@@ -1,0 +1,47 @@
+[
+  {
+    "word": "task-runner",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "risk-based",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "ask-me",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "desk-top",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  },
+  {
+    "word": "Mask-RCNN",
+    "looks_like_mirror_secret": true,
+    "shared_looks_like_secret": false,
+    "prepare_secrets_seen": true,
+    "retained": 0,
+    "flush": true,
+    "reason": "force"
+  }
+]

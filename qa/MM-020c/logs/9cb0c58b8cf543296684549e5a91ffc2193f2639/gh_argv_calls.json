@@ -1,0 +1,10 @@
+{
+  "calls": [
+    [
+      "repos/ManpreetS2/agent-mindmap/contents/events.jsonl?ref=data/events"
+    ]
+  ],
+  "write_attempts": [
+    "repos/ManpreetS2/agent-mindmap/contents/events.jsonl?ref=data/events"
+  ]
+}

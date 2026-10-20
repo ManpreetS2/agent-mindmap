@@ -1,0 +1,12 @@
+{
+  "testsRun": 13,
+  "failures": [
+    [
+      "test_false_positive_benign_words_must_not_refuse (__main__.TestSecretRefusalAndFalsePositives.test_false_positive_benign_words_must_not_refuse)",
+      "Traceback (most recent call last):\n  File \"/tmp/qa-mm020c/evidence/test_qa_mm020c_behavioral.py\", line 404, in test_false_positive_benign_words_must_not_refuse\n    self.assertEqual(\nAssertionError: Lists differ: [{'word': 'task-runner', 'looks_like_mirro[807 chars]ce'}] != []\n\nFirst list contains 5 additional elements.\nFirst extra element 0:\n{'word': 'task-runner', 'looks_like_mirror_secret': True, 'shared_looks_like_secret': False, 'prepare_secrets_seen': True, 'retained': 0, 'flush': True, 'reason': 'force'}\n\nDiff is 994 characters long. Set self.maxDiff to None to see it. : benign words incorrectly refused: [\n  {\n    \"word\": \"task-runner\",\n    \"looks_like_mirror_secret\": true,\n    \"shared_looks_like_secret\": false,\n    \"prepare_secrets_seen\": true,\n    \"retained\": 0,\n    \"flush\": true,\n    \"reason\": \"force\"\n  },\n  {\n    \"word\": \"risk-based\",\n    \"looks_like_mirror_secret\": true,\n    \"shared_looks_like_secret\": false,\n    \"prepare_secrets_seen\": true,\n    \"retained\": 0,\n    \"flush\": true,\n    \"reason\": \"force\"\n  },\n  {\n    \"word\": \"ask-me\",\n    \"looks_like_mirror_secret\": true,\n    \"shared_looks_like_secret\": false,\n    \"prepare_secrets_seen\": true,\n    \"retained\": 0,\n    \"flush\": true,\n    \"reason\": \"force\"\n  },\n  {\n    \"word\": \"desk-top\",\n    \"looks_like_mirror_secret\": true,\n    \"shared_looks_like_secret\": false,\n    \"prepare_secrets_seen\": true,\n    \"retained\": 0,\n    \"flush\": true,\n    \"reason\": \"force\"\n  },\n  {\n    \"word\": \"Mask-RCNN\",\n    \"looks_like_mirror_secret\": true,\n    \"shared_looks_like_secret\": false,\n    \"prepare_secrets_seen\": true,\n    \"retained\": 0,\n    \"flush\": true,\n    \"reason\": \"force\"\n  }\n]\n"
+    ]
+  ],
+  "errors": [],
+  "skipped": [],
+  "wasSuccessful": false
+}

@@ -1,0 +1,9 @@
+os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+python: Python 3.12.3
+node: v22.23.3
+date_utc: 2026-10-20T08:49:54Z
+verified_head: 9cb0c58b8cf543296684549e5a91ffc2193f2639
+base: feat/MM-020-unified-network @ 82f20667ea2a2336701ed549a7caaa77fc0c2249
+pr: https://github.com/ManpreetS2/agent-mindmap/pull/18
+pr17_tip_compared: 1bdb7afe06037aee45b91438c98c3b3ec44400a9
+fresh_checkout: /tmp/qa-mm020c/checkout
