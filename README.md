@@ -8,6 +8,37 @@ MINDMAP never posts, merges, or writes to the ledger. It never stores GitHub cre
 
 ---
 
+## Run on a Mac (MM-020-OPS)
+
+**Prerequisites:** Python 3.12+ (`brew install python@3.12`), Node 20+, and [`gh`](https://cli.github.com/) logged in (`gh auth status` — the startup script never runs `gh auth login`).
+
+```bash
+# From the repo root (creates .venv, builds web/dist if needed, starts live daemon)
+./scripts/start-mac.sh
+# → http://127.0.0.1:8787  (override port with MINDMAP_PORT)
+
+# Local ledger file (optional; otherwise ledger is read from gh:data/ledger)
+export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
+./scripts/start-mac.sh
+
+# Force a fresh web build
+./scripts/start-mac.sh --rebuild
+```
+
+**Stop:** `Ctrl+C` in the terminal where the script is running.
+
+**launchd autostart (optional):**
+
+```bash
+export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
+./scripts/install-launchagent.sh
+# Prints launchctl bootstrap / bootout commands (does not run them).
+```
+
+See also **Running live (MM-011)** below for poll intervals and endpoints.
+
+---
+
 ## Setup
 
 Python 3.12+ and Node 20+ recommended.

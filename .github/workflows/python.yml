@@ -9,6 +9,7 @@ on:
       - "fixtures/**"
       - "schema/**"
       - "config/**"
+      - "scripts/**"
       - "pyproject.toml"
       - "requirements-dev.txt"
       - ".github/workflows/python.yml"
@@ -19,6 +20,7 @@ on:
       - "fixtures/**"
       - "schema/**"
       - "config/**"
+      - "scripts/**"
       - "pyproject.toml"
       - "requirements-dev.txt"
       - ".github/workflows/python.yml"
@@ -45,6 +47,11 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - name: Install test dependencies
         run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: Shellcheck startup scripts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          shellcheck scripts/start-mac.sh scripts/install-launchagent.sh
       - name: Run pytest
         run: |
           set -euo pipefail

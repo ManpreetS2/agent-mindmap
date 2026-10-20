@@ -6,9 +6,8 @@
 	<string>com.manpreet.mindmap</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/.venv/bin/python</string>
-		<string>-m</string>
-		<string>ingest.live</string>
+		<string>/bin/bash</string>
+		<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT/scripts/start-mac.sh</string>
 	</array>
 	<key>WorkingDirectory</key>
 	<string>REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT</string>
