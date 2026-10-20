@@ -638,12 +638,22 @@ class GitHubPoller:
         commit: dict[str, Any],
         seen: set[str],
     ) -> list[dict[str, Any]]:
-        """PR push / commit → pr_updated (stable id by sha)."""
+        """PR push / commit → pr_updated (stable id by sha).
+
+        SEC-MM020e-1: sanitize the commit subject before it is stored on the
+        event. If ``sanitize_pr_summary`` returns None, drop the event entirely
+        so the raw subject is never retained.
+        """
         sha = (commit.get("sha") or "")[:40].lower()
         if not sha or not re.fullmatch(r"[0-9a-f]+", sha) or len(sha) < 7:
             return []
         commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
         msg = str((commit_obj or {}).get("message") or "")
+        subject = msg.split("\n", 1)[0].strip() or f"Push on PR #{number} ({sha[:7]})"
+        # Sanitize BEFORE any event field is populated (SEC-MM020e-1).
+        safe_subject = sanitize_pr_summary(subject)
+        if safe_subject is None:
+            return []
         actor, method = attribute_from_body(msg, self.bots)
         ts = ""
         author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
@@ -660,7 +670,7 @@ class GitHubPoller:
             source_url=html,
             source_time=ts or None,
             attribution=method,
-            raw=msg.split("\n", 1)[0] or f"Push on PR #{number} ({sha[:7]})",
+            raw=safe_subject,
         )
         out: list[dict[str, Any]] = []
         _append_unique(out, seen, evt)
