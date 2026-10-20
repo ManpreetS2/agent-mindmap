@@ -1,0 +1,12 @@
+{
+  "name": "agent-mindmap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent activity mind map dashboard (MINDMAP)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
