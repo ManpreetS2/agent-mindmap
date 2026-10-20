@@ -27,7 +27,7 @@ import {
 import { UnsourcedTag } from "./UnsourcedTag";
 
 const LABEL_WIDTH = 108;
-const LANE_HEIGHT = 32;
+const LANE_HEIGHT = 40;
 const AXIS_HEIGHT = 20;
 const BRUSH_HEIGHT = 28;
 
@@ -133,7 +133,13 @@ function EventMarker({
         </foreignObject>
       )}
       {!hasSource && (
-        <foreignObject x={x - 8} y={y + 10} width={120} height={20} opacity={opacity}>
+        <foreignObject
+          x={x + 14}
+          y={y - 8}
+          width={100}
+          height={18}
+          opacity={opacity}
+        >
           <UnsourcedTag />
         </foreignObject>
       )}

@@ -1,7 +1,8 @@
 import type { Node as ActivityNode } from "@shared/types";
 
 export const NODE_WIDTH = 180;
-export const NODE_HEIGHT = 64;
+/** Minimum card height; layout uses LAYOUT_NODE_HEIGHT from graphLayout. */
+export const NODE_HEIGHT = 88;
 const FRAME_PADDING = 24;
 const FRAME_LABEL_HEIGHT = 20;
 

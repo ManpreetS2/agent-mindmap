@@ -17,6 +17,10 @@ import { motion, useReducedMotion } from "motion/react";
 
 import type { Activity } from "@shared/types";
 import { EDGE_VISUALS, strokeWidthForCount } from "../utils/edgeStyles";
+import {
+  applyLayoutPositions,
+  layoutNodesWithDagre,
+} from "../utils/graphLayout";
 import { buildGroupFrames } from "../utils/groupFrames";
 import { AgentFlowNode } from "./AgentFlowNode";
 import { GroupFrameLayer } from "./GroupFrameLayer";
@@ -69,14 +73,20 @@ export function AgentGraph({
 }: AgentGraphProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const lifecycleActive = lifecycleNodeIds !== null;
+
+  const laidOutNodes = useMemo(() => {
+    const positions = layoutNodesWithDagre(activity.nodes, activity.edges);
+    return applyLayoutPositions(activity.nodes, positions);
+  }, [activity.nodes, activity.edges]);
+
   const frames = useMemo(
-    () => buildGroupFrames(activity.nodes),
-    [activity.nodes],
+    () => buildGroupFrames(laidOutNodes),
+    [laidOutNodes],
   );
 
   const builtNodes: FlowNode[] = useMemo(
     () =>
-      activity.nodes.map((n) => ({
+      laidOutNodes.map((n) => ({
         id: n.id,
         type: "agent",
         position: { x: n.layout.x, y: n.layout.y },
@@ -97,7 +107,7 @@ export function AgentGraph({
         },
       })),
     [
-      activity.nodes,
+      laidOutNodes,
       selectedNodeId,
       onOpenNodeDetail,
       lifecycleActive,
@@ -156,12 +166,24 @@ export function AgentGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges);
 
   useEffect(() => {
+    // Re-apply layout positions when activity layout changes; drag is session-local
+    // until the next layout pass (poll with identical node set keeps dagre/grid coords).
     setNodes((prev) => {
-      const posById = new Map(prev.map((n) => [n.id, n.position]));
-      return builtNodes.map((n) => ({
-        ...n,
-        position: posById.get(n.id) ?? n.position,
-      }));
+      const prevPos = new Map(prev.map((n) => [n.id, n.position]));
+      const layoutChanged = builtNodes.some((n) => {
+        const p = prevPos.get(n.id);
+        if (!p) return true;
+        return (
+          Math.hypot(p.x - n.position.x, p.y - n.position.y) > 1
+        );
+      });
+      if (!layoutChanged && prev.length === builtNodes.length) {
+        return prev.map((p) => {
+          const next = builtNodes.find((n) => n.id === p.id);
+          return next ? { ...next, position: p.position } : p;
+        });
+      }
+      return builtNodes;
     });
   }, [builtNodes, setNodes]);
 
@@ -202,9 +224,9 @@ export function AgentGraph({
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.35}
-        maxZoom={1.8}
+        fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+        minZoom={0.45}
+        maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
         <Background color="var(--border-subtle)" gap={16} />

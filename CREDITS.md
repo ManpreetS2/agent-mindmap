@@ -16,6 +16,7 @@ Upstream license texts remain in dependency packages under `web/node_modules/`.
 | [clsx](https://github.com/lukeed/clsx) / [tailwind-merge](https://github.com/dcastil/tailwind-merge) | `cn()` helper | MIT |
 | [Magic UI](https://magicui.design/) | Adapted `BorderBeam`, `AnimatedGridPattern`, `NumberTicker` (`web/src/components/magic/`) | MIT |
 | [Motion](https://motion.dev/) (`motion` / Framer Motion) | Spring layout, node status pulse; respects `prefers-reduced-motion` | MIT |
+| [@dagrejs/dagre](https://github.com/dagrejs/dagre) | Graph node layout (non-overlapping ranks/gaps) | MIT |
 | [Vitest](https://vitest.dev/) / [Testing Library](https://testing-library.com/) / [axe-core](https://github.com/dequelabs/axe-core) | Tests & a11y checks | MIT |
 
 **Not used:** Aceternity UI (no components copied; Aceternity Pro is separate from MIT snippets).
