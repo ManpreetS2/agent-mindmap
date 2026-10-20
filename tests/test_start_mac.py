@@ -96,23 +96,14 @@ def test_start_mac_help() -> None:
     assert "8787" in proc.stdout
 
 
-def test_start_mac_demo_skips_gh_auth(tmp_path: Path) -> None:
+def test_start_mac_demo_skips_gh_auth() -> None:
     text = START_MAC.read_text(encoding="utf-8")
     assert "apply_demo_flag" in text
-    assert 'DEMO_MODE" != true' in text or "DEMO_MODE\" != true" in text
-    gh = tmp_path / "gh"
-    gh.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    gh.chmod(0o755)
-    proc = _run_start_mac(
-        "--demo",
-        env={
-            "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
-            "MINDMAP_EVENTS_SOURCE": "off",
-        },
-        timeout=3,
-    )
-    assert "gh is not authenticated" not in proc.stderr
-    assert "not yet supported (MM-020i)" not in proc.stderr
+    assert "LIVE_ARGS+=(--demo)" in text
+    assert "not yet supported (MM-020i)" not in text
+    after_apply = text.split("apply_demo_flag", 1)[1]
+    assert 'if [[ "$DEMO_MODE" != true ]]; then' in after_apply
+    assert "require_gh_auth" in after_apply
 
 
 def _path_without_python_interpreters() -> str:

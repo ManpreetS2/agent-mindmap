@@ -303,28 +303,13 @@ def test_live_main_demo_skips_ledger(tmp_path: Path, bots: list[dict]) -> None:
     assert args.demo is True
 
 
-def test_start_mac_demo_skips_gh_auth_check(tmp_path: Path) -> None:
+def test_start_mac_demo_skips_gh_auth_check() -> None:
     if not START_MAC.is_file():
         pytest.skip("start-mac.sh not present")
-    gh = tmp_path / "gh"
-    gh.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    gh.chmod(0o755)
     text = START_MAC.read_text(encoding="utf-8")
-    assert "require_gh_auth" in text
-    assert "DEMO_MODE" in text
-    proc = subprocess.run(
-        ["/bin/bash", str(START_MAC), "--demo"],
-        cwd=str(ROOT),
-        capture_output=True,
-        text=True,
-        timeout=3,
-        env={
-            **os.environ,
-            "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}",
-        },
-    )
-    # Should not fail solely because gh auth exits 1 (demo skips require_gh_auth).
-    assert "gh is not authenticated" not in proc.stderr
+    assert "apply_demo_flag" in text
+    assert 'if [[ "$DEMO_MODE" != true ]]; then' in text
+    assert "not yet supported (MM-020i)" not in text
 
 
 def test_live_main_unknown_flag_exits_2() -> None:

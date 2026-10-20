@@ -177,22 +177,12 @@ resolve_events_source() {
   esac
 }
 
-live_supports_demo_flag() {
-  local py="$1"
-  "$py" -m ingest.live --help 2>&1 | grep -qE '(^|[[:space:]])--demo([[:space:],]|$)'
-}
-
-# ----- MM-020i: --demo passthrough (PR #24 enables ingest.live --demo) -----
+# ----- MM-020i: explicit --demo passthrough (ingest.live --demo) -----
 apply_demo_flag() {
   [[ "$DEMO_MODE" == true ]] || return 0
-  if live_supports_demo_flag "$PYTHON"; then
-    LIVE_ARGS+=(--demo)
-    return 0
-  fi
-  echo "not yet supported (MM-020i)" >&2
-  exit 2
+  LIVE_ARGS+=(--demo)
 }
-# ----- end MM-020i stub -----
+# ----- end MM-020i -----
 
 PYTHON="$(ensure_venv_python)"
 ensure_web_dist
