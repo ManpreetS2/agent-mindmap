@@ -219,22 +219,47 @@
 
 .timeline-zoom-controls {
   display: flex;
-  gap: var(--space-1);
-  padding: 0 var(--space-3) var(--space-1);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-1);
 }
 
 .timeline-zoom-btn {
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  border: 1px solid color-mix(in srgb, hsl(187 92% 55%) 35%, var(--border-subtle));
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  backdrop-filter: blur(8px);
   color: var(--text-secondary);
   border-radius: var(--radius-pill);
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 4px 10px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
 .timeline-zoom-btn:hover {
-  color: var(--text-primary);
+  color: hsl(187 92% 72%);
   border-color: hsl(187 92% 55%);
+  background: color-mix(in srgb, hsl(187 92% 55%) 12%, var(--bg-card));
+  box-shadow: 0 0 12px color-mix(in srgb, hsl(187 92% 55%) 35%, transparent);
+}
+
+.timeline-zoom-btn:focus-visible {
+  outline: none;
+  border-color: hsl(187 92% 55%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, hsl(187 92% 55%) 45%, transparent),
+    0 0 14px color-mix(in srgb, hsl(187 92% 55%) 30%, transparent);
 }
 
 .timeline-now-stroke {

@@ -60,6 +60,8 @@ function EventMarker({
 }) {
   const glyph = glyphForEvent(event);
   const hasSource = isHttpSourceUrl(event.source_url);
+  const hasTaskChip =
+    Boolean(event.task_id) && isLifecycleTaskId(event.task_id!);
   const opacity = dimmed ? 0.25 : 1;
   const stroke = highlighted ? "var(--accent)" : "var(--border-subtle)";
 
@@ -113,7 +115,7 @@ function EventMarker({
       ) : (
         <g>{markerBody}</g>
       )}
-      {event.task_id && isLifecycleTaskId(event.task_id) && (
+      {hasTaskChip && (
         <foreignObject
           x={x + 12}
           y={y - 10}
@@ -134,10 +136,10 @@ function EventMarker({
       )}
       {!hasSource && (
         <foreignObject
-          x={x + 14}
-          y={y - 8}
-          width={100}
-          height={18}
+          x={hasTaskChip ? x + 88 : x + 14}
+          y={hasTaskChip ? y - 10 : y - 8}
+          width={hasTaskChip ? 88 : 100}
+          height={20}
           opacity={opacity}
         >
           <UnsourcedTag />
