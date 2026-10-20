@@ -21,7 +21,6 @@ from .attribute import (
     extract_task_id,
     extract_verdict,
     load_bots,
-    map_github_login,
 )
 
 ALLOWED_REPOS = frozenset(
@@ -545,6 +544,7 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=html,
             source_time=created,
             attribution=method,
@@ -580,10 +580,10 @@ class GitHubPoller:
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
             sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            # Director: merger from merged_by (mapped), preferring a ~Bot
-            # signature on a merge comment over the shared-owner login.
+            # Director QA-MM004-7: ignore merged_by entirely. Merger only from a
+            # ~Bot signature on a ledger-style merged note (QA-MM004-10).
             merger_actor, merger_method = _resolve_merger(
-                pr, issue_comments, review_comments, self.bots
+                issue_comments, review_comments, self.bots
             )
             merged = _event(
                 locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
@@ -591,6 +591,7 @@ class GitHubPoller:
                 actor=merger_actor,
                 task_id=task_id,
                 pr=number,
+                repo=repo,
                 sha=sha_val,
                 source_url=html,
                 source_time=pr.get("merged_at"),
@@ -631,6 +632,7 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=url,
             source_time=ts,
             attribution=method,
@@ -664,6 +666,7 @@ class GitHubPoller:
             actor=actor,
             task_id=task_id,
             pr=number,
+            repo=repo,
             source_url=url,
             source_time=ts,
             attribution=method,
@@ -675,14 +678,14 @@ class GitHubPoller:
         return out
 
 
-_MERGE_HINT_RE = re.compile(
-    r"\b(?:squash[- ])?merged\b|\bmerge(?:d)?\s+as\b",
+# Ledger-style merged note only (QA-MM004-10) — not a casual "merged" mention.
+_LEDGER_STYLE_MERGED_RE = re.compile(
+    r"(?:squash-)?merged\s+as\s+[0-9a-f]{7,40}",
     re.IGNORECASE,
 )
 
 
 def _resolve_merger(
-    pr: dict[str, Any],
     issue_comments: list[Any],
     review_comments: list[Any],
     bots: list[dict[str, Any]],
@@ -690,30 +693,19 @@ def _resolve_merger(
     """
     Resolve the merger bot for a GitHub merged PR.
 
-    Prefer a ~Bot signature on a merge-related comment; otherwise map
-    `merged_by.login` through the owner roster. Never use the PR body
-    signature (that is the author).
+    Director QA-MM004-7: ignore `merged_by` entirely (every action is ManpreetS2).
+    QA-MM004-10: only a ~Bot signature on a ledger-style "merged as <sha>" note
+    attributes the merger. A bare merge-hint comment does not.
     """
     for comment in [*issue_comments, *review_comments]:
         if not isinstance(comment, dict):
             continue
         body = comment.get("body") or ""
-        if not _MERGE_HINT_RE.search(body):
+        if not _LEDGER_STYLE_MERGED_RE.search(body):
             continue
         sig_actor, sig_method = attribute_from_body(body, bots)
         if sig_actor and sig_method == "signature":
             return sig_actor, "signature"
-
-    merged_by = pr.get("merged_by")
-    login = None
-    if isinstance(merged_by, dict):
-        login = merged_by.get("login")
-    elif isinstance(merged_by, str):
-        login = merged_by
-    mapped = map_github_login(login, bots)
-    if mapped:
-        # Shared GitHub account → owner bot; not a ledger_owner attribution.
-        return mapped, "unknown"
     return None, "unknown"
 
 
@@ -731,6 +723,7 @@ def _event(
     sha: str | None = None,
     verdict: str | None = None,
     target: str | None = None,
+    repo: str | None = None,
 ) -> dict[str, Any]:
 
     evt: dict[str, Any] = {
@@ -746,6 +739,8 @@ def _event(
     }
     if pr is not None:
         evt["pr"] = pr
+    if repo:
+        evt["repo"] = repo
     if sha:
         evt["sha"] = sha
     if verdict:

@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Any
 
 from .attribute import VERDICT_TOKENS
 
 # Event types that always yield a handoff-style edge (actor → target).
 _HANDOFF_TYPES = frozenset({"handoff", "assigned"})
+
+_GITHUB_PR_URL_RE = re.compile(
+    r"github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/(\d+)",
+    re.IGNORECASE,
+)
 
 
 def _edge_id(source: str, target: str, etype: str) -> str:
@@ -27,9 +33,44 @@ def _is_ledger_source(evt: dict[str, Any]) -> bool:
     return "task-ledger" in url or url.endswith("ledger-sample.md") or "/ledger" in url
 
 
-def _merger_score(evt: dict[str, Any]) -> int:
-    """Prefer ledger merged notes and ~Bot signatures over mapped GitHub owner."""
+def pr_key(evt: dict[str, Any]) -> tuple[str, int] | None:
+    """
+    QA-MM004-8: join PRs by (repo, number), never number alone.
+
+    Prefer explicit `repo`; else parse from github.com/.../pull/N in source_url/raw.
+    """
+    pr = evt.get("pr")
+    if pr is None:
+        return None
+    repo = evt.get("repo")
+    if isinstance(repo, str) and "/" in repo:
+        return (repo, int(pr))
+    for text in (evt.get("source_url"), evt.get("raw")):
+        if not text:
+            continue
+        m = _GITHUB_PR_URL_RE.search(str(text))
+        if m and int(m.group(2)) == int(pr):
+            return (m.group(1), int(pr))
+    return None
+
+
+def _merger_eligible(evt: dict[str, Any]) -> bool:
+    """
+    QA-MM004-7 / Director: merger only from ledger actor or ~Bot signature.
+    Never attribute from merged_by / unknown owner login.
+    """
     if not evt.get("actor"):
+        return False
+    method = _attr_method(evt)
+    if method == "signature":
+        return True
+    if method == "ledger_owner" or _is_ledger_source(evt):
+        return True
+    return False
+
+
+def _merger_score(evt: dict[str, Any]) -> int:
+    if not _merger_eligible(evt):
         return -1
     score = 0
     method = _attr_method(evt)
@@ -43,11 +84,10 @@ def _merger_score(evt: dict[str, Any]) -> int:
 
 
 def _pick_merger(merge_events: list[dict[str, Any]]) -> str | None:
-    if not merge_events:
+    eligible = [e for e in merge_events if _merger_eligible(e)]
+    if not eligible:
         return None
-    best = max(merge_events, key=_merger_score)
-    if _merger_score(best) < 0:
-        return None
+    best = max(eligible, key=_merger_score)
     return str(best["actor"])
 
 
@@ -55,28 +95,28 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Build aggregated edges from events.
 
-    Rulings (QA-MM004-1 / QA-MM004-2):
-    - merge: merger → PR author. Merger comes from the merged event's actor
-      (poller sets it from `merged_by`, preferring a ledger note or ~Bot
-      signature when present). Unknown merger → keep event, no edge.
-      Never emit a self-loop.
+    Rulings:
+    - merge: merger → PR author, keyed by (repo, number). Merger from ledger
+      or ~Bot signature only (never merged_by / owner account). Unknown →
+      keep event, no edge. Never self-loops.
     - verdict: signature-attributed review/comment with a verdict token →
       reviewer → PR author.
     - pr: each signature-attributed review/comment → PR author → reviewer,
-      deduped per (author, reviewer, pr).
-    - Unknown attribution produces no verdict/pr edge.
+      deduped per (author, reviewer, repo, pr).
     """
-    pr_authors: dict[int, str] = {}
-    merges_by_pr: dict[int, list[dict[str, Any]]] = {}
+    pr_authors: dict[tuple[str, int], str] = {}
+    merges_by_pr: dict[tuple[str, int], list[dict[str, Any]]] = {}
     for evt in events:
-        pr = evt.get("pr")
-        if evt.get("type") == "pr_opened" and pr and evt.get("actor"):
-            pr_authors[int(pr)] = str(evt["actor"])
-        if evt.get("type") == "merged" and pr:
-            merges_by_pr.setdefault(int(pr), []).append(evt)
+        key = pr_key(evt)
+        if key is None:
+            continue
+        if evt.get("type") == "pr_opened" and evt.get("actor"):
+            pr_authors[key] = str(evt["actor"])
+        if evt.get("type") == "merged":
+            merges_by_pr.setdefault(key, []).append(evt)
 
     buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
-    pr_pairs_seen: set[tuple[str, str, int]] = set()
+    pr_pairs_seen: set[tuple[str, str, str, int]] = set()
 
     def add_edge(source: str | None, target: str | None, etype: str, event_id: str) -> None:
         if not source or not target:
@@ -98,13 +138,13 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         bucket["count"] += 1
         bucket["event_ids"].append(event_id)
 
-    # --- merge edges (one per PR, best merger candidate) ---
-    for pr, cands in merges_by_pr.items():
+    # --- merge edges (one per (repo, pr), best eligible merger) ---
+    for key, cands in merges_by_pr.items():
         merger = _pick_merger(cands)
-        author = pr_authors.get(pr)
-        # Attach the winning merged event id when possible.
-        winner = max(cands, key=_merger_score) if cands else None
-        eid = str(winner["id"]) if winner else f"merge-pr{pr}"
+        author = pr_authors.get(key)
+        eligible = [e for e in cands if _merger_eligible(e)]
+        winner = max(eligible, key=_merger_score) if eligible else None
+        eid = str(winner["id"]) if winner else f"merge-{key[0]}#{key[1]}"
         add_edge(merger, author, "merge", eid)
 
     # --- handoff / assigned ---
@@ -120,14 +160,15 @@ def derive_edges(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if evt.get("type") not in {"verdict", "note"}:
             continue
         reviewer = evt.get("actor")
-        pr = evt.get("pr")
-        if not reviewer or pr is None:
+        key = pr_key(evt)
+        if not reviewer or key is None:
             continue
-        author = pr_authors.get(int(pr))
+        author = pr_authors.get(key)
         if not author:
             continue
 
-        pair_key = (str(author), str(reviewer), int(pr))
+        repo, pr = key
+        pair_key = (str(author), str(reviewer), repo, pr)
         if pair_key not in pr_pairs_seen:
             pr_pairs_seen.add(pair_key)
             add_edge(str(author), str(reviewer), "pr", str(evt["id"]))

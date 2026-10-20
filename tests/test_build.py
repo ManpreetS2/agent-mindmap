@@ -103,6 +103,7 @@ def test_derive_edges_merge_uses_pr_author() -> None:
             "actor": "dev-1",
             "target": None,
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -111,7 +112,8 @@ def test_derive_edges_merge_uses_pr_author() -> None:
             "actor": "devops-release",
             "target": None,
             "pr": 5,
-            "attribution": {"method": "signature"},
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "ledger_owner"},
             "source_url": "build/task-ledger.md",
         },
         {
@@ -138,6 +140,7 @@ def test_merge_edge_never_self_loop() -> None:
             "type": "pr_opened",
             "actor": "dev-1",
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -145,6 +148,7 @@ def test_merge_edge_never_self_loop() -> None:
             "type": "merged",
             "actor": "dev-1",
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
             "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
         },
@@ -161,6 +165,7 @@ def test_merge_unknown_merger_emits_no_edge() -> None:
             "type": "pr_opened",
             "actor": "dev-1",
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -168,6 +173,7 @@ def test_merge_unknown_merger_emits_no_edge() -> None:
             "type": "merged",
             "actor": None,
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "unknown"},
             "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
         },
@@ -176,14 +182,15 @@ def test_merge_unknown_merger_emits_no_edge() -> None:
     assert not any(e["type"] == "merge" for e in edges)
 
 
-def test_ledger_merged_overrides_github_merged_by() -> None:
-    """Prefer ledger/signature merger over mapped GitHub owner login."""
+def test_merged_by_owner_never_makes_merge_edge() -> None:
+    """QA-MM004-7: ignore merged_by / manpreet — no manpreet→author merge edge."""
     events = [
         {
             "id": "open",
             "type": "pr_opened",
             "actor": "dev-1",
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -191,23 +198,105 @@ def test_ledger_merged_overrides_github_merged_by() -> None:
             "type": "merged",
             "actor": "manpreet",
             "pr": 5,
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "unknown"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+        },
+    ]
+    edges = derive_edges(events)
+    assert not any(e["type"] == "merge" for e in edges)
+
+
+def test_ledger_merged_provides_merger() -> None:
+    """Ledger merged actor + github opened author → merge edge."""
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 5,
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "gh-merge",
+            "type": "merged",
+            "actor": None,
+            "pr": 5,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "unknown"},
             "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
         },
         {
             "id": "ledger-merge",
             "type": "merged",
-            "actor": "devops-release",
+            "actor": "architect",
             "pr": 5,
-            "attribution": {"method": "signature"},
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "ledger_owner"},
             "source_url": "build/task-ledger.md",
         },
     ]
     edges = derive_edges(events)
     merges = [e for e in edges if e["type"] == "merge"]
     assert len(merges) == 1
-    assert merges[0]["source"] == "devops-release"
+    assert merges[0]["source"] == "architect"
     assert merges[0]["target"] == "dev-1"
+
+
+def test_cross_repo_pr_number_not_joined() -> None:
+    """QA-MM004-8: fencepost #5 and agent-mindmap #5 must not share edges."""
+    events = [
+        {
+            "id": "fp-open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 5,
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "fp-merge",
+            "type": "merged",
+            "actor": "architect",
+            "pr": 5,
+            "repo": "ManpreetS2/fencepost",
+            "attribution": {"method": "ledger_owner"},
+            "source_url": "build/task-ledger.md",
+        },
+        {
+            "id": "mm-open",
+            "type": "pr_opened",
+            "actor": "ui-ux-maker",
+            "pr": 5,
+            "repo": "ManpreetS2/agent-mindmap",
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "mm-rev",
+            "type": "verdict",
+            "actor": "qa-verifier",
+            "pr": 5,
+            "repo": "ManpreetS2/agent-mindmap",
+            "verdict": "PASS",
+            "attribution": {"method": "signature"},
+            "source_url": "https://github.com/ManpreetS2/agent-mindmap/pull/5",
+        },
+    ]
+    edges = derive_edges(events)
+    merge = next(e for e in edges if e["type"] == "merge")
+    assert merge["source"] == "architect"
+    assert merge["target"] == "dev-1"
+    # Must not create architect→ui-ux-maker or qa→dev-1 cross-repo joins
+    assert not any(
+        e["type"] == "merge" and e["target"] == "ui-ux-maker" for e in edges
+    )
+    verdict = next(e for e in edges if e["type"] == "verdict")
+    assert verdict["source"] == "qa-verifier"
+    assert verdict["target"] == "ui-ux-maker"
+    assert not any(
+        e["type"] == "verdict" and e["target"] == "dev-1" for e in edges
+    )
 
 
 def test_signed_review_verdict_and_pr_edges() -> None:
@@ -218,6 +307,7 @@ def test_signed_review_verdict_and_pr_edges() -> None:
             "type": "pr_opened",
             "actor": "dev-1",
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -225,6 +315,7 @@ def test_signed_review_verdict_and_pr_edges() -> None:
             "type": "verdict",
             "actor": "security-engineer",
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "verdict": "PASS",
             "attribution": {"method": "signature"},
             "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
@@ -234,6 +325,7 @@ def test_signed_review_verdict_and_pr_edges() -> None:
             "type": "note",
             "actor": None,
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "unknown"},
             "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
         },
@@ -256,6 +348,7 @@ def test_pr_edges_deduped_per_pair_per_pr() -> None:
             "type": "pr_opened",
             "actor": "dev-1",
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -263,6 +356,7 @@ def test_pr_edges_deduped_per_pair_per_pr() -> None:
             "type": "verdict",
             "actor": "qa-verifier",
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "verdict": "CHANGES",
             "attribution": {"method": "signature"},
         },
@@ -271,6 +365,7 @@ def test_pr_edges_deduped_per_pair_per_pr() -> None:
             "type": "note",
             "actor": "qa-verifier",
             "pr": 6,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
     ]
@@ -289,6 +384,7 @@ def test_conditional_verdict_token_makes_verdict_edge() -> None:
             "type": "pr_opened",
             "actor": "dev-2",
             "pr": 3,
+            "repo": "ManpreetS2/fencepost",
             "attribution": {"method": "signature"},
         },
         {
@@ -296,6 +392,7 @@ def test_conditional_verdict_token_makes_verdict_edge() -> None:
             "type": "verdict",
             "actor": "architect",
             "pr": 3,
+            "repo": "ManpreetS2/fencepost",
             "verdict": "CONDITIONAL",
             "attribution": {"method": "signature"},
         },
