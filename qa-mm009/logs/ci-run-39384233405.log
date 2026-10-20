@@ -1,0 +1,208 @@
+pytest	Set up job	﻿2026-10-20T07:05:05.0890331Z Current runner version: '2.337.0'
+pytest	Set up job	2026-10-20T07:05:05.0932097Z ##[group]Runner Image Provisioner
+pytest	Set up job	2026-10-20T07:05:05.0933607Z Hosted Compute Agent
+pytest	Set up job	2026-10-20T07:05:05.0934702Z Version: 20261015.610
+pytest	Set up job	2026-10-20T07:05:05.0936240Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+pytest	Set up job	2026-10-20T07:05:05.0937615Z Build Date: 2026-10-14T17:06:54Z
+pytest	Set up job	2026-10-20T07:05:05.0938938Z Worker ID: {1910d171-2aa2-429f-bf85-2de970a71f39}
+pytest	Set up job	2026-10-20T07:05:05.0940280Z Region: eastus2
+pytest	Set up job	2026-10-20T07:05:05.0941282Z Cloud: Azure
+pytest	Set up job	2026-10-20T07:05:05.0942276Z ##[endgroup]
+pytest	Set up job	2026-10-20T07:05:05.0944654Z ##[group]Operating System
+pytest	Set up job	2026-10-20T07:05:05.0946134Z Ubuntu
+pytest	Set up job	2026-10-20T07:05:05.0947092Z 24.04.5
+pytest	Set up job	2026-10-20T07:05:05.0947967Z LTS
+pytest	Set up job	2026-10-20T07:05:05.0949012Z ##[endgroup]
+pytest	Set up job	2026-10-20T07:05:05.0950018Z ##[group]Runner Image
+pytest	Set up job	2026-10-20T07:05:05.0951116Z Image: ubuntu-24.04
+pytest	Set up job	2026-10-20T07:05:05.0952188Z Version: 20261018.339.1
+pytest	Set up job	2026-10-20T07:05:05.0954158Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+pytest	Set up job	2026-10-20T07:05:05.0957668Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+pytest	Set up job	2026-10-20T07:05:05.0959607Z ##[endgroup]
+pytest	Set up job	2026-10-20T07:05:05.0961564Z ##[group]GITHUB_TOKEN Permissions
+pytest	Set up job	2026-10-20T07:05:05.0964441Z Contents: read
+pytest	Set up job	2026-10-20T07:05:05.0965757Z Metadata: read
+pytest	Set up job	2026-10-20T07:05:05.0966934Z ##[endgroup]
+pytest	Set up job	2026-10-20T07:05:05.0970031Z Secret source: Actions
+pytest	Set up job	2026-10-20T07:05:05.0971701Z Cache mode: write
+pytest	Set up job	2026-10-20T07:05:05.0972971Z Prepare workflow directory
+pytest	Set up job	2026-10-20T07:05:05.1463180Z Prepare all required actions
+pytest	Set up job	2026-10-20T07:05:05.1535130Z Getting action download info
+pytest	Set up job	2026-10-20T07:05:05.4114931Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+pytest	Set up job	2026-10-20T07:05:05.5242460Z Download action repository 'actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38' (SHA:42375524e23c412d93fb67b49958b491fce71c38)
+pytest	Set up job	2026-10-20T07:05:05.8851200Z Complete job name: pytest
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	﻿2026-10-20T07:05:05.9648042Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9649206Z with:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9649724Z   repository: ManpreetS2/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9653512Z   token: ***
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9653978Z   ssh-strict: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9654448Z   ssh-user: git
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9654923Z   persist-credentials: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9655444Z   clean: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9656152Z   sparse-checkout-cone-mode: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9656769Z   fetch-depth: 1
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9657250Z   fetch-tags: false
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9657731Z   show-progress: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9658219Z   lfs: false
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9658765Z   submodules: false
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9659261Z   set-safe-directory: true
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9659804Z   allow-unsafe-pr-checkout: false
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:05.9660805Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.2729356Z Syncing repository: ManpreetS2/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3090110Z ##[group]Getting Git version info
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3092242Z Working directory is '/home/runner/work/agent-mindmap/agent-mindmap'
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3100035Z [command]/usr/bin/git version
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3102081Z git version 2.55.0
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3112934Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3128528Z Temporarily overriding HOME='/home/runner/work/_temp/1bba9ad2-5d2a-4bb9-a971-b99aabeba8cc' before making global git config changes
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3131540Z Adding repository directory to the temporary git global config as a safe directory
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3133475Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/agent-mindmap/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3136672Z Deleting the contents of '/home/runner/work/agent-mindmap/agent-mindmap'
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3138550Z ##[group]Initializing the repository
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3139763Z [command]/usr/bin/git init /home/runner/work/agent-mindmap/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3141348Z hint: Using 'master' as the name for the initial branch. This default branch name
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3148104Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3149805Z hint: to use in all of your new repositories, which will suppress this warning,
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3151104Z hint: call:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3151801Z hint:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3152644Z hint: 	git config --global init.defaultBranch <name>
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3153708Z hint:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3154738Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3156696Z hint: 'development'. The just-created branch can be renamed via this command:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3158123Z hint:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3158960Z hint: 	git branch -m <name>
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3159877Z hint:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3160967Z hint: Disable this message with "git config set advice.defaultBranchName false"
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3162892Z Initialized empty Git repository in /home/runner/work/agent-mindmap/agent-mindmap/.git/
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3166286Z [command]/usr/bin/git remote add origin https://github.com/ManpreetS2/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3169368Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3170771Z ##[group]Disabling automatic garbage collection
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3171978Z [command]/usr/bin/git config --local gc.auto 0
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3174482Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3175965Z ##[group]Setting up auth
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3177311Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3181792Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3186217Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3190779Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3460726Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3486550Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3758146Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3811146Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3813418Z ##[group]Fetching the repository
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.3823790Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +1a55e1170fdf853537d4d00f7d45107becace0d9:refs/remotes/pull/9/merge
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6405313Z From https://github.com/ManpreetS2/agent-mindmap
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6408262Z  * [new ref]         1a55e1170fdf853537d4d00f7d45107becace0d9 -> pull/9/merge
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6412957Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6415394Z ##[group]Determining the checkout info
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6417861Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6419618Z [command]/usr/bin/git sparse-checkout disable
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6442556Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6504216Z ##[group]Checking out the ref
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6508607Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/9/merge
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6622956Z Note: switching to 'refs/remotes/pull/9/merge'.
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6623895Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6631186Z You are in 'detached HEAD' state. You can look around, make experimental
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6633742Z changes and commit them, and you can discard any commits you make in this
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6640800Z state without impacting any branches by switching back to a branch.
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6642323Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6647076Z If you want to create a new branch to retain commits you create, you may
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6649014Z do so (now or later) by using -c with the switch command. Example:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6650537Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6651158Z   git switch -c <new-branch-name>
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6652007Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6652629Z Or undo this operation with:
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6653430Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6654062Z   git switch -
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6654948Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6656284Z Turn off this advice by setting config variable advice.detachedHead to false
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6657789Z 
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6659202Z HEAD is now at 1a55e11 Merge dd40f25004d7c10a0dcbc405ce942044eb4d829b into 7129cbf45fbb60139ef39a319c7d8dd3aff5571e
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6663788Z ##[endgroup]
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6701390Z [command]/usr/bin/git log -1 --format=%H
+pytest	Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262	2026-10-20T07:05:06.6741242Z 1a55e1170fdf853537d4d00f7d45107becace0d9
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	﻿2026-10-20T07:05:06.7073569Z ##[group]Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7074519Z with:
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7075043Z   python-version: 3.12
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7075801Z   cache: pip
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7076422Z   cache-dependency-path: requirements-dev.txt
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7077127Z   check-latest: false
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7080876Z   token: ***
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7081449Z   update-environment: true
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7082053Z   allow-prereleases: false
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.7082637Z ##[endgroup]
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.8748515Z ##[group]Installed versions
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.8889644Z (node:2069) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.8891873Z Successfully set up CPython (3.12.15)
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.8893594Z (Use `node --trace-deprecation ...` to show where the warning was created)
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.8896151Z ##[endgroup]
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:06.9799216Z [command]/opt/hostedtoolcache/Python/3.12.15/x64/bin/pip cache dir
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.2821340Z /home/runner/.cache/pip
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.3860213Z Cache hit for: setup-python-Linux-x64-24.04-Ubuntu-python-3.12.15-pip-6cdde659fe6c0a752f58af8743f1e2ef88552dca57beb07acc7240c11395f4a6
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.3988182Z (node:2069) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.5684005Z Received 3206715 of 3206715 (100.0%), 24.3 MBs/sec
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.5684795Z Cache Size: ~3 MB (3206715 B)
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.5757979Z [command]/usr/bin/tar -xf /home/runner/work/_temp/7f5071bc-1ff0-4f5f-a271-30aa5ca6a767/cache.tzst -P -C /home/runner/work/agent-mindmap/agent-mindmap --use-compress-program unzstd
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.5958359Z Cache restored successfully
+pytest	Run actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38	2026-10-20T07:05:10.5977151Z Cache restored from key: setup-python-Linux-x64-24.04-Ubuntu-python-3.12.15-pip-6cdde659fe6c0a752f58af8743f1e2ef88552dca57beb07acc7240c11395f4a6
+pytest	Install test dependencies	﻿2026-10-20T07:05:10.6159792Z ##[group]Run python -m pip install --require-hashes -r requirements-dev.txt
+pytest	Install test dependencies	2026-10-20T07:05:10.6160476Z ^[[36;1mpython -m pip install --require-hashes -r requirements-dev.txt^[[0m
+pytest	Install test dependencies	2026-10-20T07:05:10.6329345Z shell: /usr/bin/bash -e {0}
+pytest	Install test dependencies	2026-10-20T07:05:10.6329676Z env:
+pytest	Install test dependencies	2026-10-20T07:05:10.6329995Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Install test dependencies	2026-10-20T07:05:10.6330528Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+pytest	Install test dependencies	2026-10-20T07:05:10.6330999Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Install test dependencies	2026-10-20T07:05:10.6331453Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Install test dependencies	2026-10-20T07:05:10.6331865Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Install test dependencies	2026-10-20T07:05:10.6332277Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+pytest	Install test dependencies	2026-10-20T07:05:10.6332626Z ##[endgroup]
+pytest	Install test dependencies	2026-10-20T07:05:12.5137430Z Collecting attrs==26.1.0 (from -r requirements-dev.txt (line 7))
+pytest	Install test dependencies	2026-10-20T07:05:12.5152302Z   Using cached attrs-26.1.0-py3-none-any.whl (67 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.5292175Z Collecting iniconfig==2.3.1 (from -r requirements-dev.txt (line 13))
+pytest	Install test dependencies	2026-10-20T07:05:12.5305922Z   Using cached iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.5508027Z Collecting jsonschema==4.26.0 (from -r requirements-dev.txt (line 17))
+pytest	Install test dependencies	2026-10-20T07:05:12.5523979Z   Using cached jsonschema-4.26.0-py3-none-any.whl (90 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.5684246Z Collecting jsonschema-specifications==2025.9.1 (from -r requirements-dev.txt (line 21))
+pytest	Install test dependencies	2026-10-20T07:05:12.5698299Z   Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.5853342Z Collecting packaging==26.3 (from -r requirements-dev.txt (line 25))
+pytest	Install test dependencies	2026-10-20T07:05:12.5866449Z   Using cached packaging-26.3-py3-none-any.whl (129 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.6001902Z Collecting pluggy==1.7.0 (from -r requirements-dev.txt (line 29))
+pytest	Install test dependencies	2026-10-20T07:05:12.6014913Z   Using cached pluggy-1.7.0-py3-none-any.whl (27 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.6194147Z Collecting pygments==2.21.0 (from -r requirements-dev.txt (line 33))
+pytest	Install test dependencies	2026-10-20T07:05:12.6207249Z   Using cached pygments-2.21.0-py3-none-any.whl (1.3 MB)
+pytest	Install test dependencies	2026-10-20T07:05:12.6501606Z Collecting pytest==9.1.1 (from -r requirements-dev.txt (line 37))
+pytest	Install test dependencies	2026-10-20T07:05:12.6515074Z   Using cached pytest-9.1.1-py3-none-any.whl (386 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.6739104Z Collecting referencing==0.37.0 (from -r requirements-dev.txt (line 41))
+pytest	Install test dependencies	2026-10-20T07:05:12.6752614Z   Using cached referencing-0.37.0-py3-none-any.whl (26 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.9760992Z Collecting rpds-py==2026.9.1 (from -r requirements-dev.txt (line 47))
+pytest	Install test dependencies	2026-10-20T07:05:12.9776905Z   Using cached rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (371 kB)
+pytest	Install test dependencies	2026-10-20T07:05:12.9968905Z Collecting typing-extensions==4.16.0 (from -r requirements-dev.txt (line 179))
+pytest	Install test dependencies	2026-10-20T07:05:12.9993958Z   Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+pytest	Install test dependencies	2026-10-20T07:05:13.2052340Z Installing collected packages: typing-extensions, rpds-py, pygments, pluggy, packaging, iniconfig, attrs, referencing, pytest, jsonschema-specifications, jsonschema
+pytest	Install test dependencies	2026-10-20T07:05:14.5683476Z 
+pytest	Install test dependencies	2026-10-20T07:05:14.5704583Z Successfully installed attrs-26.1.0 iniconfig-2.3.1 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 referencing-0.37.0 rpds-py-2026.9.1 typing-extensions-4.16.0
+pytest	Run pytest	﻿2026-10-20T07:05:14.6303183Z ##[group]Run set -euo pipefail
+pytest	Run pytest	2026-10-20T07:05:14.6303555Z ^[[36;1mset -euo pipefail^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6304017Z ^[[36;1mcollected="$(python -m pytest --collect-only -q 2>&1 | tee /dev/stderr | tail -n1)"^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6304617Z ^[[36;1mcount="$(echo "$collected" | awk '/tests collected/ { print $1; exit }')"^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6305071Z ^[[36;1mif [ -z "${count:-}" ] || [ "$count" -lt 1 ]; then^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6305814Z ^[[36;1m  echo "Expected at least one test to be collected, got: ${count:-0}"^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6306388Z ^[[36;1m  exit 1^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6306599Z ^[[36;1mfi^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6306816Z ^[[36;1mecho "Collected $count tests"^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6307107Z ^[[36;1mpython -m pytest -q^[[0m
+pytest	Run pytest	2026-10-20T07:05:14.6358239Z shell: /usr/bin/bash -e {0}
+pytest	Run pytest	2026-10-20T07:05:14.6358506Z env:
+pytest	Run pytest	2026-10-20T07:05:14.6358786Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Run pytest	2026-10-20T07:05:14.6359244Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+pytest	Run pytest	2026-10-20T07:05:14.6359732Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Run pytest	2026-10-20T07:05:14.6360126Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Run pytest	2026-10-20T07:05:14.6360523Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+pytest	Run pytest	2026-10-20T07:05:14.6360944Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+pytest	Run pytest	2026-10-20T07:05:14.6361281Z ##[endgroup]
+pytest	Run pytest	2026-10-20T07:05:15.7429549Z tests/test_activity_schema.py::test_sample_activity_validates
+pytest	Run pytest	2026-10-20T07:05:15.7431165Z tests/test_activity_schema.py::test_fixture_includes_pr5_merge_sha
+pytest	Run pytest	2026-10-20T07:05:15.7432331Z tests/test_activity_schema.py::test_bots_config_has_thirteen_bots_plus_owner
+pytest	Run pytest	2026-10-20T07:05:15.7433524Z tests/test_activity_schema.py::test_each_bot_has_signature_alias
+pytest	Run pytest	2026-10-20T07:05:15.7435160Z tests/test_activity_schema.py::test_task_id_accepts_valid_examples[RP-005D]
+pytest	Run pytest	2026-10-20T07:05:15.7436853Z tests/test_activity_schema.py::test_task_id_accepts_valid_examples[MM-001]
+pytest	Run pytest	2026-10-20T07:05:15.7456617Z tests/test_activity_schema.py::test_task_id_accepts_valid_examples[QA-RP004-1]

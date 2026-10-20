@@ -1,0 +1,89 @@
+tests/test_activity_schema.py::test_sample_activity_validates
+tests/test_activity_schema.py::test_fixture_includes_pr5_merge_sha
+tests/test_activity_schema.py::test_bots_config_has_thirteen_bots_plus_owner
+tests/test_activity_schema.py::test_each_bot_has_signature_alias
+tests/test_activity_schema.py::test_task_id_accepts_valid_examples[RP-005D]
+tests/test_activity_schema.py::test_task_id_accepts_valid_examples[MM-001]
+tests/test_activity_schema.py::test_task_id_accepts_valid_examples[QA-RP004-1]
+tests/test_activity_schema.py::test_task_id_rejects_invalid_example
+tests/test_build.py::test_build_activity_validates
+tests/test_build.py::test_github_down_ledger_only_meta_error
+tests/test_build.py::test_event_ids_stable_across_runs
+tests/test_build.py::test_derive_edges_merge_uses_pr_author
+tests/test_build.py::test_merge_edge_never_self_loop
+tests/test_build.py::test_merge_unknown_merger_emits_no_edge
+tests/test_build.py::test_merged_by_owner_never_makes_merge_edge
+tests/test_build.py::test_ledger_merged_provides_merger
+tests/test_build.py::test_cross_repo_pr_number_not_joined
+tests/test_build.py::test_signed_review_verdict_and_pr_edges
+tests/test_build.py::test_pr_edges_deduped_per_pair_per_pr
+tests/test_build.py::test_conditional_verdict_token_makes_verdict_edge
+tests/test_build.py::test_build_requires_ledger_arg_or_env
+tests/test_build.py::test_build_uses_mindmap_ledger_env
+tests/test_github_poller.py::test_pr5_merged_with_sha_693ebc7
+tests/test_github_poller.py::test_security_review_attributed_by_signature
+tests/test_github_poller.py::test_unsigned_comment_is_unknown
+tests/test_github_poller.py::test_second_run_gets_304s
+tests/test_github_poller.py::test_output_contains_no_credentials
+tests/test_github_poller.py::test_gh_failure_sets_meta_github_error
+tests/test_github_poller.py::test_rate_limited_when_remaining_under_floor
+tests/test_github_poller.py::test_rate_limited_on_403_rate_limit
+tests/test_github_poller.py::test_paginate_reviews_over_thirty_items
+tests/test_github_poller.py::test_subresource_5xx_sets_error_keeps_partial
+tests/test_github_poller.py::test_events_conform_to_schema
+tests/test_github_poller.py::test_schema_allows_rate_limited_meta
+tests/test_github_poller.py::test_attribute_from_body_signature_helpers
+tests/test_github_poller.py::test_next_link_path_helper
+tests/test_github_poller.py::test_next_link_rejects_foreign_host
+tests/test_github_poller.py::test_next_link_rejects_foreign_repo
+tests/test_github_poller.py::test_next_link_rejects_dotdot_and_percent
+tests/test_github_poller.py::test_next_link_rejects_mismatched_resource
+tests/test_github_poller.py::test_failed_repo_id_lookup_sets_error
+tests/test_github_poller.py::test_foreign_host_link_stops_pagination_sets_error
+tests/test_github_poller.py::test_foreign_repo_link_stops_pagination_sets_error
+tests/test_github_poller.py::test_next_link_rejects_sibling_allowlisted_repo
+tests/test_github_poller.py::test_sibling_allowlisted_repo_link_stops_pagination
+tests/test_github_poller.py::test_merged_by_ignored_leaves_merger_unknown
+tests/test_github_poller.py::test_ledger_style_signed_merge_note_attributes_merger
+tests/test_github_poller.py::test_merge_hint_alone_does_not_attribute_merger
+tests/test_github_poller.py::test_repositories_numeric_id_link_pagination
+tests/test_github_poller.py::test_max_prs_cap_stops_pr_list_pagination
+tests/test_github_poller.py::test_pagination_page_cap
+tests/test_integration.py::test_e2e_fixture_pipeline_writes_schema_valid_activity
+tests/test_integration.py::test_e2e_github_down_still_serves_ledger_only
+tests/test_integration.py::test_pr_keys_are_repo_and_number
+tests/test_integration.py::test_make_refresh_demo_writes_public_activity
+tests/test_integration.py::test_sample_fixture_still_valid_for_ui
+tests/test_ledger_parser.py::test_fixture_uses_real_ledger_header
+tests/test_ledger_parser.py::test_every_table_row_becomes_a_task
+tests/test_ledger_parser.py::test_four_note_variants_from_real_ledger
+tests/test_ledger_parser.py::test_structured_pdt_handoff_from_real_ledger
+tests/test_ledger_parser.py::test_structured_task_id_from_column_not_body
+tests/test_ledger_parser.py::test_structured_target_at_mention_and_null
+tests/test_ledger_parser.py::test_task_id_word_boundaries
+tests/test_ledger_parser.py::test_undated_and_prose_go_to_unparsed
+tests/test_ledger_parser.py::test_no_line_lost
+tests/test_ledger_parser.py::test_event_ids_stable_across_runs
+tests/test_ledger_parser.py::test_parser_output_validates_against_mm001_schema
+tests/test_ledger_parser.py::test_per_type_event_counts
+tests/test_ledger_parser.py::test_malformed_time_isolated_snippet_does_not_raise
+tests/test_qa_deliberate_fail.py::test_qa_mm009_deliberate_failure
+
+70 tests collected in 0.05s
+DEBUG collected=[70 tests collected in 0.05s]
+DEBUG count=[70]
+Collected 70 tests
+.....................................................................F   [100%]
+=================================== FAILURES ===================================
+_______________________ test_qa_mm009_deliberate_failure _______________________
+
+    def test_qa_mm009_deliberate_failure():
+>       assert False, "intentional failure for QA MM-009 — scratch only"
+E       AssertionError: intentional failure for QA MM-009 — scratch only
+E       assert False
+
+tests/test_qa_deliberate_fail.py:2: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_qa_deliberate_fail.py::test_qa_mm009_deliberate_failure - A...
+1 failed, 69 passed in 0.71s
+GATE_EXIT:1

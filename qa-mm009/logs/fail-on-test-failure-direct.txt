@@ -1,0 +1,14 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_qa_mm009_deliberate_failure _______________________
+
+    def test_qa_mm009_deliberate_failure():
+>       assert False, "intentional failure for QA MM-009 — scratch only"
+E       AssertionError: intentional failure for QA MM-009 — scratch only
+E       assert False
+
+tests/test_qa_deliberate_fail.py:2: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_qa_deliberate_fail.py::test_qa_mm009_deliberate_failure - A...
+1 failed in 0.02s
+DIRECT_FAIL_EXIT:1

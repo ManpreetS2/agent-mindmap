@@ -1,0 +1,16 @@
+secrets usages:
+(none)
+pull_request_target:
+(none)
+run: blocks with ${{ :
+47:        run: python -m pip install --require-hashes -r requirements-dev.txt
+50:          set -euo pipefail
+51:          collected="$(python -m pytest --collect-only -q 2>&1 | tee /dev/stderr | tail -n1)"
+52:          count="$(echo "$collected" | awk '/tests collected/ { print $1; exit }')"
+53:          if [ -z "${count:-}" ] || [ "$count" -lt 1 ]; then
+54:            echo "Expected at least one test to be collected, got: ${count:-0}"
+55:            exit 1
+56:          fi
+57:          echo "Collected $count tests"
+58:          python -m pytest -q
+done

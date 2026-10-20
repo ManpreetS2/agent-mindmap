@@ -1,0 +1,7 @@
+186:pytest	Run pytest	2026-10-20T07:05:14.6304617Z ^[[36;1mcount="$(echo "$collected" | awk '/tests collected/ { print $1; exit }')"^[[0m
+189:pytest	Run pytest	2026-10-20T07:05:14.6306388Z ^[[36;1m  exit 1^[[0m
+191:pytest	Run pytest	2026-10-20T07:05:14.6306816Z ^[[36;1mecho "Collected $count tests"^[[0m
+242:pytest	Run pytest	2026-10-20T07:05:15.7584762Z tests/test_github_poller.py::test_failed_repo_id_lookup_sets_error
+272:pytest	Run pytest	2026-10-20T07:05:15.7629178Z 69 tests collected in 0.29s
+273:pytest	Run pytest	2026-10-20T07:05:15.7793542Z Collected 69 tests
+275:pytest	Run pytest	2026-10-20T07:05:17.3923414Z 69 passed in 1.43s

@@ -1,0 +1,11 @@
+date: 2026-10-20T07:29:15Z
+hostname: cursor
+python: Python 3.12.3
+pytest: pytest 9.1.1
+pip: pip 26.2.1 from /tmp/qa-mm009-venv/lib/python3.12/site-packages/pip (python 3.12)
+git_head: dd40f25004d7c10a0dcbc405ce942044eb4d829b
+git_head_short: dd40f25
+base_main: 7129cbf45fbb60139ef39a319c7d8dd3aff5571e
+pr_head_target: dd40f25004d7c10a0dcbc405ce942044eb4d829b
+pr_head_actual: dd40f25004d7c10a0dcbc405ce942044eb4d829b
+os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
