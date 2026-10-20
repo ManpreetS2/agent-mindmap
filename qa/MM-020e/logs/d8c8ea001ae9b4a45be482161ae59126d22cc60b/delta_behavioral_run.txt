@@ -1,0 +1,13 @@
+test_orphan_es_on_unsubscribe_during_retry (__main__.TestNoNewIssuesSpot.test_orphan_es_on_unsubscribe_during_retry)
+Delta review: unsubscribe while retry ES pending may not close it. ... ok
+test_transport_has_recovery_and_debounce (__main__.TestQaMm020e3AndSec4Source.test_transport_has_recovery_and_debounce) ... ok
+test_abort_storm_releases_all_slots (__main__.TestQaMm020e4Slots.test_abort_storm_releases_all_slots) ... ok
+test_oversized_capped_secret_rejected (__main__.TestQaMm020e5Cap.test_oversized_capped_secret_rejected) ... ok
+test_plain_text_strips_tags (__main__.TestQaMm020e6Markup.test_plain_text_strips_tags) ... ok
+test_commit_body_signature_not_github_verified (__main__.TestSecMm020e2Actor.test_commit_body_signature_not_github_verified) ... ok
+test_healthz_dropped_count (__main__.TestSecMm020e3Healthz.test_healthz_dropped_count) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.242s
+
+OK

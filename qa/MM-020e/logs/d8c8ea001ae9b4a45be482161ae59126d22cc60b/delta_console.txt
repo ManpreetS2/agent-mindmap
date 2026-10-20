@@ -1,0 +1,40 @@
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+test_orphan_es_on_unsubscribe_during_retry (__main__.TestNoNewIssuesSpot.test_orphan_es_on_unsubscribe_during_retry)
+Delta review: unsubscribe while retry ES pending may not close it. ... ok
+test_transport_has_recovery_and_debounce (__main__.TestQaMm020e3AndSec4Source.test_transport_has_recovery_and_debounce) ... ok
+test_abort_storm_releases_all_slots (__main__.TestQaMm020e4Slots.test_abort_storm_releases_all_slots) ... ok
+test_oversized_capped_secret_rejected (__main__.TestQaMm020e5Cap.test_oversized_capped_secret_rejected) ... ok
+test_plain_text_strips_tags (__main__.TestQaMm020e6Markup.test_plain_text_strips_tags) ... FAIL
+test_commit_body_signature_not_github_verified (__main__.TestSecMm020e2Actor.test_commit_body_signature_not_github_verified) ... ok
+test_healthz_dropped_count (__main__.TestSecMm020e3Healthz.test_healthz_dropped_count) ... ok
+
+======================================================================
+FAIL: test_plain_text_strips_tags (__main__.TestQaMm020e6Markup.test_plain_text_strips_tags)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/qa-mm020e-delta/evidence/test_delta_behavioral.py", line 274, in test_plain_text_strips_tags
+    self.assertEqual(out, "hello")
+AssertionError: 'hellox' != 'hello'
+- hellox
+?      -
++ hello
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.270s
+
+FAILED (failures=1)
+

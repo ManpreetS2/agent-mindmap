@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "dropped_before": 0,
+  "dropped_after": 1,
+  "secret_in_body": false
+}

@@ -1,0 +1,5 @@
+{
+  "capped_len": 240,
+  "dropped_delta": 1,
+  "secret_rejected": true
+}

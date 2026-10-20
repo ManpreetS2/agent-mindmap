@@ -11,3 +11,5 @@ PR: https://github.com/ManpreetS2/agent-mindmap/pull/20
 Evidence branch: qa/MM-020e
 Prior FAIL SHA (reference): 9a30965 (title/review raw leaks; commit subject already fixed)
 Mode: verify-only (no product code changes, no PR comments, no merges)
+
+Delta pass: d8c8ea0 (239a8e9..d8c8ea0) — see DELTA_REPORT.md

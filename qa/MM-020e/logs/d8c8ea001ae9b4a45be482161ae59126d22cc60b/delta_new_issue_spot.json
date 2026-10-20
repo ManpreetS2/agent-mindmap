@@ -1,0 +1,4 @@
+{
+  "tracks_retry_es_for_cleanup": false,
+  "note": "tryReconnectSse wires EventSource before onopen assigns source; unsubscribe only closes `source`, so in-flight retry ES may linger until error/close. Low severity if short-lived."
+}

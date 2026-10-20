@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /tmp/qa-mm020e-delta/repo/web
+
+ ✓ src/test/plainText.test.ts (2 tests) 2ms
+ ✓ src/test/activityTransport.test.ts (8 tests) 65ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  21:02:07
+   Duration  684ms (transform 79ms, setup 197ms, collect 75ms, tests 67ms, environment 477ms, prepare 224ms)
+

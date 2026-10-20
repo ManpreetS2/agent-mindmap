@@ -1,0 +1,6 @@
+{
+  "has_reconnect": true,
+  "has_debounce": true,
+  "refetch_min_ms": 1000,
+  "resets_fellBack": true
+}

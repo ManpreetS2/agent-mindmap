@@ -1,0 +1,15 @@
+{
+  "mapped": {
+    "actor": "manpreet",
+    "provenance": "github-verified",
+    "method": "github_login"
+  },
+  "unmapped": {
+    "actor": null,
+    "provenance": "agent-reported"
+  },
+  "no_login": {
+    "actor": null,
+    "provenance": "agent-reported"
+  }
+}
