@@ -1,0 +1,15 @@
+{
+  "health": {
+    "mode": "demo",
+    "last_ledger_poll": null,
+    "last_gh_poll": null,
+    "last_events_poll": null,
+    "last_build": "2026-10-20T21:17:54.150950+00:00",
+    "ledger_last_entry_at": null,
+    "network_event_count": 3,
+    "dropped_network_events": 0,
+    "errors": []
+  },
+  "ui": 200,
+  "bind_ok": true
+}

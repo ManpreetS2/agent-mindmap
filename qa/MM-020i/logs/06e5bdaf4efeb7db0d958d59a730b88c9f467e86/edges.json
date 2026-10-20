@@ -1,0 +1,6 @@
+{
+  "demo_events_source_started": true,
+  "port_busy_rc": 1,
+  "port_busy_stderr": "nit__\n    self.server_bind()\n  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind\n    socketserver.TCPServer.server_bind(self)\n  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind\n    self.socket.bind(self.server_address)\nOSError: [Errno 98] Address already in use\n",
+  "missing_activity_fixture": true
+}

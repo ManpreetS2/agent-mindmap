@@ -1,0 +1,54 @@
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[PASS] demo /healthz mode=demo — {'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:17:49.167839+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dr
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] demo SSE order demo-evt-1..3 — ['demo-evt-1', 'demo-evt-2', 'demo-evt-3']
+[PASS] demo SSE payloads include mode=demo — ['demo', 'demo', 'demo']
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+[PASS] demo SSE Last-Event-ID replay — ['demo-evt-2', 'demo-evt-3']
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+[PASS] demo poll /activity.json serves fixture (meta.mode=demo) — {'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+[PASS] demo never calls gh — calls=[]
+[PASS] demo never reads poison ledger path — []
+[PASS] demo ignores stale live activity.json on disk — {'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+[PASS] demo activity meta.mode=demo — {'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[PASS] live /healthz mode=live — {'mode': 'live', 'last_ledger_poll': '2026-10-20T21:17:53.386770+00:00', 'last_gh_poll': '2026-10-20T21:17:53.390287+00:
+[PASS] live activity is not demo fixture (no demo-evt / mode!=demo) — {'github': 'ok', 'ledger': 'ok', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00'}
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[FAIL] live pre-poll with stale demo activity: healthz=live but activity.meta.mode=demo — healthz=live meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+[FINDING:medium] LIVE-stale-demo-activity-meta-prepoll: healthz=live activity.meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+[PASS] live restart with stale demo activity + failed ledger: /healthz mode=live — {'mode': 'live', 'last_ledger_poll': '2026-10-20T21:17:53.458790+00:00', 'last_gh_poll': '2026-10-20T21:17:53.458823+00:
+[FINDING:high] LIVE-stale-demo-activity-meta: healthz=live activity.meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+[FAIL] live does not serve meta.mode=demo from stale file when rebuild fails — {'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}
+[PASS] make refresh-demo equivalent writes only --activity-out — rc=0 out_exists=True live_untouched=True
+[PASS] make refresh-demo ACTIVITY_OUT — rc=0 stderr=
+[PASS] start-mac.sh --demo: /healthz mode=demo on :8787 — {'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:17:54.150950+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dr
+[PASS] start-mac.sh --demo: UI / 200 — status=200
+[PASS] start-mac.sh --demo: bind 127.0.0.1:8787 reachable
+[PASS] --demo + --events-source gh starts as demo (ignores live events) — mode=demo
+[FINDING:low] DEMO-flag-combo: combination accepted; server runs mode=demo (events polling suppressed by demo_mode)
+[PASS] demo port-in-use → nonzero exit — rc=1 stderr=   socketserver.TCPServer.server_bind(self)
+  File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+[PASS] missing sample-activity raises DemoFixtureError
+[PASS] ModeBanner copy unmistakable (DEMO/LIVE strings)
+[PASS] useServerMode driven by /healthz
+[FINDING:medium] BANNER-no-refetch: healthz fetched once on mount; no interval/refetch — stale if mode signal changes without remount; null until fetch
+[FAIL] banner refreshes / cannot go stale — one-shot fetch only
+[FINDING:medium] BANNER-not-always-visible: banner is null while serverMode===null (before/failed healthz)
+[FAIL] banner always visible (even before healthz) — hidden when mode=null
+[FINDING:medium] BANNER-default-live: any non-"demo" value (including missing) becomes "live"
+[FAIL] missing mode not faked as LIVE — defaults to live
+
+=== SUMMARY ===
+PASS 22
+FAIL 5
+FINDINGS 6

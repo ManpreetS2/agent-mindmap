@@ -1,0 +1,208 @@
+{
+  "sha": "06e5bdaf4efeb7db0d958d59a730b88c9f467e86",
+  "checks": [
+    {
+      "check": "demo /healthz mode=demo",
+      "result": "PASS",
+      "detail": "{'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:17:49.167839+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dr"
+    },
+    {
+      "check": "demo SSE order demo-evt-1..3",
+      "result": "PASS",
+      "detail": "['demo-evt-1', 'demo-evt-2', 'demo-evt-3']"
+    },
+    {
+      "check": "demo SSE payloads include mode=demo",
+      "result": "PASS",
+      "detail": "['demo', 'demo', 'demo']"
+    },
+    {
+      "check": "demo SSE Last-Event-ID replay",
+      "result": "PASS",
+      "detail": "['demo-evt-2', 'demo-evt-3']"
+    },
+    {
+      "check": "demo poll /activity.json serves fixture (meta.mode=demo)",
+      "result": "PASS",
+      "detail": "{'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "demo never calls gh",
+      "result": "PASS",
+      "detail": "calls=[]"
+    },
+    {
+      "check": "demo never reads poison ledger path",
+      "result": "PASS",
+      "detail": "[]"
+    },
+    {
+      "check": "demo ignores stale live activity.json on disk",
+      "result": "PASS",
+      "detail": "{'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "demo activity meta.mode=demo",
+      "result": "PASS",
+      "detail": "{'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "live /healthz mode=live",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'last_ledger_poll': '2026-10-20T21:17:53.386770+00:00', 'last_gh_poll': '2026-10-20T21:17:53.390287+00:"
+    },
+    {
+      "check": "live activity is not demo fixture (no demo-evt / mode!=demo)",
+      "result": "PASS",
+      "detail": "{'github': 'ok', 'ledger': 'ok', 'ledger_last_entry_at': '2026-10-19T23:01:00-07:00'}"
+    },
+    {
+      "check": "live pre-poll with stale demo activity: healthz=live but activity.meta.mode=demo",
+      "result": "FAIL",
+      "detail": "healthz=live meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "live restart with stale demo activity + failed ledger: /healthz mode=live",
+      "result": "PASS",
+      "detail": "{'mode': 'live', 'last_ledger_poll': '2026-10-20T21:17:53.458790+00:00', 'last_gh_poll': '2026-10-20T21:17:53.458823+00:"
+    },
+    {
+      "check": "live does not serve meta.mode=demo from stale file when rebuild fails",
+      "result": "FAIL",
+      "detail": "{'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}"
+    },
+    {
+      "check": "make refresh-demo equivalent writes only --activity-out",
+      "result": "PASS",
+      "detail": "rc=0 out_exists=True live_untouched=True"
+    },
+    {
+      "check": "make refresh-demo ACTIVITY_OUT",
+      "result": "PASS",
+      "detail": "rc=0 stderr="
+    },
+    {
+      "check": "start-mac.sh --demo: /healthz mode=demo on :8787",
+      "result": "PASS",
+      "detail": "{'mode': 'demo', 'last_ledger_poll': None, 'last_gh_poll': None, 'last_events_poll': None, 'last_build': '2026-10-20T21:17:54.150950+00:00', 'ledger_last_entry_at': None, 'network_event_count': 3, 'dr"
+    },
+    {
+      "check": "start-mac.sh --demo: UI / 200",
+      "result": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "check": "start-mac.sh --demo: bind 127.0.0.1:8787 reachable",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "--demo + --events-source gh starts as demo (ignores live events)",
+      "result": "PASS",
+      "detail": "mode=demo"
+    },
+    {
+      "check": "demo port-in-use \u2192 nonzero exit",
+      "result": "PASS",
+      "detail": "rc=1 stderr=   socketserver.TCPServer.server_bind(self)\n  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind\n    self.socket.bind(self.server_address)\nOSError: [Errno 98] Address already in use\n"
+    },
+    {
+      "check": "missing sample-activity raises DemoFixtureError",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "ModeBanner copy unmistakable (DEMO/LIVE strings)",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "useServerMode driven by /healthz",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "banner refreshes / cannot go stale",
+      "result": "FAIL",
+      "detail": "one-shot fetch only"
+    },
+    {
+      "check": "banner always visible (even before healthz)",
+      "result": "FAIL",
+      "detail": "hidden when mode=null"
+    },
+    {
+      "check": "missing mode not faked as LIVE",
+      "result": "FAIL",
+      "detail": "defaults to live"
+    }
+  ],
+  "findings": [
+    {
+      "id": "LIVE-stale-demo-activity-meta-prepoll",
+      "component": "_load_activity_from_disk",
+      "expected": "live must not serve meta.mode=demo (strip/reject stale demo snapshot)",
+      "actual": "healthz=live activity.meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}",
+      "repro": "write load_demo_activity_bytes() to activity-out; LiveDaemon._load_activity_from_disk(); GET /activity.json before run_poll_cycle",
+      "evidence": "no_mix.json",
+      "environment": "@06e5bda",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "LIVE-stale-demo-activity-meta",
+      "component": "_load_activity_from_disk + _maybe_rebuild",
+      "expected": "live mode must not serve activity with meta.mode=demo after start",
+      "actual": "healthz=live activity.meta={'github': 'skipped', 'ledger': 'demo', 'ledger_last_entry_at': '2026-10-19T21:39:00-07:00', 'mode': 'demo'}",
+      "repro": "write load_demo_activity_bytes() to activity-out; start live with missing ledger; GET /activity.json",
+      "evidence": "no_mix.json",
+      "environment": "@06e5bda",
+      "severity": "high",
+      "confidence": "high"
+    },
+    {
+      "id": "DEMO-flag-combo",
+      "component": "CLI --demo + --events-source",
+      "expected": "reject conflicting flags OR document ignore; must not enable live events ingest",
+      "actual": "combination accepted; server runs mode=demo (events polling suppressed by demo_mode)",
+      "repro": "python -m ingest.live --demo --events-source gh --port \u2026",
+      "evidence": "edges.json",
+      "environment": "@06e5bda",
+      "severity": "low",
+      "confidence": "high"
+    },
+    {
+      "id": "BANNER-no-refetch",
+      "component": "useServerMode",
+      "expected": "banner stays correct / not stale (refetch or SSE mode)",
+      "actual": "healthz fetched once on mount; no interval/refetch \u2014 stale if mode signal changes without remount; null until fetch",
+      "repro": "read web/src/hooks/useServerMode.ts",
+      "evidence": "banner_contract.json",
+      "environment": "@06e5bda",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "BANNER-not-always-visible",
+      "component": "App.tsx ModeBanner",
+      "expected": "LIVE/DEMO bar always visible",
+      "actual": "banner is null while serverMode===null (before/failed healthz)",
+      "repro": "App: `const banner = serverMode ? <ModeBanner \u2026/> : null`",
+      "evidence": "banner_contract.json",
+      "environment": "@06e5bda",
+      "severity": "medium",
+      "confidence": "high"
+    },
+    {
+      "id": "BANNER-default-live",
+      "component": "useServerMode",
+      "expected": "unknown/missing mode must not be presented as LIVE",
+      "actual": "any non-\"demo\" value (including missing) becomes \"live\"",
+      "repro": "healthz without mode field \u2192 UI shows LIVE MODE",
+      "evidence": "banner_contract.json",
+      "environment": "@06e5bda",
+      "severity": "medium",
+      "confidence": "high"
+    }
+  ]
+}

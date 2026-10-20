@@ -1,0 +1,7 @@
+{
+  "cli_rc": 0,
+  "make_rc": 0,
+  "out": "/tmp/tmppc_9i7gt/nested/only-here/activity.json",
+  "make_out": "/tmp/tmppc_9i7gt/via-make/activity.json",
+  "live_sentinel_ok": true
+}

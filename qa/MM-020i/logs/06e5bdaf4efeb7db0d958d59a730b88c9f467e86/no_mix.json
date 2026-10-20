@@ -1,0 +1,22 @@
+{
+  "demo_gh_calls": [],
+  "pre_poll": {
+    "healthz": "live",
+    "meta": {
+      "github": "skipped",
+      "ledger": "demo",
+      "ledger_last_entry_at": "2026-10-19T21:39:00-07:00",
+      "mode": "demo"
+    }
+  },
+  "fail_ledger": {
+    "healthz": "live",
+    "meta": {
+      "github": "skipped",
+      "ledger": "demo",
+      "ledger_last_entry_at": "2026-10-19T21:39:00-07:00",
+      "mode": "demo"
+    },
+    "still_demo_meta": true
+  }
+}

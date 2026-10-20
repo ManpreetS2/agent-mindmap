@@ -1,0 +1,33 @@
+{
+  "health": {
+    "mode": "demo",
+    "last_ledger_poll": null,
+    "last_gh_poll": null,
+    "last_events_poll": null,
+    "last_build": "2026-10-20T21:17:49.167839+00:00",
+    "ledger_last_entry_at": null,
+    "network_event_count": 3,
+    "dropped_network_events": 0,
+    "errors": []
+  },
+  "ids": [
+    "demo-evt-1",
+    "demo-evt-2",
+    "demo-evt-3"
+  ],
+  "modes": [
+    "demo",
+    "demo",
+    "demo"
+  ],
+  "replay": [
+    "demo-evt-2",
+    "demo-evt-3"
+  ],
+  "activity_meta": {
+    "github": "skipped",
+    "ledger": "demo",
+    "ledger_last_entry_at": "2026-10-19T21:39:00-07:00",
+    "mode": "demo"
+  }
+}

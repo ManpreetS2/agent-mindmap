@@ -1,0 +1,42 @@
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CMPlWrZE.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-BbCzKNXz.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET / HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-CMPlWrZE.css HTTP/1.1" 200 -
+127.0.0.1 - "GET /assets/index-BbCzKNXz.js HTTP/1.1" 200 -
+127.0.0.1 - "GET /healthz HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+127.0.0.1 - "GET /events HTTP/1.1" 200 -
+127.0.0.1 - "GET /activity.json HTTP/1.1" 200 -
+{
+  "demo": {
+    "port": 18791,
+    "data_mode": "demo",
+    "text": "DEMO MODE \u2014 fixture data only",
+    "screenshot": "/tmp/qa-mm020i/evidence/screenshots/mode-banner-demo.png",
+    "banner_box": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 37
+    },
+    "visible": true
+  },
+  "live": {
+    "port": 18792,
+    "data_mode": "live",
+    "text": "LIVE MODE \u2014 ingested data",
+    "screenshot": "/tmp/qa-mm020i/evidence/screenshots/mode-banner-live.png",
+    "banner_box": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 37
+    },
+    "visible": true
+  }
+}
