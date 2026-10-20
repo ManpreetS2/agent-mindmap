@@ -6,11 +6,15 @@ import {
   sourceKindFromUrl,
 } from "../utils/format";
 import {
-  lastEventForNode,
+  resolveCurrentTaskSource,
+  resolveLastActivity,
+  resolveStatusSource,
   taskForNode,
-  tasksOwnedByLabel,
-} from "../utils/nodeFacts";
+} from "../utils/detailPanelFacts";
+import { tasksOwnedByLabel } from "../utils/nodeFacts";
+import { FactSourceLink } from "./FactSourceLink";
 import { StatusPill } from "./StatusPill";
+import { UnsourcedTag } from "./UnsourcedTag";
 
 interface DetailPanelProps {
   node: Node;
@@ -52,8 +56,14 @@ function AgentLinkChip({ id }: { id: string }) {
 
 export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
   const task = taskForNode(node, activity.tasks);
-  const lastEvent = lastEventForNode(node.id, activity.events);
   const ownedTasks = tasksOwnedByLabel(node.label, activity.tasks);
+  const statusSource = resolveStatusSource(node, activity.tasks, activity.events);
+  const taskSource = resolveCurrentTaskSource(
+    node,
+    activity.tasks,
+    activity.events,
+  );
+  const lastActivity = resolveLastActivity(node, activity.events);
 
   return (
     <aside className="detail-panel" aria-label={`Details for ${node.label}`}>
@@ -70,11 +80,22 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
       </div>
 
       <FactRow label="Status">
-        <StatusPill status={node.status} />
+        <div className="detail-status-row">
+          <StatusPill status={node.status} />
+          {statusSource.kind === "linked" ? (
+            <a href={statusSource.href} className="detail-source-link">
+              source
+            </a>
+          ) : (
+            <UnsourcedTag />
+          )}
+        </div>
       </FactRow>
 
       <FactRow label="Current task">
-        {task ? (
+        {!node.current_task ? (
+          <span className="detail-muted">None assigned</span>
+        ) : task ? (
           <>
             <a href={task.source_url} className="mono">
               {task.id}
@@ -87,35 +108,49 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
               attribution: {attributionLabel("ledger_owner")}
             </div>
           </>
-        ) : node.current_task ? (
-          <span className="mono">{node.current_task}</span>
+        ) : taskSource ? (
+          <>
+            <FactSourceLink source={taskSource} className="mono">
+              {node.current_task}
+            </FactSourceLink>
+            <div className="detail-meta">
+              from event (task not in ledger table)
+            </div>
+          </>
         ) : (
-          <span className="detail-muted">None assigned</span>
+          <span className="mono">{node.current_task}</span>
         )}
       </FactRow>
 
       <FactRow label="Last activity">
-        {lastEvent ? (
+        {lastActivity.mode === "event" ? (
           <>
-            <a href={lastEvent.source_url}>
-              {lastEvent.type.replace("_", " ")}
-              {lastEvent.task_id ? ` · ${lastEvent.task_id}` : ""}
+            <a href={lastActivity.event.source_url}>
+              {lastActivity.event.type.replace("_", " ")}
+              {lastActivity.event.task_id
+                ? ` · ${lastActivity.event.task_id}`
+                : ""}
             </a>
             <div className="detail-meta">
-              from {sourceKindFromUrl(lastEvent.source_url)},{" "}
-              {formatSourceTime(lastEvent.source_time)}
+              from {sourceKindFromUrl(lastActivity.event.source_url)},{" "}
+              {formatSourceTime(lastActivity.event.source_time)}
             </div>
             <div className="detail-attribution">
-              attribution: {attributionLabel(lastEvent.attribution.method)}
+              attribution:{" "}
+              {attributionLabel(lastActivity.event.attribution.method)}
             </div>
-            <p className="detail-raw">{lastEvent.raw}</p>
+            <p className="detail-raw">{lastActivity.event.raw}</p>
           </>
-        ) : node.last_activity_ts ? (
-          <div className="detail-meta">
-            node snapshot · {formatSourceTime(node.last_activity_ts)}
-          </div>
+        ) : lastActivity.mode === "timestamp" ? (
+          <>
+            <FactSourceLink source={lastActivity.source}>
+              node snapshot · {formatSourceTime(lastActivity.ts)}
+            </FactSourceLink>
+          </>
         ) : (
-          <span className="detail-muted">No events yet</span>
+          <span className="detail-muted">
+            No events yet <UnsourcedTag />
+          </span>
         )}
       </FactRow>
 
@@ -128,7 +163,7 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
                 {t.prs.length > 0 && (
                   <span className="detail-meta">
                     {" "}
-                    · PR{ t.prs.length > 1 ? "s" : "" } #{t.prs.join(", #")}
+                    · PR{t.prs.length > 1 ? "s" : ""} #{t.prs.join(", #")}
                   </span>
                 )}
               </li>
