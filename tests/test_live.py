@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import platform
@@ -23,9 +24,12 @@ from ingest.live import (
     LiveDaemon,
     create_http_server,
     ensure_python_version,
+    host_header_allowed,
+    origin_header_allowed,
     refuse_public_bind,
     resolve_live_ledger,
 )
+from tests.test_events_fetch import EventsMockGh, _contents_body as events_contents_body
 from tests.test_github_poller import MockGh
 from tests.test_ledger_fetch import LedgerMockGh, _contents_body
 
@@ -84,9 +88,9 @@ def _wait_for_port(host: str, port: int, timeout: float = 5.0) -> None:
 
 @pytest.fixture
 def live_http(live_env: dict) -> Iterator[tuple[LiveDaemon, str, int]]:
-    daemon = _daemon(live_env)
+    daemon = _daemon(live_env, events_source="off")
     daemon.run_poll_cycle()
-    httpd = create_http_server(daemon, port=0)
+    httpd = create_http_server(daemon, port=0, sse_heartbeat_sec=0.15)
     thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.2}, daemon=True)
     thread.start()
     host, port = httpd.server_address
@@ -97,6 +101,18 @@ def live_http(live_env: dict) -> Iterator[tuple[LiveDaemon, str, int]]:
         httpd.shutdown()
         thread.join(timeout=3)
         httpd.server_close()
+
+
+def _sample_network_event(eid: str) -> dict:
+    return {
+        "id": eid,
+        "ts": "2026-10-20T12:00:00+00:00",
+        "sender": "dev-1",
+        "group": "build",
+        "type": "message",
+        "summary": "hello from sse test",
+        "provenance": "agent-reported",
+    }
 
 
 def _http_get(url: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, str], bytes]:
@@ -286,3 +302,130 @@ def test_makefile_live_target() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "live:" in makefile
     assert "ingest.live" in makefile
+
+
+# SEC-MM011-1
+def test_host_and_origin_helpers() -> None:
+    assert host_header_allowed("127.0.0.1:8787")
+    assert host_header_allowed("localhost")
+    assert not host_header_allowed("evil.example")
+    assert origin_header_allowed(None)
+    assert origin_header_allowed("http://127.0.0.1:8787")
+    assert not origin_header_allowed("https://evil.example")
+
+
+def test_sec_mm011_forged_host_and_origin_rejected(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    _, host, port = live_http
+    base = f"http://{host}:{port}"
+    status, _, _ = _http_get(
+        f"{base}/healthz",
+        {"Host": "attacker.example", "Origin": "http://127.0.0.1:8787"},
+    )
+    assert status == HTTPStatus.FORBIDDEN
+
+    status2, _, _ = _http_get(
+        f"{base}/activity.json",
+        {"Host": f"{host}:{port}", "Origin": "https://evil.example"},
+    )
+    assert status2 == HTTPStatus.FORBIDDEN
+
+    status3, _, _ = _http_get(
+        f"{base}/events",
+        {"Host": f"{host}:{port}", "Origin": "https://evil.example"},
+    )
+    assert status3 == HTTPStatus.FORBIDDEN
+
+
+def test_sec_mm011_localhost_allowed(live_http: tuple[LiveDaemon, str, int]) -> None:
+    _, host, port = live_http
+    headers = {"Host": f"{host}:{port}", "Origin": f"http://{host}:{port}"}
+    for path in ("/healthz", "/activity.json", "/index.html"):
+        status, _, _ = _http_get(f"http://{host}:{port}{path}", headers)
+        assert status == HTTPStatus.OK
+
+
+def test_network_events_dedupe_by_id(live_env: dict) -> None:
+    daemon = _daemon(live_env, events_source="off")
+    evt = _sample_network_event("evt-dedupe-1")
+    daemon.ingest_network_events([evt, dict(evt)])
+    assert daemon.health().network_event_count == 1
+
+
+def test_poll_events_from_gh(live_env: dict) -> None:
+    line = json.dumps(_sample_network_event("evt-gh-1"), separators=(",", ":"))
+    body = events_contents_body(line + "\n")
+    runner = EventsMockGh(status=200, body=body)
+    daemon = _daemon(live_env, events_source="gh", github_runner=runner)
+    assert daemon.poll_events_once() is True
+    assert daemon.health().network_event_count == 1
+
+
+def _read_sse_events(
+    host: str,
+    port: int,
+    *,
+    last_event_id: str | None = None,
+    max_events: int = 1,
+    timeout: float = 5.0,
+) -> list[dict]:
+    headers = {
+        "Host": f"{host}:{port}",
+        "Accept": "text/event-stream",
+    }
+    if last_event_id:
+        headers["Last-Event-ID"] = last_event_id
+    conn = http.client.HTTPConnection(host, port, timeout=timeout)
+    conn.request("GET", "/events", headers=headers)
+    resp = conn.getresponse()
+    assert resp.status == HTTPStatus.OK
+    assert "text/event-stream" in resp.getheader("Content-Type", "")
+    deadline = time.monotonic() + timeout
+    events: list[dict] = []
+    buf = b""
+    while len(events) < max_events and time.monotonic() < deadline:
+        chunk = resp.read(1)
+        if not chunk:
+            break
+        buf += chunk
+        while b"\n\n" in buf:
+            block, buf = buf.split(b"\n\n", 1)
+            text = block.decode("utf-8", errors="replace")
+            data_lines = [
+                ln[6:]
+                for ln in text.splitlines()
+                if ln.startswith("data:")
+            ]
+            if not data_lines:
+                continue
+            payload = "\n".join(data_lines)
+            events.append(json.loads(payload))
+    conn.close()
+    return events
+
+
+def test_sse_replay_last_event_id_and_dedupe(
+    live_http: tuple[LiveDaemon, str, int],
+) -> None:
+    daemon, host, port = live_http
+    first = _sample_network_event("sse-evt-1")
+    second = _sample_network_event("sse-evt-2")
+    daemon.ingest_network_events([first])
+
+    got = _read_sse_events(host, port, max_events=1, timeout=3.0)
+    assert len(got) == 1
+    assert got[0]["id"] == "sse-evt-1"
+
+    daemon.ingest_network_events([second, dict(first)])
+
+    replay = _read_sse_events(
+        host,
+        port,
+        last_event_id="sse-evt-1",
+        max_events=1,
+        timeout=3.0,
+    )
+    assert len(replay) == 1
+    assert replay[0]["id"] == "sse-evt-2"
+    assert daemon.health().network_event_count == 2

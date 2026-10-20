@@ -113,6 +113,8 @@ make live
 # or: python3 -m ingest.live --ledger "$MINDMAP_LEDGER"
 # gh mirror (MM-010): python3 -m ingest.live --ledger-source gh
 #   (or `make live` with MINDMAP_LEDGER unset)
+# MM-020d: also polls gh:data/events; SSE at GET /events (Last-Event-ID replay).
+# SEC-MM011-1: Host must be 127.0.0.1/localhost; Origin localhost-only (403 otherwise).
 ```
 
 - Ledger: `--ledger PATH` / `MINDMAP_LEDGER`, or `--ledger-source gh` for the allowlisted `data/ledger` mirror (same fetcher as `make refresh-gh-ledger`).

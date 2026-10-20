@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Iterable, Literal
 from urllib.parse import unquote, urlparse
 
 from .attribute import load_bots
@@ -34,6 +34,7 @@ from .build import (
 )
 from .edges import derive_edges
 from .github_poller import GhRunner, GitHubPollResult, poll_github
+from .events_fetch import EVENTS_REF, EVENTS_SOURCE_URL, EventsFetcher
 from .ledger_fetch import LEDGER_SOURCE_URL, fetch_ledger_from_gh
 from .ledger_parser import (
     LedgerParseResult,
@@ -52,8 +53,11 @@ BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
+DEFAULT_EVENTS_POLL_SEC = 30.0
+DEFAULT_SSE_HEARTBEAT_SEC = 15.0
 MIN_PYTHON_VERSION = (3, 12)
 LedgerSource = Literal["path", "gh"]
+EventsSource = Literal["gh", "off"]
 
 Clock = Callable[[], float]
 Sleeper = Callable[[float], None]
@@ -96,20 +100,96 @@ def refuse_public_bind(host: str) -> None:
         raise ValueError(f"only 127.0.0.1 is supported (got {host!r})")
 
 
+def _host_from_header(value: str | None) -> str | None:
+    if not value:
+        return None
+    host = value.strip()
+    if host.startswith("["):
+        return None
+    return host.split(":", 1)[0].lower()
+
+
+def host_header_allowed(value: str | None) -> bool:
+    """SEC-MM011-1: Host must be 127.0.0.1 or localhost (port optional)."""
+    parsed = _host_from_header(value)
+    return parsed in {"127.0.0.1", "localhost"}
+
+
+def origin_header_allowed(value: str | None) -> bool:
+    """SEC-MM011-1: absent, null, or localhost/127.0.0.1 Origin only."""
+    if value is None:
+        return True
+    raw = value.strip()
+    if not raw:
+        return True
+    if raw.lower() == "null":
+        return True
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = (parsed.hostname or "").lower()
+    return hostname in {"127.0.0.1", "localhost"}
+
+
+def localhost_request_allowed(headers: Any) -> bool:
+    """SEC-MM011-1 gate for every HTTP route (incl. SSE)."""
+    if not host_header_allowed(headers.get("Host")):
+        return False
+    return origin_header_allowed(headers.get("Origin"))
+
+
+class NetworkEventLog:
+    """In-memory NetworkEvent stream with dedupe by ``id`` (insertion order)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._events: list[dict[str, Any]] = []
+        self._ids: set[str] = set()
+
+    def append_many(self, events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+        added: list[dict[str, Any]] = []
+        with self._lock:
+            for evt in events:
+                eid = evt.get("id")
+                if not isinstance(eid, str) or not eid or eid in self._ids:
+                    continue
+                self._ids.add(eid)
+                self._events.append(dict(evt))
+                added.append(self._events[-1])
+        return added
+
+    def events_after(self, last_id: str | None) -> list[dict[str, Any]]:
+        with self._lock:
+            if not last_id:
+                return list(self._events)
+            for idx, evt in enumerate(self._events):
+                if evt.get("id") == last_id:
+                    return list(self._events[idx + 1 :])
+            return list(self._events)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._events)
+
+
 @dataclass
 class HealthState:
     last_ledger_poll: str | None = None
     last_gh_poll: str | None = None
+    last_events_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    network_event_count: int = 0
     errors: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
             "last_ledger_poll": self.last_ledger_poll,
             "last_gh_poll": self.last_gh_poll,
+            "last_events_poll": self.last_events_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "network_event_count": self.network_event_count,
             "errors": list(self.errors),
         }
 
@@ -174,6 +254,8 @@ class LiveDaemon:
     ledger_source_url: str = "build/task-ledger.md"
     ledger_poll_sec: float = DEFAULT_LEDGER_POLL_SEC
     gh_poll_sec: float = DEFAULT_GH_POLL_SEC
+    events_source: EventsSource = "gh"
+    events_poll_sec: float = DEFAULT_EVENTS_POLL_SEC
     github_runner: GhRunner | None = None
     clock: Clock = time.time
     sleeper: Sleeper = time.sleep
@@ -195,14 +277,17 @@ class LiveDaemon:
     _gh_backoff_until: float = field(default=0.0, init=False)
     _poll_thread: threading.Thread | None = field(default=None, init=False)
     _rate_limit_reset: int | None = field(default=None, init=False)
+    _event_log: NetworkEventLog = field(default_factory=NetworkEventLog, init=False)
 
     def health(self) -> HealthState:
         with self._lock:
             return HealthState(
                 last_ledger_poll=self._health.last_ledger_poll,
                 last_gh_poll=self._health.last_gh_poll,
+                last_events_poll=self._health.last_events_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                network_event_count=self._event_log.count(),
                 errors=list(self._health.errors),
             )
 
@@ -365,12 +450,42 @@ class LiveDaemon:
                 self._last_good_gh = gh
         return changed
 
+    def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
+        return self._event_log.append_many(events)
+
+    def network_events_after(self, last_id: str | None) -> list[dict[str, Any]]:
+        return self._event_log.events_after(last_id)
+
+    def poll_events_once(self) -> bool:
+        """Fetch data/events via gh; return True if new event ids were ingested."""
+        now = _iso_now(self.clock)
+        with self._lock:
+            self._health.last_events_poll = now
+
+        if self.events_source == "off":
+            return False
+
+        result = EventsFetcher(
+            cache_dir=self.cache_dir / "events",
+            runner=self._gh_runner(),
+        ).fetch()
+
+        if result.meta_events == "error":
+            for err in result.errors:
+                self._append_error(err)
+            return False
+
+        added = self._event_log.append_many(result.events)
+        return bool(added)
+
     def maybe_rebuild(self, *, force: bool = False) -> bool:
         return _maybe_rebuild(self, force=force)
 
     def run_poll_cycle(self) -> None:
         ledger_changed = self.poll_ledger_once()
         gh_changed = self.poll_github_once()
+        self.poll_events_once()
         if ledger_changed or gh_changed or self._activity_bytes is None:
             self.maybe_rebuild()
 
@@ -381,6 +496,7 @@ class LiveDaemon:
         def loop() -> None:
             next_ledger = self.clock()
             next_gh = self.clock()
+            next_events = self.clock()
             while not self._stop.is_set():
                 now = self.clock()
                 if now >= next_ledger:
@@ -393,11 +509,15 @@ class LiveDaemon:
                     next_gh = now + self.gh_poll_sec
                     if changed:
                         self.maybe_rebuild()
+                if now >= next_events:
+                    self.poll_events_once()
+                    next_events = now + self.events_poll_sec
                 if self._activity_bytes is None and self._ledger is not None:
                     self.maybe_rebuild()
                 wait = min(
                     max(0.0, next_ledger - self.clock()),
                     max(0.0, next_gh - self.clock()),
+                    max(0.0, next_events - self.clock()),
                     1.0,
                 )
                 if self._stop.wait(timeout=wait):
@@ -446,6 +566,8 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
             generated_at=_iso_now(daemon.clock),
             meta_ledger=meta_ledger,
         )
+        if daemon.events_source != "off":
+            activity["meta"]["events_source"] = EVENTS_SOURCE_URL
         write_activity(activity, daemon.activity_path)
     except Exception as exc:  # noqa: BLE001
         daemon._append_error(f"build failed: {type(exc).__name__}")
@@ -492,6 +614,7 @@ def _safe_static_path(static_root: Path, url_path: str) -> Path | None:
 class MindmapHandler(BaseHTTPRequestHandler):
     daemon: LiveDaemon
     static_dir: Path
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC
 
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
@@ -529,9 +652,78 @@ class MindmapHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:  # noqa: N802
         self._handle_get_head()
 
+    def _reject_unless_localhost(self) -> bool:
+        if localhost_request_allowed(self.headers):
+            return False
+        self.send_error(HTTPStatus.FORBIDDEN)
+        return True
+
+    def _write_sse_frame(self, *, event_id: str | None, data: str | None, comment: str | None) -> None:
+        if event_id is not None:
+            self.wfile.write(f"id: {event_id}\n".encode("utf-8"))
+        if data is not None:
+            for line in data.splitlines() or [""]:
+                self.wfile.write(f"data: {line}\n".encode("utf-8"))
+            self.wfile.write(b"\n")
+        if comment is not None:
+            self.wfile.write(f": {comment}\n\n".encode("utf-8"))
+        self.wfile.flush()
+
+    def _handle_sse(self) -> None:
+        if self.command == "HEAD":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            return
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+
+        last_id = self.headers.get("Last-Event-ID")
+        if last_id is not None:
+            last_id = last_id.strip() or None
+
+        sent: set[str] = set()
+        for evt in self.daemon.network_events_after(last_id):
+            eid = str(evt.get("id") or "")
+            if not eid or eid in sent:
+                continue
+            payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
+            self._write_sse_frame(event_id=eid, data=payload, comment=None)
+            sent.add(eid)
+            last_id = eid
+
+        heartbeat = max(0.05, float(self.sse_heartbeat_sec))
+        while True:
+            for evt in self.daemon.network_events_after(last_id):
+                eid = str(evt.get("id") or "")
+                if not eid or eid in sent:
+                    continue
+                payload = json.dumps(evt, separators=(",", ":"), ensure_ascii=False)
+                self._write_sse_frame(event_id=eid, data=payload, comment=None)
+                sent.add(eid)
+                last_id = eid
+            try:
+                self._write_sse_frame(event_id=None, data=None, comment="heartbeat")
+                time.sleep(heartbeat)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                break
+
     def _handle_get_head(self) -> None:
+        if self._reject_unless_localhost():
+            return
+
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path == "/events":
+            self._handle_sse()
+            return
 
         if path == "/healthz":
             self._send_json(HTTPStatus.OK, self.daemon.health().to_json())
@@ -596,12 +788,18 @@ class MindmapHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
 
 
-def make_handler_class(daemon: LiveDaemon, static_dir: Path) -> type[MindmapHandler]:
+def make_handler_class(
+    daemon: LiveDaemon,
+    static_dir: Path,
+    *,
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC,
+) -> type[MindmapHandler]:
     class Handler(MindmapHandler):
         pass
 
     Handler.daemon = daemon
     Handler.static_dir = static_dir
+    Handler.sse_heartbeat_sec = sse_heartbeat_sec
     return Handler
 
 
@@ -611,10 +809,11 @@ def create_http_server(
     host: str = BIND_HOST,
     port: int = DEFAULT_PORT,
     static_dir: Path | None = None,
+    sse_heartbeat_sec: float = DEFAULT_SSE_HEARTBEAT_SEC,
 ) -> ThreadingHTTPServer:
     refuse_public_bind(host)
     static = static_dir or daemon.static_dir
-    handler = make_handler_class(daemon, static)
+    handler = make_handler_class(daemon, static, sse_heartbeat_sec=sse_heartbeat_sec)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     return httpd
@@ -673,6 +872,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help=f"GitHub poll interval (default {DEFAULT_GH_POLL_SEC}, env MINDMAP_GH_POLL_SEC)",
     )
+    parser.add_argument(
+        "--events-source",
+        choices=("gh", "off"),
+        default="gh",
+        help="gh (data/events via gh api) or off",
+    )
+    parser.add_argument(
+        "--events-poll-sec",
+        type=float,
+        default=None,
+        help=(
+            f"Events poll interval (default {DEFAULT_EVENTS_POLL_SEC}, "
+            "env MINDMAP_EVENTS_POLL_SEC)"
+        ),
+    )
     return parser
 
 
@@ -689,6 +903,9 @@ def main(argv: list[str] | None = None) -> int:
     gh_poll = args.gh_poll_sec
     if gh_poll is None:
         gh_poll = _env_float("MINDMAP_GH_POLL_SEC", DEFAULT_GH_POLL_SEC)
+    events_poll = args.events_poll_sec
+    if events_poll is None:
+        events_poll = _env_float("MINDMAP_EVENTS_POLL_SEC", DEFAULT_EVENTS_POLL_SEC)
 
     try:
         source, ledger_path, ledger_url = resolve_live_ledger(
@@ -716,6 +933,8 @@ def main(argv: list[str] | None = None) -> int:
         bots=bots,
         ledger_poll_sec=ledger_poll,
         gh_poll_sec=gh_poll,
+        events_source=args.events_source,
+        events_poll_sec=events_poll,
     )
     daemon._load_activity_from_disk()
     daemon.run_poll_cycle()
@@ -736,7 +955,12 @@ def main(argv: list[str] | None = None) -> int:
 
     host, port = httpd.server_address
     ledger_desc = ledger_path if ledger_path else "gh:data/ledger"
-    print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
+    events_desc = "gh:data/events" if args.events_source == "gh" else "off"
+    print(
+        f"mindmap live on http://{host}:{port} "
+        f"(ledger={ledger_desc}, events={events_desc})",
+        file=sys.stderr,
+    )
     try:
         httpd.serve_forever(poll_interval=0.5)
     finally:
