@@ -1,0 +1,134 @@
+{
+  "sha": "62cf9b55fbc9e875cd13f17af390799ae855a5f9",
+  "previous_fail_sha": "153142044f3609b4e2afe9c176ef7dd738de6835",
+  "pr": 19,
+  "checks": [
+    {
+      "check": "Dev server binds 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "loopback_ok | LISTEN 127.0.0.1:5173 | LISTEN 127.0.0.1:5173"
+    },
+    {
+      "check": "QA-MM020f-1 dragged coords stable after poll 1 (\u22641px)",
+      "result": "PASS",
+      "detail": "director: {\"x\":225.455,\"y\":335.832} \u2192 {\"x\":225.455,\"y\":335.832} dx=0 dy=0 | architect: {\"x\":111.329,\"y\":308.727} \u2192 {\"x\":111.329,\"y\":308.727} dx=0 dy=0 | dev-1: {\"x\":349.566,\"y\":256.112} \u2192 {\"x\":349.566,\"y\":256.112} dx=0 dy=0"
+    },
+    {
+      "check": "QA-MM020f-1 dragged coords stable after poll 2 (\u22641px)",
+      "result": "PASS",
+      "detail": "director: dx=0.000 dy=0.000 | architect: dx=0.000 dy=0.000 | dev-1: dx=0.000 dy=0.000"
+    },
+    {
+      "check": "QA-MM020f-1 new agent node placed after poll",
+      "result": "PASS",
+      "detail": "present=true pos={\"x\":856,\"y\":216}"
+    },
+    {
+      "check": "QA-MM020f-1 filter toggle keeps dragged positions (\u22641px)",
+      "result": "PASS",
+      "detail": "duringOk=true afterOk=true during={\"director\":{\"x\":225.455,\"y\":335.832},\"architect\":{\"x\":111.329,\"y\":308.727},\"dev-1\":{\"x\":349.566,\"y\":256.112}} after={\"director\":{\"x\":225.455,\"y\":335.832},\"architect\":{\"x\":111.329,\"y\":308.727},\"dev-1\":{\"x\":349.566,\"y\":256.112}}"
+    },
+    {
+      "check": "Director appears exactly once",
+      "result": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "check": "Architect appears exactly once",
+      "result": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "check": "No duplicate agent node ids",
+      "result": "PASS",
+      "detail": "n=14"
+    },
+    {
+      "check": "Filter Build-only counts",
+      "result": "PASS",
+      "detail": "ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation"
+    },
+    {
+      "check": "Filter Q&R-only counts",
+      "result": "PASS",
+      "detail": "ids=director,architect,qa-verifier,security-engineer,devops-release"
+    },
+    {
+      "check": "Select-all restores roster",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "XSS does not execute",
+      "result": "PASS",
+      "detail": "__xss=false"
+    },
+    {
+      "check": "Keyboard slash focuses filter",
+      "result": "PASS",
+      "detail": "{\"tag\":\"BUTTON\",\"className\":\"filter-chip\"}"
+    },
+    {
+      "check": "Group filter a11y",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "Skip link present",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "No console errors on demo",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "No outbound beyond localhost",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "QA-MM012-1 missing \u2192 LedgerErrorView (vite-dev)",
+      "result": "PASS",
+      "detail": "ledger=false jsonParse=false fetch={\"status\":200,\"startsWith\":\"<!doctype html>\\n<html lang=\\\"en\\\">\\n  <head>\\n    <s\"} snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry | CORRECTED: LedgerErrorView uses LEDGER_ERROR_PATH=build/task-ledger.md (not activity.json in copy); no JSON parse error"
+    },
+    {
+      "check": "Empty activity.json handled (vite-dev)",
+      "result": "PASS",
+      "detail": "ledger=true snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry"
+    },
+    {
+      "check": "Malformed activity.json \u2192 LedgerErrorView (vite-dev)",
+      "result": "PASS",
+      "detail": "ledger=true snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry"
+    },
+    {
+      "check": "Preview binds 127.0.0.1 only",
+      "result": "PASS",
+      "detail": "LISTEN 127.0.0.1:4173"
+    },
+    {
+      "check": "Preview serves demo graph",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "QA-MM012-1 missing \u2192 LedgerErrorView (vite-preview)",
+      "result": "PASS",
+      "detail": "ledger=false jsonParse=false fetch={\"status\":200,\"startsWith\":\"<!doctype html>\\n<html lang=\\\"en\\\">\\n  <head>\\n    <m\"} snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry | CORRECTED: LedgerErrorView uses LEDGER_ERROR_PATH=build/task-ledger.md (not activity.json in copy); no JSON parse error"
+    },
+    {
+      "check": "Empty activity.json \u2192 LedgerErrorView (preview)",
+      "result": "PASS",
+      "detail": "Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry"
+    },
+    {
+      "check": "Malformed activity.json \u2192 LedgerErrorView (preview)",
+      "result": "PASS",
+      "detail": "Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry"
+    }
+  ],
+  "findings": [],
+  "verdict_note": "Harness initially matched /activity.json/ in LedgerErrorView copy; product correctly shows Can't read build/task-ledger.md"
+}

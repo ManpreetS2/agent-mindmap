@@ -1,0 +1,5 @@
+CI pytest (workflow python.yml / job pytest): NOT TRIGGERED on head 62cf9b5.
+Reason: path filters — PR #19 tip commit only touches web/**; python.yml requires
+ingest/**|tests/**|fixtures/**|schema/**|config/**|pyproject.toml|requirements-dev.txt.
+Local pytest @ 62cf9b5: 117 passed, 1 skipped (see pytest.txt).
+CI web (workflow web.yml): success — run 39396184415 @ 62cf9b5.

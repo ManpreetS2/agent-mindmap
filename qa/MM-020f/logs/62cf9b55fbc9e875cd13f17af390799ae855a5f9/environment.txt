@@ -1,0 +1,9 @@
+os: Linux cursor 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+python: Python 3.12.3
+node: v22.23.3
+vite: 5.4.21
+playwright: 1.49.1
+head: 62cf9b55fbc9e875cd13f17af390799ae855a5f9
+base_rebase: 82f2066
+previous_fail: 153142044f3609b4e2afe9c176ef7dd738de6835
+date_utc: 2026-10-20T08:56:42+00:00

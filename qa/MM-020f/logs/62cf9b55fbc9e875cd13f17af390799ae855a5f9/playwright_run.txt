@@ -1,0 +1,38 @@
+[PASS] Dev server binds 127.0.0.1 only — loopback_ok | LISTEN 127.0.0.1:5173 | LISTEN 127.0.0.1:5173
+[PASS] QA-MM020f-1 dragged coords stable after poll 1 (≤1px) — director: {"x":225.455,"y":335.832} → {"x":225.455,"y":335.832} dx=0 dy=0 | architect: {"x":111.329,"y":308.727} → {"x":111.329,"y":308.727} dx=0 dy=0 | dev-1: {"x":349.566,"y":256.112} → {"x":349.566,"y":256.112} dx=0 dy=0
+[PASS] QA-MM020f-1 dragged coords stable after poll 2 (≤1px) — director: dx=0.000 dy=0.000 | architect: dx=0.000 dy=0.000 | dev-1: dx=0.000 dy=0.000
+[PASS] QA-MM020f-1 new agent node placed after poll — present=true pos={"x":856,"y":216}
+[PASS] QA-MM020f-1 filter toggle keeps dragged positions (≤1px) — duringOk=true afterOk=true during={"director":{"x":225.455,"y":335.832},"architect":{"x":111.329,"y":308.727},"dev-1":{"x":349.566,"y":256.112}} after={"director":{"x":225.455,"y":335.832},"architect":{"x":111.329,"y":308.727},"dev-1":{"x":349.566,"y":256.112}}
+[PASS] Director appears exactly once — count=1
+[PASS] Architect appears exactly once — count=1
+[PASS] No duplicate agent node ids — n=14
+[PASS] Filter Build-only counts — ids=director,architect,dev-1,dev-2,ui-ux-maker,documentation
+[PASS] Filter Q&R-only counts — ids=director,architect,qa-verifier,security-engineer,devops-release
+[PASS] Select-all restores roster
+[PASS] XSS does not execute — __xss=false
+[PASS] Keyboard slash focuses filter — {"tag":"BUTTON","className":"filter-chip"}
+[PASS] Group filter a11y
+[PASS] Skip link present
+[PASS] No console errors on demo
+[PASS] No outbound beyond localhost
+[FAIL] QA-MM012-1 missing → LedgerErrorView (vite-dev) — ledger=false jsonParse=false fetch={"status":200,"startsWith":"<!doctype html>\n<html lang=\"en\">\n  <head>\n    <s"} snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+[FINDING:medium] loadActivity + vite-dev: ledger=false jsonParse=false fetch={"status":200,"startsWith":"<!doctype html>\n<html lang=\"en\">\n  <head>\n    <s"}
+[PASS] Empty activity.json handled (vite-dev) — ledger=true snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+[PASS] Malformed activity.json → LedgerErrorView (vite-dev) — ledger=true snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+[PASS] Preview binds 127.0.0.1 only — LISTEN 127.0.0.1:4173
+[PASS] Preview serves demo graph
+[FAIL] QA-MM012-1 missing → LedgerErrorView (vite-preview) — ledger=false jsonParse=false fetch={"status":200,"startsWith":"<!doctype html>\n<html lang=\"en\">\n  <head>\n    <m"} snippet=Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+[FINDING:medium] loadActivity + vite-preview: ledger=false jsonParse=false fetch={"status":200,"startsWith":"<!doctype html>\n<html lang=\"en\">\n  <head>\n    <m"}
+[PASS] Empty activity.json → LedgerErrorView (preview) — Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+[PASS] Malformed activity.json → LedgerErrorView (preview) — Skip to main content Can't read build/task-ledger.md  build/task-ledger.md  Retry
+
+=== SUMMARY ===
+PASS 23
+FAIL 2
+FINDINGS 2
+
+NOTE: Two QA-MM012-1 "FAIL" lines above are harness false positives
+(required substring activity.json). UI showed LedgerErrorView
+"Can't read build/task-ledger.md" with no JSON parse error.
+Corrected to PASS in playwright_report.json / DELTA_REPORT.md.
+
