@@ -29,11 +29,20 @@ export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
 
 **launchd autostart (optional):**
 
+The template `ops/com.manpreet.mindmap.plist` runs **`/bin/bash` → `scripts/start-mac.sh`** (not `.venv/bin/python` directly). `install-launchagent.sh` renders it with `plistlib` into `~/Library/LaunchAgents/`.
+
 ```bash
 export MINDMAP_LEDGER=/absolute/path/to/task-ledger.md
 ./scripts/install-launchagent.sh
-# Prints launchctl bootstrap / bootout commands (does not run them).
+# Creates ~/Library/Logs/mindmap, writes the plist, validates it, then prints:
+#   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist
+#   launchctl bootout gui/$(id -u)/com.manpreet.mindmap
+# (It does not run bootstrap/bootout for you.)
+
+# Optional: MINDMAP_EVENTS_SOURCE=gh|off (default gh) is passed through to ingest.live.
 ```
+
+**Stop (launchd):** `launchctl bootout gui/$(id -u)/com.manpreet.mindmap`
 
 See also **Running live (MM-011)** below for poll intervals and endpoints.
 
@@ -152,16 +161,7 @@ make live
 - Poll intervals: `--ledger-poll-sec` / `--gh-poll-sec`, or `MINDMAP_LEDGER_POLL_SEC` / `MINDMAP_GH_POLL_SEC` (defaults 30s / 60s).
 - Endpoints: `/` (static `web/dist`), `/activity.json` (ETag + `If-None-Match` → 304), `/healthz` (poll timestamps + errors).
 - GitHub: same read-only `gh api` allowlist as ingest; no tokens stored or logged.
-- macOS autostart (Python **3.12+** only — not `/usr/bin/python3` on macOS):
-  1. In the repo: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (and `cd web && npm run build`).
-  2. `mkdir -p ~/Library/Logs/mindmap` (launchd does not create the log directory).
-  3. Copy `ops/com.manpreet.mindmap.plist` to `~/Library/LaunchAgents/` and replace placeholders:
-     - `REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT` → absolute path to this repo (used for `WorkingDirectory`, `PYTHONPATH`, and **`.venv/bin/python`** in `ProgramArguments`).
-     - `REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md` → ledger file (or remove `MINDMAP_LEDGER` and pass `--ledger-source gh` via a wrapper if you customize `ProgramArguments`).
-     - `REPLACE_WITH_ABSOLUTE_LOG_DIR` → e.g. `/Users/you/Library/Logs/mindmap`.
-  4. `plutil -lint ~/Library/LaunchAgents/com.manpreet.mindmap.plist`
-  5. `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist` (unload: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.manpreet.mindmap.plist`).
-  - `ingest.live` exits immediately with a clear stderr message if the interpreter is older than 3.12 (belt-and-suspenders if the wrong binary is configured).
+- macOS autostart: use **Run on a Mac (MM-020-OPS)** above (`./scripts/start-mac.sh` for manual runs; `./scripts/install-launchagent.sh` for launchd). The plist invokes `scripts/start-mac.sh`, which creates a hash-locked `.venv`, builds `web/dist` when needed, and enforces Python **3.12+** before `ingest.live` starts.
 
 ---
 

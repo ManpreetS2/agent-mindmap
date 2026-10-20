@@ -4,6 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE="$REPO_ROOT/ops/com.manpreet.mindmap.plist"
+RENDER="$REPO_ROOT/scripts/render_launchagent_plist.py"
 LABEL="com.manpreet.mindmap"
 LOG_DIR="${HOME}/Library/Logs/mindmap"
 DEST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
@@ -22,13 +23,16 @@ fi
 mkdir -p "$LOG_DIR"
 mkdir -p "${HOME}/Library/LaunchAgents"
 
-sed \
-  -e "s|REPLACE_WITH_AGENT_MINDMAP_REPO_ROOT|${REPO_ROOT}|g" \
-  -e "s|REPLACE_WITH_ABSOLUTE_PATH_TO_task-ledger.md|${MINDMAP_LEDGER}|g" \
-  -e "s|REPLACE_WITH_ABSOLUTE_LOG_DIR|${LOG_DIR}|g" \
-  "$TEMPLATE" >"$DEST"
+python3 "$RENDER" \
+  --template "$TEMPLATE" \
+  --output "$DEST" \
+  --repo-root "$REPO_ROOT" \
+  --ledger "$MINDMAP_LEDGER" \
+  --log-dir "$LOG_DIR"
 
-plutil -lint "$DEST"
+if command -v plutil >/dev/null 2>&1; then
+  plutil -lint "$DEST"
+fi
 
 echo "Wrote ${DEST}"
 echo ""
