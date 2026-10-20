@@ -3,11 +3,18 @@
 MM-020b: opt-in NetworkEvent JSONL emitter (stdlib only).
 
 Appends one sanitized JSON line per event with a single O_APPEND write (≤ PIPE_BUF).
+Opens the JSONL path with O_NOFOLLOW (refuses symlinks) and creates new files mode 0o600.
+
+Summary contract: **short sanitized summary** only — never raw transcripts. Whitespace is
+collapsed, secrets are refused (MM-010 scan), and text is capped at SUMMARY_MAX_CHARS (240)
+before emit. Longer input is truncated with a trailing ellipsis character.
+
 No network; no token reads. Secret scan reuses ingest.github_poller._looks_like_secret.
 """
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -23,6 +30,8 @@ if str(_ROOT) not in sys.path:
 from ingest.github_poller import _looks_like_secret  # noqa: E402 — MM-010 pattern
 
 PIPE_BUF = 4096
+SUMMARY_MAX_CHARS = 240
+JSONL_FILE_MODE = 0o600
 EVENT_SOURCE = "network-event"
 DEFAULT_PROVENANCE = "agent-reported"
 DEFAULT_EVENT_TYPE = "message"
@@ -39,6 +48,10 @@ class SecretRefusedError(EventEmitError):
 
 class LineTooLongError(EventEmitError):
     """Serialized line exceeds PIPE_BUF even after summary truncation."""
+
+
+class SymlinkRefusedError(EventEmitError):
+    """JSONL path is a symlink or O_NOFOLLOW rejected the open."""
 
 
 def event_id_from_locator(locator: str) -> str:
@@ -72,9 +85,9 @@ def build_locator(
     return "|".join(parts)
 
 
-def sanitize_summary(text: str, *, max_chars: int = 2000) -> str:
+def sanitize_summary(text: str, *, max_chars: int = SUMMARY_MAX_CHARS) -> str:
     """
-    Normalize and bound summary length. Refuses secrets (never redacts in place).
+    Short sanitized summary: normalize whitespace, cap length, refuse secrets.
 
     Raises SecretRefusedError if the text looks like a credential or banned key name.
     """
@@ -197,6 +210,19 @@ def _fit_line_to_pipe_buf(event: dict[str, Any], *, max_bytes: int = PIPE_BUF) -
     return _serialize_line(best)
 
 
+def _open_jsonl_append(path: Path) -> int:
+    """O_APPEND + O_NOFOLLOW; create with 0o600. Refuses symlink paths."""
+    if path.is_symlink():
+        raise SymlinkRefusedError(f"refusing symlink JSONL path: {path}")
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW
+    try:
+        return os.open(path, flags, JSONL_FILE_MODE)
+    except OSError as exc:
+        if exc.errno in (errno.ELOOP, errno.EMLINK):
+            raise SymlinkRefusedError(f"refusing symlink JSONL path: {path}") from exc
+        raise
+
+
 def append_event(
     path: Path,
     event: dict[str, Any],
@@ -212,8 +238,7 @@ def append_event(
     if len(line) > max_line_bytes:
         raise LineTooLongError(f"line {len(line)} exceeds limit {max_line_bytes}")
 
-    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
-    fd = os.open(path, flags, 0o644)
+    fd = _open_jsonl_append(path)
     try:
         written = os.write(fd, line)
         if written != len(line):

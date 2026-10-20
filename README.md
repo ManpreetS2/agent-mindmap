@@ -132,6 +132,20 @@ make live
 
 ---
 
+## NetworkEvent emitter (MM-020b)
+
+Bots may append opt-in live messages with `tools/event_emit.py` (JSONL, one `O_APPEND` write per line, ≤ `PIPE_BUF` bytes).
+
+- **Summary:** short sanitized summary only — never raw chat transcripts. Whitespace collapsed, MM-010 secret patterns refused, **max 240 characters** (truncated with `…` if longer).
+- **File:** opens with `O_NOFOLLOW` (symlinks refused); new files created **0o600**.
+
+```bash
+python3 -m tools.event_emit --out /path/to/events.jsonl \
+  --sender dev-1 --group build --summary "Handoff to QA for MM-020"
+```
+
+---
+
 ## Attribution rules (edges)
 
 Derived in `ingest/edges.py` — never stored independently.

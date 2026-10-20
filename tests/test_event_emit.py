@@ -10,8 +10,11 @@ import pytest
 
 from ingest.github_poller import _looks_like_secret
 from tools.event_emit import (
+    JSONL_FILE_MODE,
     PIPE_BUF,
+    SUMMARY_MAX_CHARS,
     SecretRefusedError,
+    SymlinkRefusedError,
     append_event,
     build_locator,
     build_network_event,
@@ -80,6 +83,48 @@ def test_emit_refuses_secret_in_summary(tmp_path: Path) -> None:
     assert not out.exists() or out.stat().st_size == 0
 
 
+def test_summary_capped_at_240_chars() -> None:
+    long_text = "word " * 200
+    capped = sanitize_summary(long_text)
+    assert len(capped) <= SUMMARY_MAX_CHARS
+    assert capped.endswith("…")
+    evt = build_network_event(
+        ts="2026-10-20T12:00:00+00:00",
+        sender="dev-1",
+        group="build",
+        summary=long_text,
+    )
+    assert len(evt["summary"]) <= SUMMARY_MAX_CHARS
+
+
+def test_jsonl_file_mode_0o600(tmp_path: Path) -> None:
+    out = tmp_path / "events.jsonl"
+    emit_message(
+        out,
+        sender="dev-1",
+        group="build",
+        summary="mode check",
+        ts="2026-10-20T12:00:00+00:00",
+    )
+    mode = out.stat().st_mode & 0o777
+    assert mode == JSONL_FILE_MODE
+
+
+def test_refuse_symlink_jsonl_path(tmp_path: Path) -> None:
+    target = tmp_path / "real.jsonl"
+    link = tmp_path / "events.jsonl"
+    link.symlink_to(target)
+    with pytest.raises(SymlinkRefusedError):
+        emit_message(
+            link,
+            sender="dev-1",
+            group="build",
+            summary="via symlink",
+            ts="2026-10-20T12:00:00+00:00",
+        )
+    assert not target.exists() or target.stat().st_size == 0
+
+
 def test_line_within_pipe_buf(tmp_path: Path) -> None:
     out = tmp_path / "events.jsonl"
     evt = emit_message(
@@ -92,6 +137,7 @@ def test_line_within_pipe_buf(tmp_path: Path) -> None:
     line = out.read_bytes()
     assert len(line) <= PIPE_BUF
     assert line.endswith(b"\n")
+    assert len(evt["summary"]) <= SUMMARY_MAX_CHARS
     validate_network_event(evt)
 
 
