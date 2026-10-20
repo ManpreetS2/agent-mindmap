@@ -93,7 +93,7 @@
     },
     "verdict": {
       "type": "string",
-      "enum": ["PASS", "FAIL", "CHANGES"]
+      "enum": ["PASS", "FAIL", "CHANGES", "CONDITIONAL", "BLOCKED", "INCONCLUSIVE"]
     },
     "attribution": {
       "type": "object",

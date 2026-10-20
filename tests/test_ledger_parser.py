@@ -29,8 +29,8 @@ EXPECTED_EVENT_TYPE_COUNTS = {
     "handoff": 2,
     "merged": 5,
     "blocker": 3,
-    "verdict": 6,
-    "note": 27,
+    "verdict": 8,  # includes CONDITIONAL (QA-MM004-2 verdict tokens)
+    "note": 25,
 }
 
 

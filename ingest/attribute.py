@@ -71,6 +71,36 @@ def attribute_from_body(
     return None, "unknown"
 
 
+def map_github_login(
+    login: str | None,
+    bots: list[dict[str, Any]] | None = None,
+) -> str | None:
+    """
+    Map a GitHub login to a bot id via the owner/attribution roster.
+
+    The shared GitHub account is the owner bot (`manpreet`); aliases and the
+    login `ManpreetS2` resolve there. Other logins are unmatched.
+    """
+    if not login:
+        return None
+    key = login.strip().lower()
+    if not key:
+        return None
+    bot_list = bots if bots is not None else load_bots()
+    # Common owner account login used by all bots.
+    if key in {"manpreets2", "manpreet"}:
+        return "manpreet"
+    for bot in bot_list:
+        names = {
+            str(bot.get("id", "")).lower(),
+            str(bot.get("display_name", "")).lower(),
+            *(str(a).lstrip("~").lower() for a in bot.get("aliases", [])),
+        }
+        if key in names:
+            return str(bot["id"])
+    return None
+
+
 TASK_ID_RE = re.compile(
     r"\b([A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?:-[0-9]+)?|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?:-[0-9]+)?)\b"
 )
@@ -86,7 +116,14 @@ def extract_task_id(*texts: str | None) -> str | None:
     return None
 
 
-VERDICT_RE = re.compile(r"\b(PASS|FAIL|CHANGES)\b", re.IGNORECASE)
+# QA-MM004-2: signed review/comment verdicts include these tokens.
+VERDICT_RE = re.compile(
+    r"\b(PASS|FAIL|CHANGES|CONDITIONAL|BLOCKED|INCONCLUSIVE)\b",
+    re.IGNORECASE,
+)
+VERDICT_TOKENS = frozenset(
+    {"PASS", "FAIL", "CHANGES", "CONDITIONAL", "BLOCKED", "INCONCLUSIVE"}
+)
 
 
 def extract_verdict(body: str | None) -> str | None:

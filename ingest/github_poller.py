@@ -21,6 +21,7 @@ from .attribute import (
     extract_task_id,
     extract_verdict,
     load_bots,
+    map_github_login,
 )
 
 ALLOWED_REPOS = frozenset(
@@ -88,9 +89,10 @@ def next_link_path(
     """
     Extract the next page path from a GitHub Link header.
 
-    SEC-MM003-1 / QA-MM003-9: netloc must be `api.github.com`, and the path must
-    start with either `repos/<allowlisted owner/repo>/` or
-    `repositories/<allowlisted numeric id>/`.
+    SEC-MM003-1 / QA-MM003-9 / QA-MM003-12: netloc must be `api.github.com`,
+    and the path must stay in the *requested* repo (`allowed_repos`, typically
+    a single-repo frozenset) via `repos/<owner>/<repo>/` or
+    `repositories/<that repo's numeric id>/`.
     Rejects URLs containing '..' or '%' and paths whose resource suffix does
     not match the request being paginated.
     Raises PaginationLinkError on foreign/unsafe links (caller stops + meta=error).
@@ -458,8 +460,11 @@ class GitHubPoller:
                 break
 
             try:
+                # QA-MM003-12: next link must stay in the SAME repo being paged,
+                # not merely any globally allowlisted repo.
                 path_next = next_link_path(
                     resp.headers.get("link"),
+                    allowed_repos=frozenset({repo}),
                     allowed_repo_ids=self._allowed_ids_for(repo),
                     expected_suffix=resource_suffix(api_path),
                 )
@@ -547,23 +552,6 @@ class GitHubPoller:
         )
         _append_unique(events, seen, opened)
 
-        if pr.get("merged_at"):
-            sha = (pr.get("merge_commit_sha") or "")[:40].lower()
-            sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            merged = _event(
-                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
-                etype="merged",
-                actor=actor,
-                task_id=task_id,
-                pr=number,
-                sha=sha_val,
-                source_url=html,
-                source_time=pr.get("merged_at"),
-                attribution=method if actor else "unknown",
-                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
-            )
-            _append_unique(events, seen, merged)
-
         reviews = self._get_json_list(
             f"repos/{repo}/pulls/{number}/reviews", repo=repo
         )
@@ -588,6 +576,28 @@ class GitHubPoller:
                 events.extend(
                     self._comment_events(repo, number, task_id, c, seen, kind="issue_comment")
                 )
+
+        if pr.get("merged_at"):
+            sha = (pr.get("merge_commit_sha") or "")[:40].lower()
+            sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
+            # Director: merger from merged_by (mapped), preferring a ~Bot
+            # signature on a merge comment over the shared-owner login.
+            merger_actor, merger_method = _resolve_merger(
+                pr, issue_comments, review_comments, self.bots
+            )
+            merged = _event(
+                locator=f"{repo}#pr{number}:merged:{sha_val or ''}",
+                etype="merged",
+                actor=merger_actor,
+                task_id=task_id,
+                pr=number,
+                sha=sha_val,
+                source_url=html,
+                source_time=pr.get("merged_at"),
+                attribution=merger_method,
+                raw=f"squash-merged as {sha_val}" if sha_val else f"Merged PR #{number}",
+            )
+            _append_unique(events, seen, merged)
 
         commits = self._get_json_list(
             f"repos/{repo}/pulls/{number}/commits", repo=repo
@@ -665,6 +675,48 @@ class GitHubPoller:
         return out
 
 
+_MERGE_HINT_RE = re.compile(
+    r"\b(?:squash[- ])?merged\b|\bmerge(?:d)?\s+as\b",
+    re.IGNORECASE,
+)
+
+
+def _resolve_merger(
+    pr: dict[str, Any],
+    issue_comments: list[Any],
+    review_comments: list[Any],
+    bots: list[dict[str, Any]],
+) -> tuple[str | None, str]:
+    """
+    Resolve the merger bot for a GitHub merged PR.
+
+    Prefer a ~Bot signature on a merge-related comment; otherwise map
+    `merged_by.login` through the owner roster. Never use the PR body
+    signature (that is the author).
+    """
+    for comment in [*issue_comments, *review_comments]:
+        if not isinstance(comment, dict):
+            continue
+        body = comment.get("body") or ""
+        if not _MERGE_HINT_RE.search(body):
+            continue
+        sig_actor, sig_method = attribute_from_body(body, bots)
+        if sig_actor and sig_method == "signature":
+            return sig_actor, "signature"
+
+    merged_by = pr.get("merged_by")
+    login = None
+    if isinstance(merged_by, dict):
+        login = merged_by.get("login")
+    elif isinstance(merged_by, str):
+        login = merged_by
+    mapped = map_github_login(login, bots)
+    if mapped:
+        # Shared GitHub account → owner bot; not a ledger_owner attribution.
+        return mapped, "unknown"
+    return None, "unknown"
+
+
 def _event(
     *,
     locator: str,
@@ -680,6 +732,7 @@ def _event(
     verdict: str | None = None,
     target: str | None = None,
 ) -> dict[str, Any]:
+
     evt: dict[str, Any] = {
         "id": event_id("github", locator),
         "type": etype,

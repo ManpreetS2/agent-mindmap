@@ -27,7 +27,13 @@ export type EventType =
 
 export type EdgeType = "handoff" | "verdict" | "pr" | "merge";
 
-export type Verdict = "PASS" | "FAIL" | "CHANGES";
+export type Verdict =
+  | "PASS"
+  | "FAIL"
+  | "CHANGES"
+  | "CONDITIONAL"
+  | "BLOCKED"
+  | "INCONCLUSIVE";
 
 export type AttributionMethod = "signature" | "ledger_owner" | "unknown";
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -22,7 +23,6 @@ from .ledger_parser import LedgerParseResult, parse_ledger_file
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
-DEFAULT_LEDGER = ROOT / "tests" / "fixtures" / "ledger-sample.md"
 DEFAULT_OUT = ROOT / "web" / "public" / "activity.json"
 DEFAULT_BOTS = ROOT / "config" / "bots.json"
 
@@ -183,24 +183,50 @@ def write_activity(activity: dict[str, Any], out_path: Path) -> None:
     Path(tmp_name).replace(out_path)
 
 
+def resolve_ledger_path(
+    cli_ledger: Path | None,
+    env: dict[str, str] | None = None,
+) -> Path | None:
+    """Return --ledger PATH, else MINDMAP_LEDGER, else None (QA-MM004-3)."""
+    if cli_ledger is not None:
+        return cli_ledger
+    environ = env if env is not None else os.environ
+    raw = environ.get("MINDMAP_LEDGER")
+    if raw:
+        return Path(raw)
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build MINDMAP activity.json")
-    parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
+    parser.add_argument(
+        "--ledger",
+        type=Path,
+        default=None,
+        help="Path to task-ledger.md (or set MINDMAP_LEDGER)",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--cache-dir", type=Path, default=None)
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--skip-github", action="store_true")
     args = parser.parse_args(argv)
 
-    if not args.ledger.is_file():
-        print(f"ledger not found: {args.ledger}", file=sys.stderr)
+    ledger = resolve_ledger_path(args.ledger)
+    if ledger is None:
+        print(
+            "error: provide --ledger PATH or set the MINDMAP_LEDGER environment variable",
+            file=sys.stderr,
+        )
+        return 2
+    if not ledger.is_file():
+        print(f"ledger not found: {ledger}", file=sys.stderr)
         return 1
 
     with args.bots.open(encoding="utf-8") as f:
         bots = json.load(f)["bots"]
 
     activity = build_activity(
-        ledger_path=args.ledger,
+        ledger_path=ledger,
         bots=bots,
         cache_dir=args.cache_dir,
         skip_github=args.skip_github,

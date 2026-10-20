@@ -8,10 +8,9 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from ingest.build import build_activity, write_activity
+from ingest.build import build_activity, main, resolve_ledger_path, write_activity
 from ingest.edges import derive_edges
-from ingest.github_poller import GhResponse
-from tests.test_github_poller import MockGh, _fixture_map
+from tests.test_github_poller import MockGh
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "tests" / "fixtures" / "ledger-sample.md"
@@ -47,7 +46,8 @@ def test_build_activity_validates(tmp_path: Path, bots: list[dict], schema: dict
     assert len(activity["nodes"]) == len(bots)
     edge_types = {e["type"] for e in activity["edges"]}
     assert edge_types <= {"handoff", "verdict", "pr", "merge"}
-    assert "handoff" in edge_types or "verdict" in edge_types
+    # No self-loops anywhere
+    assert all(e["source"] != e["target"] for e in activity["edges"])
 
 
 def test_github_down_ledger_only_meta_error(
@@ -76,18 +76,17 @@ def test_github_down_ledger_only_meta_error(
 
 
 def test_event_ids_stable_across_runs(tmp_path: Path, bots: list[dict]) -> None:
-    runner = MockGh()
     a = build_activity(
         ledger_path=LEDGER,
         bots=bots,
-        github_runner=runner,
+        github_runner=MockGh(),
         cache_dir=tmp_path / "cache-a",
         generated_at="2026-10-20T06:00:00-07:00",
     )
     b = build_activity(
         ledger_path=LEDGER,
         bots=bots,
-        github_runner=MockGh(),  # fresh etag state; fixtures identical
+        github_runner=MockGh(),
         cache_dir=tmp_path / "cache-b",
         generated_at="2026-10-20T07:00:00-07:00",
     )
@@ -104,6 +103,7 @@ def test_derive_edges_merge_uses_pr_author() -> None:
             "actor": "dev-1",
             "target": None,
             "pr": 5,
+            "attribution": {"method": "signature"},
         },
         {
             "id": "2",
@@ -111,12 +111,15 @@ def test_derive_edges_merge_uses_pr_author() -> None:
             "actor": "devops-release",
             "target": None,
             "pr": 5,
+            "attribution": {"method": "signature"},
+            "source_url": "build/task-ledger.md",
         },
         {
             "id": "3",
             "type": "handoff",
             "actor": "director",
             "target": "architect",
+            "attribution": {"method": "ledger_owner"},
         },
     ]
     edges = derive_edges(events)
@@ -125,3 +128,216 @@ def test_derive_edges_merge_uses_pr_author() -> None:
     assert merge["target"] == "dev-1"
     handoff = next(e for e in edges if e["type"] == "handoff")
     assert handoff["count"] == 1
+
+
+def test_merge_edge_never_self_loop() -> None:
+    """QA-MM004-1: when merger == PR author, keep merged event but emit no merge edge."""
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 5,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "merge",
+            "type": "merged",
+            "actor": "dev-1",
+            "pr": 5,
+            "attribution": {"method": "signature"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+        },
+    ]
+    edges = derive_edges(events)
+    assert not any(e["type"] == "merge" for e in edges)
+    assert all(e["source"] != e["target"] for e in edges)
+
+
+def test_merge_unknown_merger_emits_no_edge() -> None:
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 5,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "merge",
+            "type": "merged",
+            "actor": None,
+            "pr": 5,
+            "attribution": {"method": "unknown"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+        },
+    ]
+    edges = derive_edges(events)
+    assert not any(e["type"] == "merge" for e in edges)
+
+
+def test_ledger_merged_overrides_github_merged_by() -> None:
+    """Prefer ledger/signature merger over mapped GitHub owner login."""
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 5,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "gh-merge",
+            "type": "merged",
+            "actor": "manpreet",
+            "pr": 5,
+            "attribution": {"method": "unknown"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/5",
+        },
+        {
+            "id": "ledger-merge",
+            "type": "merged",
+            "actor": "devops-release",
+            "pr": 5,
+            "attribution": {"method": "signature"},
+            "source_url": "build/task-ledger.md",
+        },
+    ]
+    edges = derive_edges(events)
+    merges = [e for e in edges if e["type"] == "merge"]
+    assert len(merges) == 1
+    assert merges[0]["source"] == "devops-release"
+    assert merges[0]["target"] == "dev-1"
+
+
+def test_signed_review_verdict_and_pr_edges() -> None:
+    """QA-MM004-2: signed review → verdict reviewer→author and pr author→reviewer."""
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 6,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "rev",
+            "type": "verdict",
+            "actor": "security-engineer",
+            "pr": 6,
+            "verdict": "PASS",
+            "attribution": {"method": "signature"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
+        },
+        {
+            "id": "unsigned",
+            "type": "note",
+            "actor": None,
+            "pr": 6,
+            "attribution": {"method": "unknown"},
+            "source_url": "https://github.com/ManpreetS2/fencepost/pull/6",
+        },
+    ]
+    edges = derive_edges(events)
+    verdict = next(e for e in edges if e["type"] == "verdict")
+    assert verdict["source"] == "security-engineer"
+    assert verdict["target"] == "dev-1"
+    pr_edge = next(e for e in edges if e["type"] == "pr")
+    assert pr_edge["source"] == "dev-1"
+    assert pr_edge["target"] == "security-engineer"
+    # Unknown attribution produces no edge
+    assert all(e["source"] != "unknown" for e in edges)
+
+
+def test_pr_edges_deduped_per_pair_per_pr() -> None:
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-1",
+            "pr": 6,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "r1",
+            "type": "verdict",
+            "actor": "qa-verifier",
+            "pr": 6,
+            "verdict": "CHANGES",
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "r2",
+            "type": "note",
+            "actor": "qa-verifier",
+            "pr": 6,
+            "attribution": {"method": "signature"},
+        },
+    ]
+    edges = derive_edges(events)
+    pr_edges = [e for e in edges if e["type"] == "pr"]
+    assert len(pr_edges) == 1
+    assert pr_edges[0]["count"] == 1
+    assert pr_edges[0]["source"] == "dev-1"
+    assert pr_edges[0]["target"] == "qa-verifier"
+
+
+def test_conditional_verdict_token_makes_verdict_edge() -> None:
+    events = [
+        {
+            "id": "open",
+            "type": "pr_opened",
+            "actor": "dev-2",
+            "pr": 3,
+            "attribution": {"method": "signature"},
+        },
+        {
+            "id": "rev",
+            "type": "verdict",
+            "actor": "architect",
+            "pr": 3,
+            "verdict": "CONDITIONAL",
+            "attribution": {"method": "signature"},
+        },
+    ]
+    edges = derive_edges(events)
+    assert any(
+        e["type"] == "verdict"
+        and e["source"] == "architect"
+        and e["target"] == "dev-2"
+        for e in edges
+    )
+
+
+def test_build_requires_ledger_arg_or_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """QA-MM004-3: no fixture default; --ledger or MINDMAP_LEDGER required."""
+    monkeypatch.delenv("MINDMAP_LEDGER", raising=False)
+    assert resolve_ledger_path(None) is None
+    assert resolve_ledger_path(None, env={}) is None
+    assert resolve_ledger_path(Path("/tmp/x"), env={}) == Path("/tmp/x")
+    assert resolve_ledger_path(None, env={"MINDMAP_LEDGER": "/tmp/y"}) == Path("/tmp/y")
+
+    rc = main(["--out", str(tmp_path / "out.json"), "--skip-github"])
+    assert rc == 2
+
+    rc = main(
+        [
+            "--ledger",
+            str(LEDGER),
+            "--out",
+            str(tmp_path / "out.json"),
+            "--skip-github",
+        ]
+    )
+    assert rc == 0
+    assert (tmp_path / "out.json").is_file()
+
+
+def test_build_uses_mindmap_ledger_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MINDMAP_LEDGER", str(LEDGER))
+    out = tmp_path / "activity.json"
+    rc = main(["--out", str(out), "--skip-github"])
+    assert rc == 0
+    assert out.is_file()

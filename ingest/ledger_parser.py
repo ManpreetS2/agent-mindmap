@@ -111,7 +111,10 @@ HANDOFF_RE = re.compile(
     r"(?:GO\s+for|assigned\s+to|handed\s+to)\s+([A-Za-z0-9 /&]+?)(?:\s+for\b|\s+on\b|[.;,]|$)",
     re.IGNORECASE,
 )
-VERDICT_RE = re.compile(r"\b(PASS|FAIL|CHANGES)\b", re.IGNORECASE)
+VERDICT_RE = re.compile(
+    r"\b(PASS|FAIL|CHANGES|CONDITIONAL|INCONCLUSIVE)\b",
+    re.IGNORECASE,
+)
 BLOCKED_RE = re.compile(r"\bBLOCKED\w*\b", re.IGNORECASE)
 
 STATUS_RULES: list[tuple[re.Pattern[str], str]] = [
