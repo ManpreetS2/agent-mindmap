@@ -36,10 +36,23 @@ class FakeEventSource {
   readyState = 0;
   url: string;
   closed = false;
+  private listeners = new Map<string, Set<(ev: Event) => void>>();
 
   constructor(url: string) {
     this.url = url;
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(type: string, handler: (ev: Event) => void) {
+    const set = this.listeners.get(type) ?? new Set();
+    set.add(handler);
+    this.listeners.set(type, set);
+  }
+
+  emitActivity() {
+    for (const handler of this.listeners.get("activity") ?? []) {
+      handler(new Event("activity"));
+    }
   }
 
   close() {
@@ -197,6 +210,24 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     stop();
     expect(seen.length).toBeGreaterThanOrEqual(2);
     vi.useRealTimers();
+  });
+});
+
+describe("activity snapshot events", () => {
+  it("refetches when a named activity event arrives and onmessage does not", async () => {
+    FakeEventSource.instances = [];
+    const fetchImpl = mockFetch();
+    const seen: Activity[] = [];
+    const transport = createSseTransport({
+      fetchImpl,
+      refetchMinMs: 0,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!((data) => seen.push(data));
+    FakeEventSource.instances[0].emitActivity();
+    await vi.waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(fetchImpl).toHaveBeenCalled();
+    stop();
   });
 });
 

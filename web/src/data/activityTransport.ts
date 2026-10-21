@@ -205,11 +205,15 @@ export function createSseTransport(
       };
 
       const wireSource = (es: EventSource) => {
-        es.onmessage = () => {
+        const onSnapshot = () => {
           if (cancelled) return;
           onSseEvent?.();
           debouncedRefetch();
         };
+        // Unnamed frames are network events. Snapshot rebuilds use a named
+        // event, which EventSource does not deliver through onmessage.
+        es.onmessage = onSnapshot;
+        es.addEventListener("activity", onSnapshot);
         es.onerror = () => {
           if (cancelled) return;
           es.close();

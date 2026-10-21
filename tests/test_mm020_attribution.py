@@ -88,8 +88,10 @@ def test_mac_style_pr_lane_yields_edges(bots: list[dict], tmp_path: Path) -> Non
     assert network
     assert any(e.get("actor") for e in result.events)
     assert len(edges) > 0
-    active = [n for n in build_nodes(bots, [], result.events, meta_ledger="unavailable") if n["status"] != "UNKNOWN"]
-    assert active
+    nodes = build_nodes(bots, [], result.events, meta_ledger="unavailable")
+    evidenced = [n for n in nodes if n.get("last_activity_ts")]
+    assert evidenced
+    assert all(n["status"] != "IDLE" for n in nodes)
 
 
 def test_assemble_includes_groups_and_repo_on_events(

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { LedgerLoadError } from "./data/loadActivity";
 import { createSseTransport } from "./data/activityTransport";
 import { LedgerErrorView } from "./components/LedgerErrorView";
@@ -25,7 +25,6 @@ export function App() {
   const banner = <ModeBanner state={bannerState} />;
   const [sseConnection, setSseConnection] =
     useState<SseConnectionState>("connecting");
-  const ssePushRef = useRef<() => void>(() => {});
   const transport = useMemo(
     () =>
       createSseTransport({
@@ -33,20 +32,18 @@ export function App() {
         onSseConnectionChange: (connected) => {
           setSseConnection(connected ? "connected" : "disconnected");
         },
-        onSseEvent: () => ssePushRef.current(),
       }),
     [],
   );
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
   const activityKey = activity
-    ? `${activity.generated_at}:${activity.events.length}`
+    ? `${activity.generated_at}:${activity.meta.github}:${activity.events.length}`
     : "";
-  const { handleRefresh, onSsePush, refreshError, rateLimitSeconds } =
-    useMindmapRefresh(reload, activityKey);
-  ssePushRef.current = onSsePush;
+  const { handleRefresh, refreshError, rateLimitSeconds } =
+    useMindmapRefresh(activityKey);
 
-  if (error instanceof LedgerLoadError) {
+  if (!activity && error instanceof LedgerLoadError) {
     return (
       <CommandCenterShell>
         {banner}
@@ -56,7 +53,7 @@ export function App() {
     );
   }
 
-  if (error) {
+  if (!activity && error) {
     return (
       <CommandCenterShell>
         {banner}

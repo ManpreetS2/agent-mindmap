@@ -29,6 +29,7 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
     onOpenDetail,
   } = data;
   const reduceMotion = useReducedMotion() ?? data.reduceMotion ?? false;
+  const historical = node.group === "historical";
   const taskLine = node.current_task
     ? `${node.current_task}`
     : "No current task";
@@ -41,7 +42,7 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
     <motion.button
       type="button"
       data-testid={`agent-node-${node.id}`}
-      className={`agent-node-card nopan nodrag${selected ? " is-selected" : ""}${deemphasized ? " is-deemphasized" : ""}${lifecycleDimmed ? " is-lifecycle-dimmed" : ""}${lifecycleHighlighted ? " is-lifecycle-highlight" : ""}${statusPulse && !reduceMotion ? " is-status-pulse" : ""}`}
+      className={`agent-node-card nopan nodrag${selected ? " is-selected" : ""}${deemphasized || historical ? " is-deemphasized" : ""}${historical ? " is-historical" : ""}${lifecycleDimmed ? " is-lifecycle-dimmed" : ""}${lifecycleHighlighted ? " is-lifecycle-highlight" : ""}${statusPulse && !reduceMotion ? " is-status-pulse" : ""}`}
       onClick={() => onOpenDetail(node.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -50,7 +51,7 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
         }
       }}
       aria-pressed={selected}
-      aria-label={`${node.label}, ${node.status}, ${taskLine}`}
+      aria-label={`${node.label}, ${historical ? "historical, " : ""}${node.status}, ${taskLine}`}
       layout={!reduceMotion}
       animate={
         reduceMotion
@@ -81,6 +82,9 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
         <span className="agent-node-card__title">{node.label}</span>
         <StatusPill status={node.status} />
       </div>
+      {historical ? (
+        <div className="agent-node-card__historical">Historical</div>
+      ) : null}
       <div className="agent-node-card__task mono">{taskLine}</div>
       <div className="agent-node-card__meta">{lastLine}</div>
     </motion.button>

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "description": "MM-020a: group registry + membership (identity lives in bots.json). Add a bot to a group by appending its id to members — no code change required.",
+  "description": "Current organization. Project Manager is one identity in both working groups. Retired bots stay in bots.json for attribution and are not members here.",
   "groups": [
     {
       "id": "owner",
@@ -8,32 +8,20 @@
       "members": ["manpreet"]
     },
     {
-      "id": "build",
-      "label": "Build",
-      "members": [
-        "director",
-        "architect",
-        "dev-1",
-        "dev-2",
-        "ui-ux-maker",
-        "documentation"
-      ]
-    },
-    {
-      "id": "qr",
-      "label": "Quality & Release",
-      "members": [
-        "director",
-        "architect",
-        "qa-verifier",
-        "security-engineer",
-        "devops-release"
-      ]
-    },
-    {
       "id": "radar",
-      "label": "Research / Radar",
-      "members": ["director", "architect", "scout", "skeptic", "nomen"]
+      "label": "Project Radar",
+      "members": ["project-manager", "scout", "advocate", "skeptic"]
+    },
+    {
+      "id": "hq",
+      "label": "Engineering HQ",
+      "members": [
+        "project-manager",
+        "bug-hunter",
+        "engineering-researcher",
+        "experiment-designer",
+        "technical-tutor"
+      ]
     }
   ]
 }

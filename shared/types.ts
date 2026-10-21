@@ -26,7 +26,13 @@ export type AgentState =
   | "COMPLETED"
   | "UNKNOWN";
 
-export type NodeGroup = "owner" | "build" | "qr" | "radar";
+export type NodeGroup =
+  | "owner"
+  | "build"
+  | "qr"
+  | "radar"
+  | "hq"
+  | "historical";
 
 /** Group id string; known v1 ids are NodeGroup; later groups may be added via config. */
 export type GroupId = NodeGroup | (string & {});

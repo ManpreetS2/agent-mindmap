@@ -46,6 +46,7 @@ class FakeEventSource {
     this.url = url;
     FakeEventSource.instances.push(this);
   }
+  addEventListener() {}
   close() {}
   emitMessage() {
     this.onmessage?.(new MessageEvent("message", { data: "{}" }));

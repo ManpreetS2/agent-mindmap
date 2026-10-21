@@ -64,7 +64,7 @@ export interface AgentGraphProps {
 }
 
 function isDeemphasized(node: Activity["nodes"][number]): boolean {
-  return node.group === "radar" && node.status === "IDLE";
+  return node.group === "historical";
 }
 
 export function AgentGraph({

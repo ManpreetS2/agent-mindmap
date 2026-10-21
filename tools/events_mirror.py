@@ -68,11 +68,14 @@ def _provenance_values_from_schema() -> frozenset[str]:
 PROVENANCE_VALUES = _provenance_values_from_schema()
 
 # Match schema/$defs/taskId (same contract as MM-020b event_emit / activity.schema.json).
+# Suffix alternatives are listed before the unsuffixed forms so a full-string
+# id such as MM-020-1 is accepted, and MM-020-1a is not truncated to MM-020.
 _TASK_ID_RE = re.compile(
     r"^(?:"
-    r"[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?"
-    r"|"
-    r"[A-Z]{2,}-[A-Z]{2}[0-9]{3}(-[0-9]+)?"
+    r"[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*-[0-9]+"
+    r"|[A-Z]{2,}-[A-Z]{2}[0-9]{3}-[0-9]+"
+    r"|[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*"
+    r"|[A-Z]{2,}-[A-Z]{2}[0-9]{3}"
     r")$"
 )
 

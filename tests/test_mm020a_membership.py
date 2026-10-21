@@ -27,22 +27,15 @@ SAMPLE = ROOT / "fixtures" / "sample-activity.json"
 WEB_FIXTURES = ROOT / "web" / "src" / "fixtures"
 PUBLIC_ACTIVITY = ROOT / "web" / "public" / "activity.json"
 
-RESEARCH_MEMBERS = {"director", "architect", "scout", "skeptic", "nomen"}
-BUILD_MEMBERS = {
-    "director",
-    "architect",
-    "dev-1",
-    "dev-2",
-    "ui-ux-maker",
-    "documentation",
+RADAR_MEMBERS = {"project-manager", "scout", "advocate", "skeptic"}
+HQ_MEMBERS = {
+    "project-manager",
+    "bug-hunter",
+    "engineering-researcher",
+    "experiment-designer",
+    "technical-tutor",
 }
-QR_MEMBERS = {
-    "director",
-    "architect",
-    "qa-verifier",
-    "security-engineer",
-    "devops-release",
-}
+ACTIVE_BOTS = RADAR_MEMBERS | HQ_MEMBERS
 
 
 @pytest.fixture(scope="module")
@@ -54,27 +47,31 @@ def schema() -> dict:
 def test_groups_json_membership() -> None:
     cfg = load_groups(GROUPS_PATH)
     by_id = {g["id"]: set(g["members"]) for g in cfg["groups"]}
-    assert by_id["build"] == BUILD_MEMBERS
-    assert by_id["qr"] == QR_MEMBERS
-    assert by_id["radar"] == RESEARCH_MEMBERS
-    # Bug fixer stays out of Research; add via config alone later.
-    assert "bug-fixer" not in by_id["radar"]
-    assert "bug-fixer" not in by_id["build"]
-    assert "bug-fixer" not in by_id["qr"]
+    assert set(by_id) == {"owner", "radar", "hq"}
+    assert by_id["owner"] == {"manpreet"}
+    assert by_id["radar"] == RADAR_MEMBERS
+    assert by_id["hq"] == HQ_MEMBERS
+    assert "project-manager" in by_id["radar"]
+    assert "project-manager" in by_id["hq"]
+    # Retired identities are not current members.
+    for retired in ("director", "architect", "bug-fixer", "nomen"):
+        assert retired not in by_id["radar"]
+        assert retired not in by_id["hq"]
 
 
-def test_director_architect_multi_membership() -> None:
+def test_project_manager_is_one_identity() -> None:
     idx = membership_index(load_groups(GROUPS_PATH))
-    assert set(idx["director"]) == {"build", "qr", "radar"}
-    assert set(idx["architect"]) == {"build", "qr", "radar"}
+    assert set(idx["project-manager"]) == {"radar", "hq"}
     assert groups_for_bot("bug-fixer") == []
-    # One identity: single bot id, many groups — not duplicated ids in roster.
+    assert groups_for_bot("director") == []
     with BOTS_PATH.open(encoding="utf-8") as f:
         bots = json.load(f)["bots"]
     ids = [b["id"] for b in bots]
     assert len(ids) == len(set(ids))
-    assert ids.count("director") == 1
-    assert ids.count("architect") == 1
+    assert ids.count("project-manager") == 1
+    active = [b["id"] for b in bots if b.get("roster") != "historical" and b["id"] != "manpreet"]
+    assert set(active) == ACTIVE_BOTS
+    assert len(active) == 8
 
 
 def test_qa_mm020a_1_membership_dedupes_repeated_members() -> None:

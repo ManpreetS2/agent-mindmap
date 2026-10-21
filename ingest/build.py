@@ -137,15 +137,32 @@ def build_nodes(
 
     member_of = membership if membership is not None else membership_index()
     ledger_ok = meta_ledger == "ok"
+    evidenced: set[str] = set(tasks_by_owner)
+    evidenced.update(latest_by_actor)
+    for evt in events:
+        for key in ("actor", "target"):
+            val = evt.get(key)
+            if isinstance(val, str) and val and not val.startswith("group:"):
+                evidenced.add(val)
 
     nodes: list[dict[str, Any]] = []
     for bot in bots:
         bot_id = bot["id"]
-        groups = list(member_of.get(bot_id, []))
+        historical = bot.get("roster") == "historical"
+        # Retired identities stay attributable, but only appear when an event
+        # or task names them. No evidence → no IDLE node.
+        if historical and bot_id not in evidenced:
+            continue
+        if historical:
+            groups = ["historical"]
+            home = "historical"
+        else:
+            groups = list(member_of.get(bot_id, []))
+            home = str(bot["group"])
         node: dict[str, Any] = {
             "id": bot_id,
             "label": bot["display_name"],
-            "group": bot["group"],
+            "group": home,
             "groups": groups,
             "status": "UNKNOWN",
             "agent_links": agent_links.get(bot_id, []),
@@ -157,7 +174,7 @@ def build_nodes(
             active = next((t for t in owned if t.get("status") not in {"DONE", "IDLE"}), owned[-1])
             node["current_task"] = active["id"]
             node["status"] = active.get("status") or "UNKNOWN"
-        elif bot_id in latest_by_actor:
+        elif not historical and bot_id in latest_by_actor:
             node["status"] = "IN_PROGRESS"
         if bot_id in latest_by_actor:
             node["last_activity_ts"] = latest_by_actor[bot_id]

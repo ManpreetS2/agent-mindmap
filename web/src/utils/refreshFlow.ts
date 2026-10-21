@@ -7,8 +7,6 @@ import {
   sourceUnavailableMessage,
 } from "./viewState";
 
-export const REFRESH_FALLBACK_MS = 1500;
-
 export const REFRESH_NETWORK_UNREACHABLE =
   "Refresh failed (server unreachable)";
 
@@ -80,33 +78,30 @@ export function applyPostRefreshAction(
 ): {
   rateLimitUntilMs: number | null;
   refreshError: string | null;
-  scheduleFallbackReload: boolean;
 } {
+  // A queued refresh is finished when the activity SSE event (or poll
+  // fallback) delivers a new snapshot. There is no fixed reload timer.
   if (action.type === "queued") {
     return {
       rateLimitUntilMs: null,
       refreshError: null,
-      scheduleFallbackReload: true,
     };
   }
   if (action.type === "rate_limited") {
     return {
       rateLimitUntilMs: nowMs + action.retryAfterS * 1000,
       refreshError: null,
-      scheduleFallbackReload: false,
     };
   }
   if (action.type === "forbidden") {
     return {
       rateLimitUntilMs: null,
       refreshError: REFRESH_FORBIDDEN_MESSAGE,
-      scheduleFallbackReload: false,
     };
   }
   return {
     rateLimitUntilMs: null,
     refreshError: action.message,
-    scheduleFallbackReload: false,
   };
 }
 

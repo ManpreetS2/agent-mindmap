@@ -118,8 +118,16 @@ def map_github_login(
     return None
 
 
+# Longer (hyphen-numeric suffix) alternatives come first. A trailing word
+# boundary used to succeed on the hyphen and return MM-020 for MM-020-1a.
+_TASK_ID_BODY = (
+    r"[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*-[0-9]+"
+    r"|[A-Z]{2,}-[A-Z]{2}[0-9]{3}-[0-9]+"
+    r"|[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?!-[0-9])"
+    r"|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?!-[0-9])"
+)
 TASK_ID_RE = re.compile(
-    r"\b([A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?:-[0-9]+)?|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?:-[0-9]+)?)\b"
+    rf"(?<![A-Za-z0-9])({_TASK_ID_BODY})(?![A-Za-z0-9])"
 )
 
 

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Activity } from "@shared/types";
 import {
   createPollTransport,
-  LedgerLoadError,
   type ActivityTransport,
 } from "../data/activityTransport";
 import {
@@ -29,7 +28,6 @@ export function useActivityFeed(
     ReadonlySet<string>
   >(() => new Set());
   const [retryToken, setRetryToken] = useState(0);
-  const [liveReady, setLiveReady] = useState(false);
   const activityRef = useRef<Activity | null>(null);
 
   const applyNext = useCallback((next: Activity) => {
@@ -41,14 +39,10 @@ export function useActivityFeed(
     setLastPatch(patch);
     setStatusPulseNodeIds(pulses);
     setError(null);
-    setLiveReady(true);
   }, []);
 
   const reload = useCallback(() => {
     setError(null);
-    setActivity(null);
-    activityRef.current = null;
-    setLiveReady(false);
     setRetryToken((t) => t + 1);
   }, []);
 
@@ -60,11 +54,8 @@ export function useActivityFeed(
         if (!cancelled) applyNext(data);
       })
       .catch((e: unknown) => {
-        if (!cancelled) {
-          setError(
-            e instanceof Error ? e : new Error("Failed to load data"),
-          );
-        }
+        if (cancelled || activityRef.current) return;
+        setError(e instanceof Error ? e : new Error("Failed to load data"));
       });
     return () => {
       cancelled = true;
@@ -72,12 +63,11 @@ export function useActivityFeed(
   }, [transport, retryToken, applyNext]);
 
   useEffect(() => {
-    if (!transport.subscribe || !liveReady) return;
-    if (error instanceof LedgerLoadError) return;
+    if (!transport.subscribe) return;
     return transport.subscribe((data) => {
       applyNext(data);
     });
-  }, [transport, liveReady, error, applyNext]);
+  }, [transport, applyNext]);
 
   useEffect(() => {
     if (statusPulseNodeIds.size === 0) return;

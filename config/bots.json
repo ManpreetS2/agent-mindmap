@@ -1,19 +1,85 @@
 {
   "schema_version": "1.1.0",
-  "description": "MM-020a: identity model (id, display_name, aliases, layout). Membership is config/groups.json. Primary `group` is layout/home for backward-compatible activity nodes — not sole membership.",
+  "description": "Identity model. roster=active bots are the current organization. roster=historical bots keep aliases so old events still attribute, and are drawn only when an event or task names them.",
   "bots": [
     {
       "id": "manpreet",
       "display_name": "Manpreet",
       "aliases": ["Manpreet", "owner"],
       "group": "owner",
+      "roster": "active",
       "layout": { "x": 400, "y": 0 }
+    },
+    {
+      "id": "project-manager",
+      "display_name": "Project Manager",
+      "aliases": ["Project Manager", "~Project Manager"],
+      "group": "radar",
+      "roster": "active",
+      "layout": { "x": 80, "y": 160 }
+    },
+    {
+      "id": "scout",
+      "display_name": "Scout",
+      "aliases": ["Scout", "~Scout"],
+      "group": "radar",
+      "roster": "active",
+      "layout": { "x": 280, "y": 160 }
+    },
+    {
+      "id": "advocate",
+      "display_name": "Advocate",
+      "aliases": ["Advocate", "~Advocate"],
+      "group": "radar",
+      "roster": "active",
+      "layout": { "x": 480, "y": 160 }
+    },
+    {
+      "id": "skeptic",
+      "display_name": "Skeptic",
+      "aliases": ["Skeptic", "~Skeptic"],
+      "group": "radar",
+      "roster": "active",
+      "layout": { "x": 680, "y": 160 }
+    },
+    {
+      "id": "bug-hunter",
+      "display_name": "Bug Hunter",
+      "aliases": ["Bug Hunter", "~Bug Hunter"],
+      "group": "hq",
+      "roster": "active",
+      "layout": { "x": 80, "y": 360 }
+    },
+    {
+      "id": "engineering-researcher",
+      "display_name": "Engineering Researcher",
+      "aliases": ["Engineering Researcher", "~Engineering Researcher"],
+      "group": "hq",
+      "roster": "active",
+      "layout": { "x": 280, "y": 360 }
+    },
+    {
+      "id": "experiment-designer",
+      "display_name": "Experiment Designer",
+      "aliases": ["Experiment Designer", "~Experiment Designer"],
+      "group": "hq",
+      "roster": "active",
+      "layout": { "x": 480, "y": 360 }
+    },
+    {
+      "id": "technical-tutor",
+      "display_name": "Technical Tutor",
+      "aliases": ["Technical Tutor", "~Technical Tutor"],
+      "group": "hq",
+      "roster": "active",
+      "layout": { "x": 680, "y": 360 }
     },
     {
       "id": "director",
       "display_name": "Director",
       "aliases": ["Director", "~Director"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 400, "y": 72 }
     },
     {
@@ -21,6 +87,7 @@
       "display_name": "Architect",
       "aliases": ["Architect", "~Architect", "~Architect 🛠️", "🛠️"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 400, "y": 144 }
     },
     {
@@ -28,6 +95,7 @@
       "display_name": "DEV 1",
       "aliases": ["DEV 1", "~DEV 1", "~DEV 1 ⚙️", "⚙️"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 80, "y": 256 }
     },
     {
@@ -35,6 +103,7 @@
       "display_name": "DEV 2",
       "aliases": ["DEV 2", "~DEV 2", "~DEV 2 ⚙️"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 240, "y": 256 }
     },
     {
@@ -42,6 +111,7 @@
       "display_name": "UI/UX Maker",
       "aliases": ["UI/UX Maker", "UI/UX", "~UI/UX Maker"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 400, "y": 256 }
     },
     {
@@ -49,6 +119,7 @@
       "display_name": "Documentation",
       "aliases": ["Documentation", "Docs", "~Documentation"],
       "group": "build",
+      "roster": "historical",
       "layout": { "x": 560, "y": 256 }
     },
     {
@@ -56,6 +127,7 @@
       "display_name": "QA / Verifier",
       "aliases": ["QA / Verifier", "QA", "~QA / Verifier", "~QA / Verifier 🧪", "🧪"],
       "group": "qr",
+      "roster": "historical",
       "layout": { "x": 800, "y": 176 }
     },
     {
@@ -69,6 +141,7 @@
         "🔐"
       ],
       "group": "qr",
+      "roster": "historical",
       "layout": { "x": 800, "y": 256 }
     },
     {
@@ -82,27 +155,15 @@
         "🚀"
       ],
       "group": "qr",
+      "roster": "historical",
       "layout": { "x": 800, "y": 336 }
-    },
-    {
-      "id": "scout",
-      "display_name": "Scout",
-      "aliases": ["Scout", "~Scout"],
-      "group": "radar",
-      "layout": { "x": 80, "y": 384 }
-    },
-    {
-      "id": "skeptic",
-      "display_name": "Skeptic",
-      "aliases": ["Skeptic", "~Skeptic"],
-      "group": "radar",
-      "layout": { "x": 240, "y": 384 }
     },
     {
       "id": "nomen",
       "display_name": "NOMEN",
       "aliases": ["NOMEN", "~NOMEN"],
       "group": "radar",
+      "roster": "historical",
       "layout": { "x": 400, "y": 384 }
     },
     {
@@ -110,8 +171,8 @@
       "display_name": "Bug fixer",
       "aliases": ["Bug fixer", "Bug Fixer", "~Bug fixer"],
       "group": "radar",
-      "layout": { "x": 560, "y": 384 },
-      "note": "Identity retained; not a Research member. Add id to config/groups.json radar.members to include by config alone."
+      "roster": "historical",
+      "layout": { "x": 560, "y": 384 }
     }
   ]
 }

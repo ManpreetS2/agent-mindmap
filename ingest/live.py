@@ -78,7 +78,10 @@ DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
 DEFAULT_EVENTS_POLL_SEC = 30.0
 DEFAULT_SSE_HEARTBEAT_SEC = 15.0
+# How often a connected SSE stream checks for a new activity snapshot.
+ACTIVITY_NOTICE_SEC = 0.25
 REFRESH_MIN_INTERVAL_FLOOR_SEC = 30.0
+MAX_HEALTH_ERRORS = 20
 MAX_SSE_CONNECTIONS = 8
 SSE_RETRY_AFTER_SEC = 5
 PROCESS_LOCK_MODE = 0o600
@@ -517,6 +520,7 @@ class LiveDaemon:
     _health: HealthState = field(default_factory=HealthState, init=False)
     _stop: threading.Event = field(default_factory=threading.Event, init=False)
     _activity_etag: str | None = field(default=None, init=False)
+    _activity_revision: int = field(default=0, init=False)
     _activity_bytes: bytes | None = field(default=None, init=False)
     _activity_fp: str | None = field(default=None, init=False)
     _last_build_inputs_fp: str | None = field(default=None, init=False)
@@ -541,6 +545,11 @@ class LiveDaemon:
 
     def server_mode(self) -> ServerMode:
         return "demo" if self.demo_mode else "live"
+
+    def activity_notice(self) -> tuple[int, str | None]:
+        """Monotonic snapshot revision and ETag. SSE emits this on change."""
+        with self._lock:
+            return self._activity_revision, self._activity_etag
 
     def health(self) -> HealthState:
         with self._lock:
@@ -630,8 +639,15 @@ class LiveDaemon:
         return fallback
 
     def _append_error(self, msg: str) -> None:
+        """Record a health error. Consecutive duplicates collapse; length is capped."""
         with self._lock:
-            self._health.errors.append(msg)
+            errors = self._health.errors
+            if errors and errors[-1] == msg:
+                return
+            errors.append(msg)
+            overflow = len(errors) - MAX_HEALTH_ERRORS
+            if overflow > 0:
+                del errors[:overflow]
 
     def _clear_errors(self) -> None:
         with self._lock:
@@ -785,18 +801,24 @@ class LiveDaemon:
         return self._poll_ledger_from_path(now)
 
     def poll_github_once(self) -> bool:
-        """Poll GitHub; return True if merged snapshot fingerprint changed."""
+        """Poll GitHub; return True when the activity snapshot should rebuild.
+
+        A failed or rate-limited poll keeps the last successful event payload
+        and still returns True the first time ``github_status`` changes, so
+        ``meta.github`` is rewritten instead of staying ``ok``.
+        """
         if self.demo_mode:
             return False
         now = _iso_now(self.clock)
         with self._lock:
             self._health.last_gh_poll = now
+            prev_status = self._health.github_status
 
         if self.clock() < self._gh_backoff_until:
             self._append_error("github poll skipped (rate-limit backoff)")
             with self._lock:
-                self._health.github_status = "skipped"
-            return False
+                self._health.github_status = "rate_limited"
+            return prev_status != "rate_limited"
 
         try:
             ledger_tasks = (
@@ -814,10 +836,11 @@ class LiveDaemon:
             self._append_error(f"github poll failed: {type(exc).__name__}")
             with self._lock:
                 self._health.github_status = "error"
-            return False
+            return prev_status != "error"
 
         with self._lock:
             self._health.github_status = gh.meta_github
+        status_changed = prev_status != gh.meta_github
 
         if gh.meta_github == "rate_limited" and self._rate_limit_reset:
             self._gh_backoff_until = float(self._rate_limit_reset)
@@ -825,7 +848,8 @@ class LiveDaemon:
         if gh.meta_github in {"error", "rate_limited"}:
             for err in gh.errors:
                 self._append_error(err)
-            return False
+            # Keep _gh / _last_good_gh. Status change is enough to rebuild.
+            return status_changed
 
         fp = _fingerprint_github(gh)
         changed = fp != self._gh_fp
@@ -839,7 +863,7 @@ class LiveDaemon:
         network_added = False
         if network:
             network_added = bool(self.ingest_network_events(network))
-        return changed or network_added
+        return changed or network_added or status_changed
 
     def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
@@ -1014,24 +1038,26 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
     network_fp = hashlib.sha256(
         ",".join(str(e.get("id") or "") for e in network_events).encode()
     ).hexdigest()
+    gh_status = daemon._health.github_status
     inputs_fp = (
         f"{daemon._ledger_fp or 'no-ledger'}:"
         f"{daemon._gh_fp or 'none'}:"
         f"{network_fp}:"
-        f"{meta_ledger}"
+        f"{meta_ledger}:"
+        f"{gh_status}"
     )
 
     if not force and inputs_fp == daemon._last_build_inputs_fp:
         if daemon.activity_path.is_file() or daemon._activity_bytes is not None:
             return False
 
+    # Last-known-good events stay in ``gh``. Current health wins over that
+    # result's stale ``meta_github == ok`` after an outage or rate limit.
     if gh is None:
-        gh_status = daemon._health.github_status
-        if gh_status == "never_run":
-            gh = GitHubPollResult(events=[], meta_github="never_run")
-        else:
-            gh = GitHubPollResult(events=[], meta_github=gh_status)
-        meta_github = gh.meta_github
+        meta_github = gh_status if gh_status else "never_run"
+        gh = GitHubPollResult(events=[], meta_github=meta_github)
+    elif gh_status in {"error", "rate_limited"}:
+        meta_github = gh_status
     else:
         meta_github = gh.meta_github
 
@@ -1055,13 +1081,21 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
 
     body = daemon.activity_path.read_bytes()
     etag = _etag_for_body(body)
+    sources_healthy = meta_github in {"ok", "skipped", "never_run"} and meta_ledger in {
+        "ok",
+        "skipped",
+        "demo",
+    }
     with daemon._lock:
+        if daemon._activity_bytes != body:
+            daemon._activity_revision += 1
         daemon._activity_bytes = body
         daemon._activity_etag = etag
         daemon._activity_fp = hashlib.sha256(body).hexdigest()
         daemon._last_build_inputs_fp = inputs_fp
         daemon._health.last_build = _iso_now(daemon.clock)
-        daemon._clear_errors()
+        if sources_healthy:
+            daemon._health.errors.clear()
     return True
 
 
@@ -1147,7 +1181,17 @@ class MindmapHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.FORBIDDEN)
         return True
 
-    def _write_sse_frame(self, *, event_id: str | None, data: str | None, comment: str | None) -> None:
+    def _write_sse_frame(
+        self,
+        *,
+        event_id: str | None,
+        data: str | None,
+        comment: str | None,
+        event_name: str | None = None,
+    ) -> None:
+        # Activity notices omit ``id:`` so Last-Event-ID stays a network-event id.
+        if event_name is not None:
+            self.wfile.write(f"event: {event_name}\n".encode("utf-8"))
         if event_id is not None:
             self.wfile.write(f"id: {event_id}\n".encode("utf-8"))
         if data is not None:
@@ -1157,6 +1201,23 @@ class MindmapHandler(BaseHTTPRequestHandler):
         if comment is not None:
             self.wfile.write(f": {comment}\n\n".encode("utf-8"))
         self.wfile.flush()
+
+    def _emit_activity_notice(self, last_revision: int, *, force: bool) -> int:
+        """Named ``activity`` SSE event carrying the snapshot revision and ETag."""
+        revision, etag = self.daemon.activity_notice()
+        if not force and revision == last_revision:
+            return last_revision
+        payload = json.dumps(
+            {"kind": "activity", "revision": revision, "etag": etag},
+            separators=(",", ":"),
+        )
+        self._write_sse_frame(
+            event_id=None,
+            data=payload,
+            comment=None,
+            event_name="activity",
+        )
+        return revision
 
     def _drain_client_socket(self, conn: socket.socket) -> None:
         """Discard unexpected client bytes so a later close is visible as EOF."""
@@ -1249,27 +1310,36 @@ class MindmapHandler(BaseHTTPRequestHandler):
             sent: set[str] = set()
             try:
                 last_id = self._push_sse_events(last_id=last_id, sent=sent)
+                # One notice on connect so a client whose first /activity.json
+                # fetch failed can recover without waiting for a later rebuild.
+                last_revision = self._emit_activity_notice(-1, force=True)
             except (BrokenPipeError, ConnectionResetError, OSError):
                 return
 
             heartbeat = max(0.05, float(self.sse_heartbeat_sec))
+            notice_wait = min(ACTIVITY_NOTICE_SEC, heartbeat)
+            last_heartbeat = time.monotonic()
             while conn is not None:
                 if self._client_read_should_end_sse(conn):
                     break
                 try:
                     last_id = self._push_sse_events(last_id=last_id, sent=sent)
+                    last_revision = self._emit_activity_notice(
+                        last_revision, force=False
+                    )
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     break
 
-                readable, _, _ = select.select([conn], [], [], heartbeat)
+                readable, _, _ = select.select([conn], [], [], notice_wait)
                 if readable and self._client_read_should_end_sse(conn):
                     break
 
-                if not readable:
+                if not readable and time.monotonic() - last_heartbeat >= heartbeat:
                     try:
                         self._write_sse_frame(
                             event_id=None, data=None, comment="heartbeat"
                         )
+                        last_heartbeat = time.monotonic()
                     except (BrokenPipeError, ConnectionResetError, OSError):
                         break
         finally:

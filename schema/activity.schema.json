@@ -156,12 +156,12 @@
     },
     "nodeGroup": {
       "type": "string",
-      "enum": ["owner", "build", "qr", "radar"]
+      "enum": ["owner", "build", "qr", "radar", "hq", "historical"]
     },
     "groupId": {
       "type": "string",
       "minLength": 1,
-      "description": "Group id; v1 uses owner|build|qr|radar; later groups may be added via config"
+      "description": "Group id. Current roster uses owner, radar, and hq. build/qr/historical remain valid for retired identities and older snapshots."
     },
     "provenance": {
       "type": "string",

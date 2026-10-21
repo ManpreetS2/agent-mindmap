@@ -45,10 +45,10 @@ describe("refreshFlow", () => {
     });
   });
 
-  it("applyPostRefreshAction queued schedules fallback only", () => {
+  it("applyPostRefreshAction queued does not schedule a timed reload", () => {
     const applied = applyPostRefreshAction({ type: "queued" }, 1000);
-    expect(applied.scheduleFallbackReload).toBe(true);
     expect(applied.refreshError).toBeNull();
+    expect(applied.rateLimitUntilMs).toBeNull();
   });
 
   it("applyPostRefreshAction forbidden sets message", () => {

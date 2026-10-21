@@ -59,7 +59,20 @@ def test_e2e_fixture_pipeline_writes_schema_valid_activity(
 
     assert loaded["project"] == resolve_project_name()
     assert loaded["meta"]["github"] == "ok"
-    assert len(loaded["nodes"]) == len(bots)
+    node_ids = {n["id"] for n in loaded["nodes"]}
+    assert {
+        "manpreet",
+        "project-manager",
+        "scout",
+        "advocate",
+        "skeptic",
+        "bug-hunter",
+        "engineering-researcher",
+        "experiment-designer",
+        "technical-tutor",
+    } <= node_ids
+    missing = {b["id"] for b in bots} - node_ids
+    assert all(b.get("roster") == "historical" for b in bots if b["id"] in missing)
     assert loaded["tasks"]
     assert loaded["events"]
     assert isinstance(loaded["edges"], list)
