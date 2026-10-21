@@ -71,6 +71,23 @@ def attribute_from_body(
     return None, "unknown"
 
 
+def owner_to_bot_id(owner: str, bots: list[dict[str, Any]] | None = None) -> str | None:
+    """Map ledger owner cell text to a single bot id (no multi-owner cells)."""
+    key = owner.strip().lower()
+    bot_list = bots if bots is not None else load_bots()
+    for bot in bot_list:
+        names = {
+            bot["display_name"].lower(),
+            bot["id"].lower(),
+            *(a.lstrip("~").lower() for a in bot.get("aliases", [])),
+        }
+        if key in names or any(
+            key.startswith(n + ",") or key.startswith(n + " ") for n in names
+        ):
+            return str(bot["id"])
+    return None
+
+
 def map_github_login(
     login: str | None,
     bots: list[dict[str, Any]] | None = None,

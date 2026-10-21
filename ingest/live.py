@@ -28,12 +28,15 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Literal
 from urllib.parse import unquote, urlparse
 
+from .activity_groups import snapshot_activity_groups
+from .actor_resolve import apply_strict_attribution, resolve_network_sender_strict
 from .attribute import load_bots
 from .build import (
     DEFAULT_BOTS,
     build_nodes,
     merge_events,
     resolve_ledger_path,
+    resolve_project_name,
     write_activity,
 )
 from .edges import derive_edges
@@ -75,6 +78,7 @@ DEFAULT_LEDGER_POLL_SEC = 30.0
 DEFAULT_GH_POLL_SEC = 60.0
 DEFAULT_EVENTS_POLL_SEC = 30.0
 DEFAULT_SSE_HEARTBEAT_SEC = 15.0
+REFRESH_MIN_INTERVAL_FLOOR_SEC = 30.0
 MAX_SSE_CONNECTIONS = 8
 SSE_RETRY_AFTER_SEC = 5
 PROCESS_LOCK_MODE = 0o600
@@ -285,6 +289,9 @@ class NetworkEventLog:
         eid = evt.get("id")
         if not isinstance(eid, str) or not eid.strip():
             return None
+        ts = evt.get("ts")
+        if not isinstance(ts, str) or not ts.strip():
+            return None
         if "summary" not in evt:
             return None
         safe_summary = sanitize_pr_summary(str(evt.get("summary") or ""))
@@ -332,6 +339,8 @@ class HealthState:
     last_events_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    ledger_status: str = "never_run"
+    github_status: str = "never_run"
     network_event_count: int = 0
     dropped_network_events: int = 0
     errors: list[str] = field(default_factory=list)
@@ -344,6 +353,8 @@ class HealthState:
             "last_events_poll": self.last_events_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "ledger_status": self.ledger_status,
+            "github_status": self.github_status,
             "network_event_count": self.network_event_count,
             "dropped_network_events": self.dropped_network_events,
             "errors": list(self.errors),
@@ -367,6 +378,56 @@ def _fingerprint_github(gh: GitHubPollResult) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
+def network_event_to_activity_event(
+    ne: dict[str, Any],
+    bots: list[dict[str, Any]] | None = None,
+    ledger_tasks: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Map NetworkEventLog entry → activity Event (never invent recipients)."""
+    eid = ne.get("id")
+    if not isinstance(eid, str) or not eid.strip():
+        return None
+    summary = ne.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    ts = ne.get("ts")
+    if not isinstance(ts, str) or not ts.strip():
+        return None
+    actor, attribution_method = resolve_network_sender_strict(
+        ne, bots=bots, ledger_tasks=ledger_tasks
+    )
+    prov = ne.get("provenance")
+    if prov not in {"observed", "agent-reported", "github-verified"}:
+        prov = "agent-reported"
+    etype = str(ne.get("type") or "note")
+    evt: dict[str, Any] = {
+        "id": eid,
+        "type": etype,
+        "actor": actor,
+        "target": None,
+        "task_id": ne.get("task_id"),
+        "attribution": {"method": attribution_method},
+        "source_url": "live:network-events",
+        "source_time": ts.strip(),
+        "raw": summary,
+        "provenance": prov,
+    }
+    group = ne.get("group")
+    if isinstance(group, str) and group.strip():
+        evt["group"] = group.strip()
+    rec = ne.get("recipients")
+    if isinstance(rec, list) and rec:
+        evt["recipients"] = [str(x) for x in rec if isinstance(x, str) and x.strip()]
+        if evt["recipients"] and not evt.get("target"):
+            evt["target"] = evt["recipients"][0]
+    if ne.get("related_id") is not None:
+        evt["related_id"] = ne.get("related_id")
+    repo = ne.get("repo")
+    if isinstance(repo, str) and "/" in repo:
+        evt["repo"] = repo
+    return evt
+
+
 def assemble_activity(
     *,
     ledger: LedgerParseResult,
@@ -374,29 +435,62 @@ def assemble_activity(
     bots: list[dict[str, Any]],
     generated_at: str,
     meta_ledger: str = "ok",
+    meta_ledger_error: str | None = None,
+    network_events: list[dict[str, Any]] | None = None,
+    meta_github: str | None = None,
 ) -> dict[str, Any]:
     """Same shape as build.build_activity without re-fetching sources."""
     events = merge_events(ledger, gh)
+    seen = {str(e.get("id")) for e in events if e.get("id")}
+    ledger_tasks = ledger.tasks if meta_ledger == "ok" else []
+    for ne in network_events or []:
+        mapped = network_event_to_activity_event(
+            ne, bots=bots, ledger_tasks=ledger_tasks
+        )
+        if mapped is None:
+            continue
+        mid = mapped["id"]
+        if mid in seen:
+            continue
+        seen.add(mid)
+        events.append(mapped)
+    unattributed = apply_strict_attribution(
+        events, bots=bots, ledger_tasks=ledger_tasks
+    )
     edges = derive_edges(events)
     nodes = build_nodes(
-        bots, ledger.tasks, events, membership=membership_index()
+        bots,
+        ledger.tasks,
+        events,
+        membership=membership_index(),
+        meta_ledger=meta_ledger,
     )
+    activity_groups, groups_reason = snapshot_activity_groups()
+    gh_status = meta_github if meta_github is not None else gh.meta_github
+    project = resolve_project_name()
     activity = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": "fencepost",
+        "project": project,
         "meta": {
             "mode": "live",
-            "github": gh.meta_github,
+            "project": project,
+            "github": gh_status,
             "ledger": meta_ledger,
             "ledger_last_entry_at": ledger_last_entry_at(ledger),
+            "unattributed_event_count": unattributed,
         },
+        "groups": activity_groups,
         "nodes": nodes,
         "tasks": ledger.tasks,
         "events": events,
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    if meta_ledger_error and meta_ledger in {"unavailable", "error"}:
+        activity["meta"]["ledger_error"] = meta_ledger_error
+    if groups_reason:
+        activity["groups_reason"] = groups_reason
     return migrate_activity(activity)
 
 
@@ -429,7 +523,11 @@ class LiveDaemon:
 
     _ledger_fp: str | None = field(default=None, init=False)
     _ledger: LedgerParseResult | None = field(default=None, init=False)
-    _meta_ledger: str = field(default="ok", init=False)
+    _meta_ledger: str = field(default="unavailable", init=False)
+    _ledger_error: str | None = field(default=None, init=False)
+    _last_refresh_at: float = field(default=0.0, init=False)
+    _refresh_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _refresh_pending: threading.Event = field(default_factory=threading.Event, init=False)
     _gh_fp: str | None = field(default=None, init=False)
     _gh: GitHubPollResult | None = field(default=None, init=False)
     _last_good_gh: GitHubPollResult | None = field(default=None, init=False)
@@ -453,6 +551,8 @@ class LiveDaemon:
                 last_events_poll=self._health.last_events_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                ledger_status=self._health.ledger_status,
+                github_status=self._health.github_status,
                 network_event_count=self._event_log.count(),
                 dropped_network_events=self._event_log.dropped_count(),
                 errors=list(self._health.errors),
@@ -516,8 +616,15 @@ class LiveDaemon:
             self._store_activity_bytes(body)
             return body
 
+        with self._lock:
+            gh_status = self._health.github_status
+            ledger_status = self._meta_ledger
         fallback = empty_live_activity_bytes(
-            self.bots, generated_at=_iso_now(self.clock)
+            self.bots,
+            generated_at=_iso_now(self.clock),
+            meta_github=gh_status,
+            meta_ledger=ledger_status,
+            meta_ledger_error=self._ledger_error,
         )
         self._store_activity_bytes(fallback)
         return fallback
@@ -562,9 +669,13 @@ class LiveDaemon:
     def _poll_ledger_from_path(self, now: str) -> bool:
         path = self.ledger_path
         if path is None or not path.is_file():
-            self._append_error(f"ledger not found: {path}")
+            msg = f"ledger not found: {path}"
+            self._append_error(msg)
             with self._lock:
                 self._health.last_ledger_poll = now
+                self._health.ledger_status = "unavailable"
+                self._meta_ledger = "unavailable"
+                self._ledger_error = msg
             return False
         try:
             fp = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -574,16 +685,22 @@ class LiveDaemon:
                 bots=self.bots,
             )
         except OSError as exc:
-            self._append_error(f"ledger read failed: {type(exc).__name__}")
+            msg = f"ledger read failed: {type(exc).__name__}"
+            self._append_error(msg)
             with self._lock:
                 self._health.last_ledger_poll = now
+                self._health.ledger_status = "error"
+                self._meta_ledger = "error"
+                self._ledger_error = msg
             return False
 
         changed = fp != self._ledger_fp
         with self._lock:
             self._health.last_ledger_poll = now
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
+            self._health.ledger_status = "ok"
             self._meta_ledger = "ok"
+            self._ledger_error = None
             if changed:
                 self._ledger_fp = fp
                 self._ledger = parsed
@@ -600,8 +717,33 @@ class LiveDaemon:
         if fetched.meta_ledger != "ok" or fetched.text is None:
             for err in fetched.errors:
                 self._append_error(err)
-            if fetched.meta_ledger == "error":
+            if fetched.meta_ledger == "not_found":
+                status = "unavailable"
+                ledger_error = (
+                    fetched.errors[0]
+                    if fetched.errors
+                    else "ledger not found at data/ledger"
+                )
+                self._append_error(
+                    "ledger unavailable: data/ledger branch or ledger.md missing (MM-010)"
+                )
+            elif fetched.meta_ledger == "error":
+                status = "error"
+                ledger_error = (
+                    fetched.errors[0] if fetched.errors else "ledger fetch failed"
+                )
                 self._append_error("ledger fetch failed")
+            else:
+                status = "unavailable"
+                ledger_error = (
+                    fetched.errors[0]
+                    if fetched.errors
+                    else "ledger unavailable (MM-010)"
+                )
+            with self._lock:
+                self._health.ledger_status = status
+                self._meta_ledger = status
+                self._ledger_error = ledger_error
             return False
 
         fp = _fingerprint_text(fetched.text)
@@ -616,12 +758,18 @@ class LiveDaemon:
             )
         except Exception as exc:  # noqa: BLE001
             self._append_error(f"ledger parse failed: {type(exc).__name__}")
+            with self._lock:
+                self._health.ledger_status = "error"
+                self._meta_ledger = "error"
+                self._ledger_error = "ledger parse failed"
             return False
 
         changed = fp != self._ledger_fp
         with self._lock:
             self._health.ledger_last_entry_at = ledger_last_entry_at(parsed)
+            self._health.ledger_status = "ok"
             self._meta_ledger = fetched.meta_ledger
+            self._ledger_error = None
             if changed:
                 self._ledger_fp = fp
                 self._ledger = parsed
@@ -646,17 +794,30 @@ class LiveDaemon:
 
         if self.clock() < self._gh_backoff_until:
             self._append_error("github poll skipped (rate-limit backoff)")
+            with self._lock:
+                self._health.github_status = "skipped"
             return False
 
         try:
+            ledger_tasks = (
+                self._ledger.tasks
+                if self._ledger is not None and self._meta_ledger == "ok"
+                else []
+            )
             gh = poll_github(
                 cache_dir=self.cache_dir,
                 bots=self.bots,
                 runner=self._gh_runner(),
+                ledger_tasks=ledger_tasks,
             )
         except Exception as exc:  # noqa: BLE001
             self._append_error(f"github poll failed: {type(exc).__name__}")
+            with self._lock:
+                self._health.github_status = "error"
             return False
+
+        with self._lock:
+            self._health.github_status = gh.meta_github
 
         if gh.meta_github == "rate_limited" and self._rate_limit_reset:
             self._gh_backoff_until = float(self._rate_limit_reset)
@@ -675,15 +836,24 @@ class LiveDaemon:
                 self._last_good_gh = gh
         # MM-020e: PR-lane NetworkEvents → SSE /events (dedupe by id in log).
         network, _edges = build_pr_lane_events(gh, roster=self.bots)
+        network_added = False
         if network:
-            self.ingest_network_events(network)
-        return changed
+            network_added = bool(self.ingest_network_events(network))
+        return changed or network_added
 
     def ingest_network_events(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Append validated-shaped events (dedupe by id). For tests and poll ingest."""
         if self.demo_mode:
             return []
-        return self._event_log.append_many(events)
+        accepted: list[dict[str, Any]] = []
+        for evt in events:
+            ts = evt.get("ts")
+            if not isinstance(ts, str) or not ts.strip():
+                eid = evt.get("id") if isinstance(evt.get("id"), str) else "?"
+                self._append_error(f"network event {eid}: missing ts")
+                continue
+            accepted.append(evt)
+        return self._event_log.append_many(accepted)
 
     def network_events_after(self, last_id: str | None) -> list[dict[str, Any]]:
         return self._event_log.events_after(last_id)
@@ -718,9 +888,51 @@ class LiveDaemon:
     def run_poll_cycle(self) -> None:
         ledger_changed = self.poll_ledger_once()
         gh_changed = self.poll_github_once()
-        self.poll_events_once()
-        if ledger_changed or gh_changed or self._activity_bytes is None:
+        events_changed = self.poll_events_once()
+        if (
+            ledger_changed
+            or gh_changed
+            or events_changed
+            or self._activity_bytes is None
+        ):
             self.maybe_rebuild()
+
+    def refresh_pending(self) -> bool:
+        """True when a queued POST /refresh is waiting on the poll thread."""
+        return self._refresh_pending.is_set()
+
+    def refresh_min_interval_sec(self) -> float:
+        """SEC: manual refresh quota tracks GitHub poll cadence (floor 30s)."""
+        return max(REFRESH_MIN_INTERVAL_FLOOR_SEC, self.gh_poll_sec)
+
+    def try_refresh(self) -> tuple[bool, str, float]:
+        """
+        MM-020-P0: queue poll + forced rebuild on the poll thread (POST /refresh).
+
+        Returns (ok, reason, retry_after_s). reason is ``rate_limited`` when throttled.
+        """
+        if self.demo_mode:
+            return False, "demo", 0.0
+        now = self.clock()
+        min_interval = self.refresh_min_interval_sec()
+        with self._refresh_lock:
+            elapsed = now - self._last_refresh_at
+            if elapsed < min_interval:
+                retry = max(1.0, min_interval - elapsed)
+                return False, "rate_limited", retry
+            self._last_refresh_at = now
+        self._refresh_pending.set()
+        return True, "", 0.0
+
+    def _drain_refresh_wake(self) -> None:
+        self._refresh_pending.clear()
+        while self._refresh_pending.is_set():
+            self._refresh_pending.clear()
+
+    def _run_refresh_cycle(self) -> None:
+        """Poll-thread only: full poll cycle + forced rebuild."""
+        self.run_poll_cycle()
+        self.maybe_rebuild(force=True)
 
     def start_polling(self) -> None:
         if self.demo_mode:
@@ -745,9 +957,11 @@ class LiveDaemon:
                     if changed:
                         self.maybe_rebuild()
                 if now >= next_events:
-                    self.poll_events_once()
+                    events_changed = self.poll_events_once()
                     next_events = now + self.events_poll_sec
-                if self._activity_bytes is None and self._ledger is not None:
+                    if events_changed:
+                        self.maybe_rebuild()
+                if self._activity_bytes is None:
                     self.maybe_rebuild()
                 wait = min(
                     max(0.0, next_ledger - self.clock()),
@@ -755,14 +969,28 @@ class LiveDaemon:
                     max(0.0, next_events - self.clock()),
                     1.0,
                 )
-                if self._stop.wait(timeout=wait):
+                deadline = self.clock() + wait
+                woke_refresh = False
+                while not self._stop.is_set():
+                    remaining = deadline - self.clock()
+                    if remaining <= 0:
+                        break
+                    if self._refresh_pending.wait(timeout=remaining):
+                        woke_refresh = True
+                        break
+                if self._stop.is_set():
                     break
+                if woke_refresh:
+                    self._drain_refresh_wake()
+                    self._run_refresh_cycle()
+                    continue
 
         self._poll_thread = threading.Thread(target=loop, name="mindmap-poll", daemon=True)
         self._poll_thread.start()
 
     def stop_polling(self) -> None:
         self._stop.set()
+        self._refresh_pending.set()
         if self._poll_thread:
             self._poll_thread.join(timeout=5.0)
 
@@ -771,29 +999,41 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
     """
     Write activity.json when inputs changed (or force).
 
-    On failure, keep the last on-disk file and record errors.
+    MM-020-P0: rebuild even when ledger is unavailable so GitHub + NetworkEventLog
+    still populate activity.json. On failure, keep the last on-disk file.
     Returns True if a new file was written.
     """
     if daemon.demo_mode:
         return False
     ledger = daemon._ledger
+    if ledger is None:
+        ledger = LedgerParseResult(source_url=daemon.ledger_source_url)
     gh = daemon._gh if daemon._gh is not None else daemon._last_good_gh
     meta_ledger = daemon._meta_ledger
+    network_events = daemon.network_events_after(None)
+    network_fp = hashlib.sha256(
+        ",".join(str(e.get("id") or "") for e in network_events).encode()
+    ).hexdigest()
     inputs_fp = (
-        None
-        if daemon._ledger_fp is None
-        else f"{daemon._ledger_fp}:{daemon._gh_fp or 'none'}"
+        f"{daemon._ledger_fp or 'no-ledger'}:"
+        f"{daemon._gh_fp or 'none'}:"
+        f"{network_fp}:"
+        f"{meta_ledger}"
     )
 
-    if ledger is None:
-        return False
-
-    if not force and inputs_fp is not None and inputs_fp == daemon._last_build_inputs_fp:
-        if daemon.activity_path.is_file():
+    if not force and inputs_fp == daemon._last_build_inputs_fp:
+        if daemon.activity_path.is_file() or daemon._activity_bytes is not None:
             return False
 
     if gh is None:
-        gh = GitHubPollResult(events=[], meta_github="skipped")
+        gh_status = daemon._health.github_status
+        if gh_status == "never_run":
+            gh = GitHubPollResult(events=[], meta_github="never_run")
+        else:
+            gh = GitHubPollResult(events=[], meta_github=gh_status)
+        meta_github = gh.meta_github
+    else:
+        meta_github = gh.meta_github
 
     try:
         activity = assemble_activity(
@@ -801,7 +1041,10 @@ def _maybe_rebuild(daemon: LiveDaemon, *, force: bool = False) -> bool:
             gh=gh,
             bots=daemon.bots,
             generated_at=_iso_now(daemon.clock),
-            meta_ledger=meta_ledger,
+            meta_ledger=meta_ledger if meta_ledger else "unavailable",
+            meta_ledger_error=daemon._ledger_error,
+            network_events=network_events,
+            meta_github=meta_github,
         )
         if daemon.events_source != "off":
             activity["meta"]["events_source"] = EVENTS_SOURCE_URL
@@ -856,11 +1099,20 @@ class MindmapHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
 
-    def _send_json(self, status: int, payload: dict[str, Any]) -> None:
+    def _send_json(
+        self,
+        status: int,
+        payload: dict[str, Any],
+        *,
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if extra_headers:
+            for key, value in extra_headers.items():
+                self.send_header(key, value)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -1087,8 +1339,67 @@ class MindmapHandler(BaseHTTPRequestHandler):
             content_type = "application/json; charset=utf-8"
         self._send_bytes(HTTPStatus.OK, data, content_type=content_type)
 
+    def _refresh_request_has_body(self) -> bool:
+        if self.headers.get("Transfer-Encoding"):
+            return True
+        raw_len = self.headers.get("Content-Length")
+        if raw_len is None:
+            return False
+        try:
+            return int(raw_len) > 0
+        except ValueError:
+            return True
+
+    def _send_413_close_no_body(self) -> None:
+        """Reject POST /refresh bodies; close so stray bytes are not pipelined."""
+        body = json.dumps({"error": "payload_not_allowed"}).encode("utf-8")
+        self.send_response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+        try:
+            raw_len = self.headers.get("Content-Length")
+            if raw_len:
+                remaining = int(raw_len)
+                if remaining > 0:
+                    self.rfile.read(remaining)
+        except (ValueError, OSError):
+            pass
+        conn = getattr(self, "connection", None)
+        if conn is not None:
+            try:
+                conn.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
     def do_POST(self) -> None:  # noqa: N802
-        self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
+        if self._reject_unless_localhost():
+            return
+        parsed = urlparse(self.path)
+        if parsed.path != "/refresh":
+            self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
+            return
+        if self._refresh_request_has_body():
+            self._send_413_close_no_body()
+            return
+        ok, reason, retry_after = self.daemon.try_refresh()
+        if not ok and reason == "rate_limited":
+            retry_s = int(max(1, round(retry_after)))
+            self._send_json(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                {"retry_after_s": retry_s},
+                extra_headers={"Retry-After": str(retry_s)},
+            )
+            return
+        if not ok:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": reason or "refresh_failed"},
+            )
+            return
+        self._send_json(HTTPStatus.ACCEPTED, {"queued": True})
 
     def do_PUT(self) -> None:  # noqa: N802
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)

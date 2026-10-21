@@ -51,26 +51,36 @@ def empty_live_activity_bytes(
     bots: list[dict[str, Any]],
     *,
     generated_at: str,
+    meta_github: str = "never_run",
+    meta_ledger: str = "unavailable",
+    meta_ledger_error: str | None = None,
 ) -> bytes:
     """Minimal live-mode snapshot when rebuild cannot run (no demo mixing)."""
-    from .build import build_nodes
+    from .build import build_nodes, resolve_project_name
 
+    nodes = build_nodes(bots, [], [])
+    for node in nodes:
+        node["status"] = "UNKNOWN"
+    project = resolve_project_name()
     doc = {
         "schema_version": "1.1.0",
         "generated_at": generated_at,
-        "project": "fencepost",
+        "project": project,
         "meta": {
             "mode": "live",
-            "github": "skipped",
-            "ledger": "error",
+            "project": project,
+            "github": meta_github,
+            "ledger": meta_ledger,
             "ledger_last_entry_at": None,
         },
-        "nodes": build_nodes(bots, [], []),
+        "nodes": nodes,
         "tasks": [],
         "events": [],
         "edges": [],
         "unparsed": [],
     }
+    if meta_ledger_error and meta_ledger in {"unavailable", "error"}:
+        doc["meta"]["ledger_error"] = meta_ledger_error
     return (json.dumps(doc, indent=2, sort_keys=False) + "\n").encode("utf-8")
 
 
