@@ -36,10 +36,23 @@ class FakeEventSource {
   readyState = 0;
   url: string;
   closed = false;
+  private listeners = new Map<string, Set<(ev: Event) => void>>();
 
   constructor(url: string) {
     this.url = url;
     FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(type: string, handler: (ev: Event) => void) {
+    const set = this.listeners.get(type) ?? new Set();
+    set.add(handler);
+    this.listeners.set(type, set);
+  }
+
+  emitActivity() {
+    for (const handler of this.listeners.get("activity") ?? []) {
+      handler(new Event("activity"));
+    }
   }
 
   close() {
@@ -121,6 +134,46 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     expect(FakeEventSource.instances[0].closed).toBe(true);
   });
 
+  it("error before onopen reports disconnected only", () => {
+    FakeEventSource.instances = [];
+    const connections: boolean[] = [];
+    const transport = createSseTransport({
+      fetchImpl: mockFetch(),
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+      onSseConnectionChange: (c) => connections.push(c),
+    });
+    const stop = transport.subscribe!(() => undefined);
+    FakeEventSource.instances[0].emitError();
+    expect(connections).toEqual([false]);
+    stop();
+  });
+
+  it("reports SSE disconnect on error and reconnect on recovery", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const connections: boolean[] = [];
+    const fetchImpl = mockFetch();
+    const transport = createSseTransport({
+      intervalMs: 100,
+      sseRetryInitialMs: 200,
+      fetchImpl,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+      onSseConnectionChange: (c) => connections.push(c),
+    });
+    const stop = transport.subscribe!(() => undefined);
+    expect(connections).toEqual([]);
+    FakeEventSource.instances[0].emitOpen();
+    expect(connections).toContain(true);
+    FakeEventSource.instances[0].emitError();
+    expect(connections).toContain(false);
+    await vi.advanceTimersByTimeAsync(250);
+    const last = FakeEventSource.instances.at(-1);
+    last?.emitOpen();
+    expect(connections.filter(Boolean).length).toBeGreaterThanOrEqual(2);
+    stop();
+    vi.useRealTimers();
+  });
+
   it("falls back to poll when EventSource errors", async () => {
     vi.useFakeTimers();
     FakeEventSource.instances = [];
@@ -157,6 +210,24 @@ describe("createSseTransport (QA-MM020d-3)", () => {
     stop();
     expect(seen.length).toBeGreaterThanOrEqual(2);
     vi.useRealTimers();
+  });
+});
+
+describe("activity snapshot events", () => {
+  it("refetches when a named activity event arrives and onmessage does not", async () => {
+    FakeEventSource.instances = [];
+    const fetchImpl = mockFetch();
+    const seen: Activity[] = [];
+    const transport = createSseTransport({
+      fetchImpl,
+      refetchMinMs: 0,
+      EventSourceImpl: FakeEventSource as unknown as typeof EventSource,
+    });
+    const stop = transport.subscribe!((data) => seen.push(data));
+    FakeEventSource.instances[0].emitActivity();
+    await vi.waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(fetchImpl).toHaveBeenCalled();
+    stop();
   });
 });
 

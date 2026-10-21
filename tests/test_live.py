@@ -211,13 +211,18 @@ def test_github_failure_keeps_last_good_activity(live_env: dict) -> None:
     mtime = live_env["activity"].stat().st_mtime_ns
 
     daemon.github_runner = MockGh(fail=True)
-    assert daemon.poll_github_once() is False
-    daemon.maybe_rebuild()
+    # Status ok → error must rebuild so the UI can show the unhealthy source.
+    assert daemon.poll_github_once() is True
+    assert daemon.maybe_rebuild()
 
-    assert live_env["activity"].read_bytes() == before
-    assert live_env["activity"].stat().st_mtime_ns == mtime
+    after = json.loads(live_env["activity"].read_text(encoding="utf-8"))
+    before_doc = json.loads(before.decode())
+    assert after["meta"]["github"] == "error"
+    assert [e["id"] for e in after["events"]] == [e["id"] for e in before_doc["events"]]
     health = daemon.health()
+    assert health.github_status == "error"
     assert health.errors
+    assert len(health.errors) <= 20
 
 
 def test_process_survives_failed_poll(live_http: tuple[LiveDaemon, str, int]) -> None:
@@ -475,6 +480,7 @@ def _read_sse_events(
     last_event_id: str | None = None,
     max_events: int = 1,
     timeout: float = 5.0,
+    include_activity: bool = False,
 ) -> list[dict]:
     headers = {
         "Host": f"{host}:{port}",
@@ -506,7 +512,10 @@ def _read_sse_events(
             if not data_lines:
                 continue
             payload = "\n".join(data_lines)
-            events.append(json.loads(payload))
+            parsed = json.loads(payload)
+            if parsed.get("kind") == "activity" and not include_activity:
+                continue
+            events.append(parsed)
     conn.close()
     return events
 

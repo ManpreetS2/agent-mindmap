@@ -507,6 +507,18 @@
   opacity: 0.55;
 }
 
+.agent-node-card.is-historical {
+  border-style: dashed;
+}
+
+.agent-node-card__historical {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
 .agent-node-card__header {
   display: flex;
   align-items: center;

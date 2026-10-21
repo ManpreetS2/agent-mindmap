@@ -12,7 +12,6 @@ import { DetailPanel } from "../components/DetailPanel";
 import { EdgeLegend } from "../components/EdgeLegend";
 import { HandoffBanner } from "../components/HandoffBanner";
 import { ListView } from "../components/ListView";
-import { PartialSourceBanner } from "../components/PartialSourceBanner";
 import { TimelineFilters } from "../components/TimelineFilters";
 import { TimelineSwimlanes } from "../components/TimelineSwimlanes";
 import { UnparsedPanel } from "../components/UnparsedPanel";
@@ -45,10 +44,12 @@ import {
   focusTimelineEventControl,
   orderedTimelineFocusItems,
 } from "../utils/timelineKeyboard";
+import { MindmapStatusBar } from "../components/MindmapStatusBar";
+import { displayProject } from "../utils/activityMeta";
+import type { MindmapStatusBarModel } from "../utils/refreshFlow";
 import {
   isActivityEmpty,
   isActivityStale,
-  partialGithubBanner,
   staleAgeLabel,
   staleReferenceTime,
 } from "../utils/viewState";
@@ -62,6 +63,7 @@ export interface MindmapViewProps {
   initialListView?: boolean;
   /** Node ids whose status just changed (pulse animation). */
   statusPulseNodeIds?: ReadonlySet<string>;
+  statusBar?: MindmapStatusBarModel;
 }
 
 export function MindmapView({
@@ -70,6 +72,7 @@ export function MindmapView({
   nowMs = Date.now(),
   initialListView,
   statusPulseNodeIds,
+  statusBar = { segments: [], retryDisabled: false, showRetry: false },
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -125,10 +128,7 @@ export function MindmapView({
     return edgeIdsForTaskLifecycle(activity, highlightedTaskId);
   }, [activity, highlightedTaskId]);
 
-  const partialBanner = useMemo(
-    () => partialGithubBanner(activity.meta),
-    [activity.meta],
-  );
+  const headerProject = useMemo(() => displayProject(activity), [activity]);
   const staleRef = useMemo(() => staleReferenceTime(activity), [activity]);
   const stale = useMemo(
     () => isActivityStale(activity, nowMs),
@@ -245,7 +245,7 @@ export function MindmapView({
         <div className="app-header__brand">
           <span className="app-header__title">MINDMAP</span>
           <span className="app-header__project">
-            Project: {activity.project}
+            Project: {headerProject}
           </span>
         </div>
         <div className="app-header__actions">
@@ -279,8 +279,12 @@ export function MindmapView({
         </div>
       </header>
 
-      {partialBanner && (
-        <PartialSourceBanner message={partialBanner} onRetry={onRefresh} />
+      {statusBar.showRetry && (
+        <MindmapStatusBar
+          segments={statusBar.segments}
+          onRetry={onRefresh}
+          retryDisabled={statusBar.retryDisabled}
+        />
       )}
 
       <HandoffBanner handoffCount={handoffs} threshold={3} />

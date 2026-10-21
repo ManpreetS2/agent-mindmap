@@ -26,7 +26,13 @@ export type AgentState =
   | "COMPLETED"
   | "UNKNOWN";
 
-export type NodeGroup = "owner" | "build" | "qr" | "radar";
+export type NodeGroup =
+  | "owner"
+  | "build"
+  | "qr"
+  | "radar"
+  | "hq"
+  | "historical";
 
 /** Group id string; known v1 ids are NodeGroup; later groups may be added via config. */
 export type GroupId = NodeGroup | (string & {});
@@ -60,7 +66,8 @@ export type AttributionMethod =
   | "ledger_owner"
   | "unknown"
   | "github_login"
-  | "github_login_unmapped";
+  | "github_login_unmapped"
+  | "network_from";
 
 /** Provenance of a live / network fact (MM-020a). */
 export type Provenance = "observed" | "agent-reported" | "github-verified";
@@ -152,18 +159,35 @@ export interface Edge {
   event_ids: string[];
 }
 
-export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
+export type GitHubMetaStatus =
+  | "ok"
+  | "error"
+  | "skipped"
+  | "rate_limited"
+  | "never_run";
 
-export type LedgerMetaStatus = "ok" | "error" | "skipped";
+export type LedgerMetaStatus = "ok" | "error" | "skipped" | "unavailable";
 
 export interface ActivityMeta {
   github: GitHubMetaStatus;
+  /** MM-020-P0: preferred project label for UI (matches top-level project). */
+  project?: string;
   /** Present when ingest reports ledger read status (MM-010). */
   ledger?: LedgerMetaStatus;
   /** Latest dated ledger entry; preferred for the stale banner (MM-010). */
   ledger_last_entry_at?: string | null;
+  /** Present when meta.ledger is unavailable or error (MM-020-P0). */
+  ledger_error?: string;
   /** Optional live overlay marker (schema ≥ 1.1.0). */
   events_source?: string;
+  /** Events with no resolved actor (strict attribution). */
+  unattributed_event_count?: number;
+}
+
+export interface ActivityGroupRoom {
+  id: string;
+  label: string;
+  members: string[];
 }
 
 /** 1.0.0 fixtures remain valid; new builds emit 1.1.0. */
@@ -172,8 +196,10 @@ export type ActivitySchemaVersion = "1.0.0" | "1.1.0";
 export interface Activity {
   schema_version: ActivitySchemaVersion;
   generated_at: string;
-  project: "fencepost";
+  project: string;
   meta: ActivityMeta;
+  groups?: ActivityGroupRoom[];
+  groups_reason?: string;
   nodes: Node[];
   tasks: Task[];
   events: Event[];

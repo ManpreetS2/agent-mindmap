@@ -56,7 +56,7 @@ def _run_start_mac(
 def _fake_gh_bin(tmp_path: Path) -> Path:
     """Directory to prepend to PATH; contains a `gh` that serves fixture API responses."""
     gh = tmp_path / "gh"
-    interpreter = shutil.which("python3") or sys.executable
+    interpreter = sys.executable
     mock = ROOT / "tests" / "fixtures" / "gh_mock_cli.py"
     gh.write_text(
         f"#!{interpreter}\nimport runpy\nrunpy.run_path({str(mock)!r}, run_name='__main__')\n",
@@ -183,6 +183,12 @@ def test_plist_invokes_start_mac_script() -> None:
     assert "ThrottleInterval" in text
 
 
+def test_start_mac_web_dist_checks_shared_and_tsconfig() -> None:
+    text = START_MAC.read_text(encoding="utf-8")
+    assert 'REPO_ROOT/shared' in text
+    assert "tsconfig" in text
+
+
 def test_start_mac_uses_hash_locked_venv_install() -> None:
     text = START_MAC.read_text(encoding="utf-8")
     assert "--require-hashes" in text
@@ -292,7 +298,13 @@ def test_broken_venv_triggers_reinstall(tmp_path: Path) -> None:
             shutil.rmtree(backup)
         shutil.move(venv, backup)
     try:
-        subprocess.run([sys.executable, "-m", "venv", str(venv)], cwd=ROOT, check=True)
+        venv_python = Path(sys.executable)
+        bootstrap_py = (
+            str(venv_python)
+            if venv_python.is_file()
+            else (shutil.which("python3") or "python3")
+        )
+        subprocess.run([bootstrap_py, "-m", "venv", str(venv)], cwd=ROOT, check=True)
         port = 38786
         env = {
             "PATH": f"{fake_gh}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -347,7 +359,9 @@ def test_busy_port_without_lsof(tmp_path: Path) -> None:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("127.0.0.1", port))
     sock.listen(1)
-    minimal_path = f"{fake_gh}{os.pathsep}/bin"
+    # dirname and python3.12 live in /usr/bin and /usr/local/bin on macOS.
+    # lsof stays off this PATH (/usr/sbin) so the bind fallback is what runs.
+    minimal_path = f"{fake_gh}{os.pathsep}/usr/bin{os.pathsep}/usr/local/bin{os.pathsep}/bin"
     try:
         env = {
             "PATH": minimal_path,

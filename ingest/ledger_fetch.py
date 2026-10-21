@@ -31,7 +31,7 @@ LEDGER_SOURCE_URL = (
 @dataclass
 class LedgerFetchResult:
     text: str | None = None
-    meta_ledger: str = "ok"  # ok | error | skipped
+    meta_ledger: str = "ok"  # ok | not_found | error | skipped
     etag: str | None = None
     status: int = 0
     from_cache: bool = False
@@ -101,6 +101,14 @@ class LedgerFetcher:
                 errors=["304 but no cached ledger body"],
             )
 
+        if resp.status == 404:
+            return LedgerFetchResult(
+                text=None,
+                meta_ledger="not_found",
+                status=404,
+                errors=["ledger not found at data/ledger"],
+            )
+
         if resp.status != 200:
             return LedgerFetchResult(
                 text=None,
@@ -120,7 +128,7 @@ class LedgerFetcher:
                 text=None,
                 meta_ledger="error",
                 status=resp.status,
-                errors=[f"decode failed: {type(exc).__name__}: {exc}"],
+                errors=[f"decode failed: {type(exc).__name__}"],
             )
 
         new_etag = resp.headers.get("etag") or etag

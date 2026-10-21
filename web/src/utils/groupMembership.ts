@@ -3,16 +3,20 @@ import type { GroupId, Node, NodeGroup } from "@shared/types";
 /** Display labels for known groups; unknown ids title-case the id. */
 export const GROUP_LABELS: Record<string, string> = {
   owner: "Owner",
+  radar: "Project Radar",
+  hq: "Engineering HQ",
+  historical: "Historical",
   build: "Build",
   qr: "Quality & Release",
-  radar: "Research / Radar",
 };
 
 export const GROUP_LAYOUT_ORDER: string[] = [
   "owner",
+  "radar",
+  "hq",
+  "historical",
   "build",
   "qr",
-  "radar",
 ];
 
 /** Membership list for a node (schema 1.1.0 `groups`, else primary `group`). */
@@ -67,5 +71,12 @@ export function nodeInSelectedGroups(
 }
 
 export function isKnownNodeGroup(id: string): id is NodeGroup {
-  return id === "owner" || id === "build" || id === "qr" || id === "radar";
+  return (
+    id === "owner" ||
+    id === "build" ||
+    id === "qr" ||
+    id === "radar" ||
+    id === "hq" ||
+    id === "historical"
+  );
 }

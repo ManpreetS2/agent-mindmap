@@ -1,4 +1,9 @@
 import type { Activity, ActivityMeta } from "@shared/types";
+import {
+  asMindmapMeta,
+  isGithubSourceHealthy,
+  isLedgerSourceHealthy,
+} from "./activityMeta";
 
 export const STALE_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -44,13 +49,45 @@ export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
 }
 
 export function partialGithubBanner(meta: ActivityMeta): string | null {
-  const status = meta.github as string;
-  if (status === "ok") return null;
+  const status = meta.github as string | undefined;
+  if (isGithubSourceHealthy(status)) return null;
+  if (status === "never_run") {
+    return "GitHub (never run) — waiting for first poll.";
+  }
   const sourceName =
-    status === "rate_limited"
-      ? "GitHub (rate limited)"
-      : status === "skipped"
-        ? "GitHub (skipped)"
-        : "GitHub (error)";
-  return `${sourceName} — showing ledger only. Retry refresh.`;
+    status === "skipped"
+      ? "GitHub (skipped)"
+      : status === "error"
+        ? "GitHub (error)"
+        : `GitHub (${status ?? "unknown"})`;
+  return `${sourceName} — data may be incomplete. Retry refresh.`;
 }
+
+/** MM-020-P0: banner when ledger or GitHub is unhealthy (includes meta.ledger_error). */
+export function sourceUnavailableMessage(meta: ActivityMeta): string | null {
+  const extended = asMindmapMeta(meta);
+  const ledger = extended.ledger as string | undefined;
+  const github = extended.github as string | undefined;
+  const ledgerBad = !isLedgerSourceHealthy(ledger);
+  const githubBad = !isGithubSourceHealthy(github);
+  if (!ledgerBad && !githubBad) return null;
+  const parts = ["SOURCE UNAVAILABLE"];
+  if (ledgerBad) {
+    parts.push(`ledger: ${ledger ?? "unknown"}`);
+  }
+  if (githubBad) {
+    parts.push(`GitHub: ${github ?? "unknown"}`);
+  }
+  const ledgerError = extended.ledger_error?.trim();
+  if (ledgerError) {
+    parts.push(ledgerError);
+  }
+  return parts.join(" — ");
+}
+
+export function refreshRateLimitMessage(retryAfterS: number): string {
+  return `Refresh rate limited — try again in ${retryAfterS}s.`;
+}
+
+export const REFRESH_FORBIDDEN_MESSAGE =
+  "Refresh denied (403) — check Host/Origin.";

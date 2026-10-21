@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TextIO
 
-KNOWN_GROUPS = frozenset({"owner", "build", "qr", "radar"})
+KNOWN_GROUPS = frozenset({"owner", "build", "qr", "radar", "hq", "historical"})
 
 
 def _repo_root() -> Path:

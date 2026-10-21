@@ -10,14 +10,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .attribute import load_bots
+from .attribute import load_bots, owner_to_bot_id
 from .edges import derive_edges
 from .github_poller import GhRunner, GitHubPollResult, poll_github
 from .ledger_fetch import LEDGER_SOURCE_URL, LedgerFetchResult, fetch_ledger_from_gh
@@ -27,6 +29,8 @@ from .ledger_parser import (
     parse_ledger,
     parse_ledger_file,
 )
+from .activity_groups import snapshot_activity_groups
+from .actor_resolve import apply_strict_attribution
 from .membership import membership_index
 from .migrate import migrate_activity
 
@@ -34,6 +38,53 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "activity.schema.json"
 DEFAULT_OUT = ROOT / "web" / "public" / "activity.json"
 DEFAULT_BOTS = ROOT / "config" / "bots.json"
+
+# Keep in sync with schema/activity.schema.json ``project`` / ``meta.project``.
+PROJECT_NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+
+
+def _default_project_slug(
+    *,
+    repo_root: Path | None = None,
+) -> str:
+    try:
+        from .ledger_fetch import LEDGER_REPO
+
+        slug = LEDGER_REPO.rsplit("/", 1)[-1].strip()
+        if slug and PROJECT_NAME_RE.match(slug):
+            return slug
+    except Exception:  # noqa: BLE001
+        pass
+    root = repo_root if repo_root is not None else ROOT
+    name = root.resolve().name.strip().lower()
+    if name and PROJECT_NAME_RE.match(name) and name not in {
+        "workspace",
+        "repo",
+        "src",
+        "app",
+        ".",
+    }:
+        return name
+    return "agent-mindmap"
+
+
+def resolve_project_name(
+    *,
+    repo_root: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> str:
+    """MM-020-P0: app name from env or repo slug; invalid overrides fall back."""
+    environ = env if env is not None else os.environ
+    override = (environ.get("MINDMAP_PROJECT") or "").strip()
+    if override:
+        if PROJECT_NAME_RE.match(override):
+            return override
+        logging.warning(
+            "MINDMAP_PROJECT=%r invalid (must match %s); using default",
+            override,
+            PROJECT_NAME_RE.pattern,
+        )
+    return _default_project_slug(repo_root=repo_root)
 
 
 def _load_schema() -> dict[str, Any]:
@@ -47,22 +98,13 @@ def validate_activity(activity: dict[str, Any], schema: dict[str, Any] | None = 
     jsonschema.validate(instance=activity, schema=schema or _load_schema())
 
 
-def _owner_to_bot_id(owner: str, bots: list[dict[str, Any]]) -> str | None:
-    key = owner.strip().lower()
-    for bot in bots:
-        names = {bot["display_name"].lower(), bot["id"].lower(), *(a.lstrip("~").lower() for a in bot.get("aliases", []))}
-        if key in names or any(key.startswith(n + ",") or key.startswith(n + " ") for n in names):
-            return bot["id"]
-    # Multi-owner cells like "QA, Security, DevOps" — no single node
-    return None
-
-
 def build_nodes(
     bots: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     events: list[dict[str, Any]],
     *,
     membership: dict[str, list[str]] | None = None,
+    meta_ledger: str = "ok",
 ) -> list[dict[str, Any]]:
     """Roster nodes at fixed layout positions with best-effort status/task.
 
@@ -71,7 +113,7 @@ def build_nodes(
     """
     tasks_by_owner: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
-        bot_id = _owner_to_bot_id(str(task.get("owner", "")), bots)
+        bot_id = owner_to_bot_id(str(task.get("owner", "")), bots)
         if bot_id:
             tasks_by_owner.setdefault(bot_id, []).append(task)
 
@@ -94,26 +136,46 @@ def build_nodes(
                     agent_links[str(actor)].append(m.group(0))
 
     member_of = membership if membership is not None else membership_index()
+    ledger_ok = meta_ledger == "ok"
+    evidenced: set[str] = set(tasks_by_owner)
+    evidenced.update(latest_by_actor)
+    for evt in events:
+        for key in ("actor", "target"):
+            val = evt.get(key)
+            if isinstance(val, str) and val and not val.startswith("group:"):
+                evidenced.add(val)
 
     nodes: list[dict[str, Any]] = []
     for bot in bots:
         bot_id = bot["id"]
-        groups = list(member_of.get(bot_id, []))
+        historical = bot.get("roster") == "historical"
+        # Retired identities stay attributable, but only appear when an event
+        # or task names them. No evidence → no IDLE node.
+        if historical and bot_id not in evidenced:
+            continue
+        if historical:
+            groups = ["historical"]
+            home = "historical"
+        else:
+            groups = list(member_of.get(bot_id, []))
+            home = str(bot["group"])
         node: dict[str, Any] = {
             "id": bot_id,
             "label": bot["display_name"],
-            "group": bot["group"],
+            "group": home,
             "groups": groups,
-            "status": "IDLE",
+            "status": "UNKNOWN",
             "agent_links": agent_links.get(bot_id, []),
             "layout": dict(bot["layout"]),
         }
         owned = tasks_by_owner.get(bot_id) or []
-        if owned:
+        if owned and ledger_ok:
             # Prefer non-DONE, else last listed
             active = next((t for t in owned if t.get("status") not in {"DONE", "IDLE"}), owned[-1])
             node["current_task"] = active["id"]
             node["status"] = active.get("status") or "UNKNOWN"
+        elif not historical and bot_id in latest_by_actor:
+            node["status"] = "IN_PROGRESS"
         if bot_id in latest_by_actor:
             node["last_activity_ts"] = latest_by_actor[bot_id]
         nodes.append(node)
@@ -180,27 +242,40 @@ def build_activity(
             )
 
     events = merge_events(ledger, gh)
+    ledger_tasks = ledger.tasks if meta_ledger == "ok" else []
+    unattributed = apply_strict_attribution(
+        events, bots=bot_list, ledger_tasks=ledger_tasks
+    )
     edges = derive_edges(events)
-    nodes = build_nodes(bot_list, ledger.tasks, events)
+    nodes = build_nodes(
+        bot_list, ledger.tasks, events, meta_ledger=meta_ledger
+    )
+    activity_groups, groups_reason = snapshot_activity_groups()
     ts = generated_at or datetime.now(timezone.utc).isoformat()
 
+    project = resolve_project_name()
     meta: dict[str, Any] = {
         "github": gh.meta_github,
         "ledger": meta_ledger,
         "ledger_last_entry_at": ledger_last_entry_at(ledger),
+        "project": project,
+        "unattributed_event_count": unattributed,
     }
 
     activity = {
         "schema_version": "1.1.0",
         "generated_at": ts,
-        "project": "fencepost",
+        "project": project,
         "meta": meta,
+        "groups": activity_groups,
         "nodes": nodes,
         "tasks": ledger.tasks,
         "events": events,
         "edges": edges,
         "unparsed": ledger.unparsed,
     }
+    if groups_reason:
+        activity["groups_reason"] = groups_reason
     # Stamp required provenance on 1.1.0 events (Director / MM-020a migration rules).
     return migrate_activity(activity)
 
@@ -275,6 +350,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.ledger_source == "gh":
         fetched: LedgerFetchResult = fetch_ledger_from_gh(cache_dir=args.cache_dir)
         meta_ledger = fetched.meta_ledger
+        if meta_ledger == "not_found":
+            meta_ledger = "unavailable"
         ledger_url = LEDGER_SOURCE_URL
         if fetched.text is None:
             # Ledger error: still emit a snapshot if we can skip (empty ledger)

@@ -64,13 +64,29 @@ def test_fixture_includes_pr5_merge_sha(sample_activity: dict) -> None:
     assert merged[0]["sha"] == "693ebc7"
 
 
-def test_bots_config_has_thirteen_bots_plus_owner() -> None:
+def test_bots_config_keeps_historical_ids_and_current_roster() -> None:
     with BOTS_PATH.open(encoding="utf-8") as f:
         bots_cfg = json.load(f)
-    ids = {b["id"] for b in bots_cfg["bots"]}
+    bots = bots_cfg["bots"]
+    ids = {b["id"] for b in bots}
     assert "manpreet" in ids
     assert REQUIRED_BOT_IDS <= ids
-    assert len(bots_cfg["bots"]) == 14
+    active = {
+        b["id"]
+        for b in bots
+        if b.get("roster") != "historical" and b["id"] != "manpreet"
+    }
+    assert active == {
+        "project-manager",
+        "scout",
+        "advocate",
+        "skeptic",
+        "bug-hunter",
+        "engineering-researcher",
+        "experiment-designer",
+        "technical-tutor",
+    }
+    assert len(bots) == 20
     assert bots_cfg["schema_version"] in {"1.0.0", "1.1.0"}
 
 

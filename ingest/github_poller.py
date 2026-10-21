@@ -24,11 +24,11 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
+from .actor_resolve import resolve_pr_lane_actor
 from .attribute import (
     extract_task_id,
     extract_verdict,
     load_bots,
-    map_github_login,
 )
 from .edges import derive_edges
 
@@ -92,23 +92,6 @@ def _commit_author_login(commit: dict[str, Any]) -> str | None:
         if isinstance(login, str) and login.strip():
             return login.strip()
     return None
-
-
-def _actor_from_github_login(
-    login: str | None,
-    bots: list[dict[str, Any]],
-) -> tuple[str | None, str, str]:
-    """
-    SEC-MM020e-2: actor from verified GitHub login only (never body text).
-
-    Returns (bot_id | None, provenance, attribution method).
-    """
-    if not login:
-        return None, AGENT_REPORTED_PROVENANCE, "unknown"
-    bot_id = map_github_login(login, bots)
-    if bot_id:
-        return bot_id, GITHUB_PROVENANCE, "github_login"
-    return None, AGENT_REPORTED_PROVENANCE, "github_login_unmapped"
 
 
 def repo_id_from_item(item: dict[str, Any]) -> int | None:
@@ -366,6 +349,7 @@ class GitHubPoller:
         bots: list[dict[str, Any]] | None = None,
         runner: GhRunner | None = None,
         repos: tuple[str, ...] = DEFAULT_REPOS,
+        ledger_tasks: list[dict[str, Any]] | None = None,
     ) -> None:
         for repo in repos:
             if repo not in ALLOWED_REPOS:
@@ -380,6 +364,26 @@ class GitHubPoller:
         self._errors: list[str] = []
         # owner/repo → numeric GitHub repository id (for Link /repositories/<id>/)
         self._repo_ids: dict[str, int] = {}
+        self.ledger_tasks: list[dict[str, Any]] = list(ledger_tasks or [])
+
+    def _resolve_actor(
+        self,
+        body: str | None,
+        *,
+        task_id: str | None,
+        head_ref: str | None = None,
+        from_field: str | None = None,
+    ) -> tuple[str | None, str, str]:
+        actor, method = resolve_pr_lane_actor(
+            body=body,
+            from_field=from_field,
+            task_id=task_id,
+            head_ref=head_ref,
+            ledger_tasks=self.ledger_tasks,
+            bots=self.bots,
+        )
+        prov = GITHUB_PROVENANCE if actor else AGENT_REPORTED_PROVENANCE
+        return actor, prov, method
 
     def _request(self, api_path: str) -> tuple[GhResponse | None, Any | None]:
         """
@@ -599,9 +603,10 @@ class GitHubPoller:
         task_id = extract_task_id(head_ref, title, body)
         created = pr.get("created_at") or pr.get("updated_at")
 
-        open_actor, open_prov, open_method = _actor_from_github_login(
-            _github_user_login(pr),
-            self.bots,
+        open_actor, open_prov, open_method = self._resolve_actor(
+            body,
+            task_id=task_id,
+            head_ref=head_ref,
         )
         _append_unique(
             events,
@@ -653,9 +658,10 @@ class GitHubPoller:
         if pr.get("merged_at"):
             sha = (pr.get("merge_commit_sha") or "")[:40].lower()
             sha_val = sha if len(sha) >= 7 and re.fullmatch(r"[0-9a-f]+", sha) else None
-            merger_actor, merge_prov, merger_method = _actor_from_github_login(
-                _merged_by_login(pr),
-                self.bots,
+            merger_actor, merge_prov, merger_method = self._resolve_actor(
+                title,
+                task_id=task_id,
+                head_ref=head_ref,
             )
             _append_unique(
                 events,
@@ -712,9 +718,10 @@ class GitHubPoller:
         commit_obj = commit.get("commit") if isinstance(commit.get("commit"), dict) else {}
         msg = str((commit_obj or {}).get("message") or "")
         subject = msg.split("\n", 1)[0].strip() or f"Push on PR #{number} ({sha[:7]})"
-        actor, prov, method = _actor_from_github_login(
-            _commit_author_login(commit),
-            self.bots,
+        actor, prov, method = self._resolve_actor(
+            msg,
+            task_id=task_id,
+            head_ref=None,
         )
         ts = ""
         author = (commit_obj or {}).get("author") if isinstance(commit_obj, dict) else None
@@ -751,10 +758,7 @@ class GitHubPoller:
         seen: set[str],
     ) -> list[dict[str, Any]]:
         body = rev.get("body") or ""
-        actor, prov, method = _actor_from_github_login(
-            _github_user_login(rev),
-            self.bots,
-        )
+        actor, prov, method = self._resolve_actor(body, task_id=task_id)
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = rev.get("html_url") or html
@@ -792,10 +796,7 @@ class GitHubPoller:
         kind: str,
     ) -> list[dict[str, Any]]:
         body = comment.get("body") or ""
-        actor, prov, method = _actor_from_github_login(
-            _github_user_login(comment),
-            self.bots,
-        )
+        actor, prov, method = self._resolve_actor(body, task_id=task_id)
         verdict = extract_verdict(body)
         etype = "verdict" if verdict else "note"
         url = comment.get("html_url") or f"https://github.com/{repo}/pull/{number}"
@@ -883,7 +884,7 @@ def _event(
     }
     if pr is not None:
         evt["pr"] = pr
-    if repo:
+    if isinstance(repo, str) and "/" in repo:
         evt["repo"] = repo
     if sha:
         evt["sha"] = sha
@@ -1037,6 +1038,7 @@ def poll_github(
     bots: list[dict[str, Any]] | None = None,
     runner: GhRunner | None = None,
     repos: tuple[str, ...] = DEFAULT_REPOS,
+    ledger_tasks: list[dict[str, Any]] | None = None,
 ) -> GitHubPollResult:
     """Poll allowed repos and return events + meta.github status."""
     return GitHubPoller(
@@ -1044,6 +1046,7 @@ def poll_github(
         bots=bots,
         runner=runner,
         repos=repos,
+        ledger_tasks=ledger_tasks,
     ).poll()
 
 

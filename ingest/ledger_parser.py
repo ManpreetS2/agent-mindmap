@@ -16,16 +16,14 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .attribute import TASK_ID_RE as TASK_ID_ANY
+
 TZ = ZoneInfo("America/Los_Angeles")
 UNDATED_SOURCE_TIME = "1970-01-01T00:00:00-08:00"
 
 # Exact MM-001 task-id patterns (schema $defs/taskId).
 TASK_ID_STANDARD = re.compile(r"^[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(-[0-9]+)?$")
 TASK_ID_BACKLOG = re.compile(r"^[A-Z]{2,}-[A-Z]{2}[0-9]{3}(-[0-9]+)?$")
-# Word boundaries so substrings like 'xRP-004' do not match.
-TASK_ID_ANY = re.compile(
-    r"\b(?:[A-Z]{2,}-[0-9]{3}[A-Za-z0-9]*(?:-[0-9]+)?|[A-Z]{2,}-[A-Z]{2}[0-9]{3}(?:-[0-9]+)?)\b"
-)
 
 # Architecture §4.1 — tolerant free-text note line.
 NOTE_RE = re.compile(
@@ -182,18 +180,17 @@ def task_id_from_column(column: str) -> str | None:
 
 
 def derive_project_name(project_col: str, task_id: str) -> str:
-    if ":" in project_col:
-        return project_col.split(":", 1)[0].strip().lower() or "fencepost"
-    prefix = task_id.split("-", 1)[0].upper()
-    if prefix in {"RP", "FP"}:
-        return "fencepost"
-    if prefix == "MM":
-        return "mindmap"
-    if prefix == "QR":
-        return "qr"
-    if prefix == "BD":
-        return "build"
-    return "fencepost"
+    """Slug from the ledger project column, else the task-id prefix.
+
+    An explicit ``NAME:`` column is kept. There is no default repo name.
+    """
+    col = project_col.strip()
+    if ":" in col:
+        name = col.split(":", 1)[0].strip().lower()
+        if name:
+            return name
+    prefix = task_id.split("-", 1)[0].strip().lower()
+    return prefix or "unknown"
 
 
 def _repo_root() -> Path:

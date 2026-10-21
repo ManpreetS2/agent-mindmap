@@ -43,15 +43,21 @@ def test_build_activity_validates(tmp_path: Path, bots: list[dict], schema: dict
     assert activity["tasks"]
     assert activity["events"]
     assert activity["nodes"]
-    assert len(activity["nodes"]) == len(bots)
     edge_types = {e["type"] for e in activity["edges"]}
     assert edge_types <= {"handoff", "verdict", "pr", "merge", "message"}
     assert activity["schema_version"] == "1.1.0"
-    # MM-020a: one identity; Director/Architect carry multi-membership
     by_id = {n["id"]: n for n in activity["nodes"]}
-    assert set(by_id["director"]["groups"]) == {"build", "qr", "radar"}
-    assert set(by_id["architect"]["groups"]) == {"build", "qr", "radar"}
-    assert by_id["bug-fixer"]["groups"] == []
+    # One Project Manager identity, member of both current groups.
+    assert set(by_id["project-manager"]["groups"]) == {"radar", "hq"}
+    assert by_id["project-manager"]["group"] == "radar"
+    # Retired bots stay in the file for attribution, and show only with evidence.
+    assert by_id["director"]["group"] == "historical"
+    missing = {b["id"] for b in bots} - set(by_id)
+    assert missing
+    assert all(
+        next(b for b in bots if b["id"] == mid).get("roster") == "historical"
+        for mid in missing
+    )
     # No self-loops anywhere
     assert all(e["source"] != e["target"] for e in activity["edges"])
 
