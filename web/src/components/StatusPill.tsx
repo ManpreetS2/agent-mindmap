@@ -23,8 +23,14 @@ interface StatusPillProps {
   status: Status;
 }
 
+function normalizeStatus(status: Status): Status {
+  if (status in STATUS_STYLES) return status;
+  return "UNKNOWN";
+}
+
 export function StatusPill({ status }: StatusPillProps) {
-  const style = STATUS_STYLES[status];
+  const normalized = normalizeStatus(status);
+  const style = STATUS_STYLES[normalized];
   return (
     <span
       className="status-pill"
@@ -33,9 +39,9 @@ export function StatusPill({ status }: StatusPillProps) {
         color: style.fg,
         border: style.dashed ? "1px dashed var(--text-muted)" : "1px solid transparent",
       }}
-      aria-label={`Status ${status.replace("_", " ")}`}
+      aria-label={`Status ${normalized.replace("_", " ")}`}
     >
-      {status.replace("_", " ")}
+      {normalized.replace("_", " ")}
     </span>
   );
 }

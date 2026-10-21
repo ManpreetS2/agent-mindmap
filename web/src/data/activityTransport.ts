@@ -29,6 +29,10 @@ export interface SseTransportOptions {
   /** QA-MM020e-3: initial backoff before retrying EventSource while polling. */
   sseRetryInitialMs?: number;
   sseRetryMaxMs?: number;
+  /** MM-020-P0: true only after EventSource onopen; false when disconnected. */
+  onSseConnectionChange?: (connected: boolean) => void;
+  /** Fired on each SSE message (before debounced activity refetch). */
+  onSseEvent?: () => void;
 }
 
 const DEFAULT_POLL_MS = 10_000;
@@ -111,6 +115,8 @@ export function createSseTransport(
   const sseRetryInitialMs =
     options.sseRetryInitialMs ?? DEFAULT_SSE_RETRY_INITIAL_MS;
   const sseRetryMaxMs = options.sseRetryMaxMs ?? DEFAULT_SSE_RETRY_MAX_MS;
+  const onSseConnectionChange = options.onSseConnectionChange;
+  const onSseEvent = options.onSseEvent;
   const EventSourceImpl =
     options.EventSourceImpl ??
     (typeof EventSource !== "undefined" ? EventSource : undefined);
@@ -178,6 +184,7 @@ export function createSseTransport(
       const startPollFallback = () => {
         if (cancelled || fellBack) return;
         fellBack = true;
+        onSseConnectionChange?.(false);
         if (source) {
           source.close();
           source = null;
@@ -200,6 +207,7 @@ export function createSseTransport(
       const wireSource = (es: EventSource) => {
         es.onmessage = () => {
           if (cancelled) return;
+          onSseEvent?.();
           debouncedRefetch();
         };
         es.onerror = () => {
@@ -220,12 +228,14 @@ export function createSseTransport(
               if (pendingReconnect === es) pendingReconnect = null;
               return;
             }
-            if (!fellBack) return;
-            pollStop?.();
-            pollStop = null;
-            clearSseRetry();
-            fellBack = false;
-            sseBackoffMs = sseRetryInitialMs;
+            onSseConnectionChange?.(true);
+            if (fellBack) {
+              pollStop?.();
+              pollStop = null;
+              clearSseRetry();
+              fellBack = false;
+              sseBackoffMs = sseRetryInitialMs;
+            }
             if (pendingReconnect === es) pendingReconnect = null;
             source = es;
           };
