@@ -12,7 +12,7 @@
 
   --text-primary: #e8ecf1;
   --text-secondary: #a8b0bd;
-  --text-muted: #7a8494;
+  --text-muted: #8e98a9; /* >=4.5:1 on panel, card and elevated surfaces */
 
   --accent: #6b9fff;
 
@@ -54,6 +54,8 @@
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1031,3 +1031,31 @@
   .network-legend { right: 8px; bottom: 182px; max-width: calc(100% - 16px); }
   .network-legend__note { display: none; }
 }
+
+/* ───────── Roster filter, groups, updated time ───────── */
+.roster-filter {
+  width: 100%; box-sizing: border-box; margin: 0 0 8px; padding: 6px 10px; font: inherit; font-size: 12px;
+  color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px;
+}
+.roster-filter::placeholder { color: var(--text-muted); }
+.roster-filter:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.roster-empty { margin: 8px 6px; font-size: 12px; color: var(--text-secondary); }
+.roster-group h3 { margin: 6px 4px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); font-weight: 700; }
+.roster-group h3 span { margin-left: 4px; color: var(--text-muted); }
+.roster-group[data-group="attention"] h3 { color: #ffb5c0; }
+.roster-updated { font-size: 11px; color: var(--text-secondary); }
+
+/* ───────── Inspector polish ───────── */
+.inspector { overflow-y: auto; overscroll-behavior: contain; min-height: 0; max-height: 100%; }
+.inspector__provider { display: inline-flex; align-items: center; gap: 6px; }
+.inspector__glyph { --c: var(--accent-provider); width: 12px; height: 12px; margin-top: 0; }
+.inspector-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 var(--space-3); padding: 8px 10px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-subtle); }
+.inspector-copy { margin-top: 4px; margin-right: 8px; padding: 3px 10px; font: inherit; font-size: 12px; color: var(--text-primary); background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer; }
+.inspector-copy:hover { border-color: var(--text-muted); }
+.inspector-copy:focus-visible, .inspector-link:focus-visible, .detail-panel__close:focus-visible, .network-legend__toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ───────── Legend toggle ───────── */
+.network-legend__toggle { justify-self: start; padding: 2px 6px; margin: -2px -4px; font: inherit; font-size: 11px; font-weight: 700; color: var(--text-primary); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
+.network-legend__body { display: grid; gap: 6px; }
+.network-legend__body[hidden] { display: none; }
+.network-legend.is-collapsed { padding: 6px 10px; }

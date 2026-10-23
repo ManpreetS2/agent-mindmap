@@ -74,3 +74,22 @@
     box-shadow: none;
   }
 }
+
+/* Roster / canvas / inspector never overlap: at <1280px the inspector overlays the canvas only,
+   and the roster strip + legend stack above one another on phones. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .detail-panel { width: min(360px, 60vw); }
+  .network-view { grid-template-columns: 200px minmax(0, 1fr); }
+  .network-legend { max-width: calc(100% - 24px); }
+}
+
+@media (max-width: 767px) {
+  .detail-panel { max-height: 55vh; }
+  .roster-group { display: none; }
+  .agent-roster ul { padding-bottom: 4px; }
+  .roster-filter { margin-bottom: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roster-item, .roster-filter, .inspector-copy, .network-legend__toggle { transition: none; }
+}
