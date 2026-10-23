@@ -185,7 +185,7 @@ export function AgentNetwork({
     if (live.current.motionOn) stepAmbient(model.node.values(), performance.now());
     for (const id of queuedParticles.current) {
       const link = model.data.links.find(l => l.id === id);
-      if (!link || !live.current.motionOn || !live.current.fresh.has(id)) {
+      if (!link || !live.current.motionOn || live.current.fresh.get(id) !== "new-delegation") {
         queuedParticles.current.delete(id);
       } else if (fg && initialized && typeof link.source === "object" && typeof link.target === "object") {
         // Object endpoints prove the library has initialized the link (which clears photons).
@@ -196,10 +196,10 @@ export function AgentNetwork({
   }, [model]);
 
   useEffect(() => {
-    for (const id of fresh) {
+    for (const [id, kind] of fresh) {
       if (emitted.current.has(id)) continue;
       emitted.current.add(id);
-      if (motionOn) queuedParticles.current.add(id);
+      if (motionOn && kind === "new-delegation") queuedParticles.current.add(id);
     }
   }, [fresh, motionOn, data]);
 
@@ -301,7 +301,7 @@ export function AgentNetwork({
       ctx.stroke();
       const fs = 9 / scale;
       ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
-      const label = "NEW DELEGATION";
+      const label = live.current.fresh.get(l.id) === "new-delegation" ? "NEW DELEGATION" : "Newly observed";
       const tw = ctx.measureText(label).width + 8 / scale;
       const { x: mx, y: my } = linkCaptionPosition(s, t, tw, fs * 1.8, scale);
       ctx.fillStyle = "rgba(14,18,26,0.92)";

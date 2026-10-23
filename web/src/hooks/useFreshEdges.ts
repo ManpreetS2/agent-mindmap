@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Activity } from "@shared/types";
-import { FRESH_EDGE_MS, newlyObservedEdgeIds, sourceKey } from "../utils/edgeActivity";
+import { FRESH_EDGE_MS, newlyObservedEdgeIds, sourceKey, edgeObservation, snapshotConnected, type EdgeObservation } from "../utils/edgeActivity";
 
 /** A source-scoped observation history. Disappearing/reappearing edges never replay old evidence. */
-export function useFreshEdges(activity: Activity): ReadonlySet<string> {
+export function useFreshEdges(activity: Activity): ReadonlyMap<string, EdgeObservation> {
+  const previous = useRef<Activity | null>(null);
   const seen = useRef<Set<string> | null>(null);
   const evidence = useRef(new Set<string>());
   const key = useRef("");
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  const [fresh, setFresh] = useState<ReadonlyMap<string, EdgeObservation>>(() => new Map());
   const timers = useRef(new Set<number>());
   useEffect(() => () => {
     for (const t of timers.current) window.clearTimeout(t);
@@ -19,6 +20,7 @@ export function useFreshEdges(activity: Activity): ReadonlySet<string> {
     if (changed) {
       key.current = k;
       seen.current = null;
+      previous.current = null;
       evidence.current.clear();
       for (const t of timers.current) window.clearTimeout(t);
       timers.current.clear();
@@ -31,14 +33,17 @@ export function useFreshEdges(activity: Activity): ReadonlySet<string> {
     }
     seen.current = new Set([...(seen.current ?? []), ...activity.edges.map(e => e.id)]);
     const present = new Set(activity.edges.map(e => e.id));
+    const observations = new Map(activity.edges.filter(e => added.has(e.id))
+      .map(e => [e.id, edgeObservation(e, activity, previous.current)] as const));
     setFresh(prev => {
-      const next = new Set([...(changed ? [] : [...prev].filter(id => present.has(id))), ...added]);
-      return next.size === prev.size && [...next].every(id => prev.has(id)) ? prev : next;
+      const next = new Map([...(changed || !snapshotConnected(activity) ? [] : [...prev].filter(([id]) => present.has(id))), ...observations]);
+      return next.size === prev.size && [...next].every(([id, kind]) => prev.get(id) === kind) ? prev : next;
     });
+    previous.current = activity;
     if (!added.size) return;
     const t = window.setTimeout(() => {
       timers.current.delete(t);
-      setFresh(prev => new Set([...prev].filter(id => !added.has(id))));
+      setFresh(prev => new Map([...prev].filter(([id]) => !added.has(id))));
     }, FRESH_EDGE_MS);
     timers.current.add(t);
   }, [activity]);

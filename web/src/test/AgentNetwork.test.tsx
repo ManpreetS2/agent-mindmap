@@ -6,7 +6,14 @@ import { MindmapView } from "../views/MindmapView";
 import type { GLink, GNode } from "../utils/networkModel";
 import { fgMock } from "./forceGraphMock";
 import { renderMindmap } from "./renderMindmap";
-import { sessionNode, t3Activity } from "./helpers";
+import { sessionNode, t3Activity as historicalActivity } from "./helpers";
+
+// Particle tests represent contemporaneous delegation evidence; shared fixtures are historical.
+const t3Activity: typeof historicalActivity = (...args) => {
+  const activity = historicalActivity(...args);
+  for (const e of activity.events) e.source_time = activity.generated_at;
+  return activity;
+};
 
 const nodes = ["a", "b", "c", "d"].map((i) => sessionNode(i));
 const base = { selectedNodeId: null as string | null, onOpenNodeDetail: vi.fn(), onClearNodeDetail: vi.fn() };
@@ -89,6 +96,25 @@ describe("AgentNetwork", () => {
     view.rerender(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"], ["a", "c"]])} />);
     act(() => { vi.advanceTimersByTime(7000); });
     expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["old", "outage", "stale", "reduced"])("renders a truthful %s highlight and no directional particle", scenario => {
+    setReduced(scenario === "reduced");
+    const initial = t3Activity(nodes, []);
+    if (scenario === "outage") initial.meta.t3!.connection = "unavailable";
+    if (scenario === "stale") initial.nodes = initial.nodes.map(n => ({ ...n, status: "STALE" }));
+    const view = render(<AgentNetwork {...base} activity={initial} />);
+    const next = scenario === "old" ? historicalActivity(nodes, [["a", "b"]]) : t3Activity(nodes, [["a", "b"]]);
+    view.rerender(<AgentNetwork {...base} activity={next} />);
+    frame();
+    const fillText = vi.fn(), stroke = vi.fn();
+    const ctx = new Proxy({ fillText, stroke, measureText: () => ({ width: 90 }) }, {
+      get: (obj, key) => obj[key as keyof typeof obj] ?? (() => {}),
+    });
+    props().linkCanvasObject(gdata().links[0], ctx, 1);
+    expect(fillText).toHaveBeenCalledWith(scenario === "reduced" ? "NEW DELEGATION" : "Newly observed", expect.any(Number), expect.any(Number));
+    expect(stroke).toHaveBeenCalled(); // static, non-directional glow survives reduced motion
+    expect(fgMock.methods.emitParticle).not.toHaveBeenCalled();
   });
 
   it("never emits particles for an unevidenced edge or after a mode switch", () => {
