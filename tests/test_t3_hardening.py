@@ -476,3 +476,26 @@ def test_composite_and_malformed_thread_ids_never_abort_snapshot(thread_id):
     raw["threads"][0]["threadId"] = thread_id
     snap = T3Projection("local").snapshot(raw, NOW)
     assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
+
+
+def _delegated(rid: str) -> str:
+    return (
+        "thread:delegated-task:command%3Amcp%3A6e496b21-1c90-4a4d-a0f5-2b26a88e4809"
+        f"%3Adelegate-task%3A{rid}"
+    )
+
+
+@pytest.mark.parametrize("rid", ["mm-fix-review-4", "ReviewFixes2026IterationTwo", "Mm_Real_Delegation_Run_0042_Final"])
+def test_delegated_ids_with_long_mixed_case_request_ids_are_kept(rid):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = _delegated(rid)
+    assert len(T3Projection("local").snapshot(raw, NOW)["nodes"]) == len(read_demo()["threads"])
+
+
+@pytest.mark.parametrize("rid", ["ghp_abcdefghijklmnopqrstuvwxyz0123456789", "xoxb-123456789012-abcdefghij", "cGFzc3dvcmQ9YWJjMTIz"])
+def test_delegated_ids_embedding_credentials_are_dropped(rid):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = _delegated(rid)
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert rid not in json.dumps(snap)
+    assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1

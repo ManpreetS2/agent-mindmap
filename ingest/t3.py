@@ -167,18 +167,29 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@%+-]{0,299}")
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
 
+_DELEGATED_ID = re.compile(
+    r"thread:delegated-task:command:mcp:(?P<uuid>" + _UUID.pattern + r"):delegate-task:(?P<rid>[^:]+)",
+    re.IGNORECASE,
+)
+
+
 def safe_thread_id(value: Any) -> bool:
-    """Plain IDs only. UUIDs pass; composite `thread:...%3A...` forms are split into segments
-    (UUID segments skipped) and every other segment gets the full credential check."""
+    """Plain IDs only. UUIDs pass. The known T3 delegated-task composite is parsed; its
+    agent-chosen request ID gets credential-signature/encoded-form checks but not the opaque
+    blob heuristic (legitimate IDs may be long and mixed-case). Any other shape gets the full
+    check on every non-UUID segment."""
     if not isinstance(value, str) or not _THREAD_ID.fullmatch(value):
         return False
     if _UUID.fullmatch(value):
         return True
     if _sensitive_any(value, blobs=False):
         return False
-    segments = unquote_plus(value).split(":")
+    decoded = unquote_plus(value)
+    known = _DELEGATED_ID.fullmatch(decoded)
+    if known:
+        return not _sensitive_any(known["rid"], blobs=False)
     return not any(
-        _sensitive_any(seg) for seg in segments if seg and not _UUID.fullmatch(seg)
+        _sensitive_any(seg) for seg in decoded.split(":") if seg and not _UUID.fullmatch(seg)
     )
 
 
