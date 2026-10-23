@@ -24,12 +24,31 @@ describe("T3 sessions", () => {
     expect(within(codex).getByText("Codex")).toBeInTheDocument();
     expect(within(codex).getByText("reported-model")).toBeInTheDocument();
     expect(screen.getAllByText("Model not reported").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Verified delegation/)).toBeInTheDocument();
+    // Static demo is synthetic: it must never claim verified delegation or verified activity.
+    expect(screen.getByText(/DEMO — SYNTHETIC FIXTURE DATA/)).toBeInTheDocument();
+    expect(screen.getByText(/Simulated delegation/)).toBeInTheDocument();
+    expect(screen.queryByText(/Verified delegation/)).not.toBeInTheDocument();
     expect(screen.queryByText(/showing ledger only/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("agent-node-codex")); // jsdom mouse events lack `view`, which d3-drag needs
     const panel = screen.getByRole("complementary");
+    expect(within(panel).getByText("SIMULATED")).toBeInTheDocument();
+    expect(within(panel).getByText("Simulated activity time")).toBeInTheDocument();
+    expect(within(panel).queryByText("Last verified activity")).not.toBeInTheDocument();
+    expect(within(panel).getByText("Relationships (simulated)")).toBeInTheDocument();
+    expect(within(panel).queryByText("T3 subagent lineage")).not.toBeInTheDocument();
     expect(within(panel).getByText("feat/t3")).toBeInTheDocument();
     expect(within(panel).getByRole("link")).toHaveAttribute("href", "https://github.com/example/repo/pull/1");
+  });
+
+  it("live mode keeps verified wording and shows no demo banner", () => {
+    const live = { ...sample, meta: { ...sample.meta, t3: { ...sample.meta.t3!, mode: "live" as const } } };
+    renderMindmap(<MindmapView activity={live} />);
+    expect(screen.queryByText(/DEMO/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Verified delegation/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("agent-node-codex"));
+    const panel = screen.getByRole("complementary");
+    expect(within(panel).getByText("Last verified activity")).toBeInTheDocument();
+    expect(within(panel).queryByText("SIMULATED")).not.toBeInTheDocument();
   });
 
   it("retains nodes as stale on transport failure and recovers in place", async () => {

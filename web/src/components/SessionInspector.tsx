@@ -60,7 +60,8 @@ function CopySessionId({ id }: { id: string }) {
 export function SessionInspector({ node, activity, onClose, onSelectNode }: Props) {
   const session = node.session!;
   const t3 = activity.meta.t3;
-  const simulated = Boolean(t3?.replay);
+  // Any demo mode (static fixture or replay) is synthetic; only live mode may claim verified activity.
+  const simulated = t3?.mode === "demo";
   const key = providerKey(session.provider);
   const fresh = freshnessOf(node, activity);
   const relationships = relationshipsFor(node, activity);
@@ -132,7 +133,7 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
         />
       </dl>
 
-      <Section title="Verified relationships">
+      <Section title={simulated ? "Relationships (simulated)" : "Verified relationships"}>
         {relationships.length === 0 ? (
           <p className="detail-muted">No delegation lineage reported for this session.</p>
         ) : (
@@ -199,7 +200,7 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
 
       <p className="detail-muted inspector-caveat">
         {simulated
-          ? "Synthetic replay metadata. These are simulated agents, models, tasks and delegation."
+          ? "Synthetic demo metadata. These are simulated agents, models, tasks and delegation — not real T3 activity."
           : "Read-only metadata. Prompts, messages, tool output, token usage and credentials are unsupported and not published."}
       </p>
     </aside>

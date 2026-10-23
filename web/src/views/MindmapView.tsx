@@ -254,6 +254,12 @@ export function MindmapView({
           <span>Cycle {activity.meta.t3.replay.cycle + 1} · Stage {activity.meta.t3.replay.stage + 1}/{activity.meta.t3.replay.stage_count}: {activity.meta.t3.replay.label}</span>
         </div>
       )}
+      {activity.meta.t3?.mode === "demo" && !activity.meta.t3.replay && (
+        <div className="demo-replay-banner" role="status">
+          <strong>DEMO — SYNTHETIC FIXTURE DATA</strong>
+          <span>Offline example agents · not real T3 activity · no API calls</span>
+        </div>
+      )}
       <header className="app-header">
         <div className="app-header__brand">
           <span className="app-header__title">MINDMAP</span>
@@ -350,7 +356,7 @@ export function MindmapView({
                     onOpenNodeDetail={onOpenNodeDetail}
                     onClearNodeDetail={onClearNodeDetail}
                   />
-                  <NetworkLegend simulated={Boolean(activity.meta.t3.replay)} />
+                  <NetworkLegend simulated={activity.meta.t3.mode === "demo"} />
                 </>
               ) : (
                 <>
