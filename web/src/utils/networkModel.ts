@@ -1,4 +1,5 @@
 import type { Activity, Status } from "@shared/types";
+import { continuousObservation } from "./edgeActivity";
 import { providerKey, providerLabel, type ProviderKey } from "./provider";
 
 /** A canvas node. Objects are mutated in place by the force engine (x, y, vx, vy, fx, fy). */
@@ -64,6 +65,7 @@ export class NetworkModel {
   private topo = "";
   revision = 0;
   private baseline = true;
+  private previous: Activity | null = null;
   data: { nodes: GNode[]; links: GLink[] } = { nodes: [], links: [] };
 
   /** Reset (mode/source switch): the next sync is a fresh baseline with nothing "new". */
@@ -72,6 +74,7 @@ export class NetworkModel {
     this.links.clear();
     this.topo = "";
     this.baseline = true;
+    this.previous = null;
     this.data = { nodes: [], links: [] };
   }
 
@@ -81,6 +84,7 @@ export class NetworkModel {
 
   sync(activity: Activity): { topologyChanged: boolean; visualChanged: boolean; transitions: StatusTransition[]; baseline: boolean } {
     const transitions: StatusTransition[] = [];
+    const continuous = continuousObservation(this.previous, activity);
     const incoming = [...activity.nodes].filter((n) => n.session).sort((a, b) => a.id.localeCompare(b.id));
     const ids = new Set(incoming.map((n) => n.id));
     const edges = activity.edges.filter(
@@ -119,12 +123,13 @@ export class NetworkModel {
         status: n.status,
         reported: s.reported_status,
         task: n.current_task ?? null,
-        stale: s.stale || n.status === "STALE",
-        active: ACTIVE_STATUSES.has(n.status) && !s.stale,
+        stale: s.stale || n.status === "STALE" || activity.meta.t3?.connection === "unavailable",
+        active: ACTIVE_STATUSES.has(n.status) && !s.stale && activity.meta.t3?.connection === "connected",
       };
       const existing = this.nodes.get(n.id);
       if (existing) {
-        if (existing.status !== facts.status) {
+        if (continuous && !existing.stale && !facts.stale && existing.status !== "UNKNOWN"
+          && existing.status !== facts.status && reactionStatus(existing.status, facts.status)) {
           transitions.push({ id: n.id, from: existing.status, to: facts.status });
         }
         if (Object.entries(facts).some(([key, value]) => existing[key as keyof GNode] !== value)) visualChanged = true;
@@ -182,6 +187,7 @@ export class NetworkModel {
     if (key !== this.topo) changed = true;
     this.topo = key;
     this.baseline = false;
+    this.previous = activity;
 
     if (changed) {
       this.data = {
@@ -194,16 +200,19 @@ export class NetworkModel {
   }
 }
 
-/** Caption for an *observed* status change (never implies anything beyond the status delta). */
+/** Only meaningful work deltas qualify; review/progress toggles are still the same work. */
+function reactionStatus(from: Status, to: Status): boolean {
+  if (ACTIVE_STATUSES.has(to)) return !ACTIVE_STATUSES.has(from) && from !== "STALE";
+  return to === "BLOCKED" || to === "FAILED" || to === "DONE";
+}
+
+/** Caption for an *observed* status change, after continuity/staleness gating in sync. */
 export function transitionCaption(t: StatusTransition): string {
-  if (t.to === "IN_PROGRESS" || t.to === "IN_REVIEW") {
-    return t.from === "FAILED" || t.from === "BLOCKED" || t.from === "STALE" ? "RESUMED" : "STARTED";
+  if (ACTIVE_STATUSES.has(t.to)) {
+    return t.from === "FAILED" || t.from === "BLOCKED" ? "RESUMED" : "STARTED";
   }
-  if (t.to === "BLOCKED") return "BLOCKED";
-  if (t.to === "FAILED") return "FAILED";
   if (t.to === "DONE") return "COMPLETED";
-  if (t.to === "STALE") return "STALE";
-  return t.to.replace("_", " ");
+  return t.to;
 }
 
 export const AMBIENT_PX = 3.2;

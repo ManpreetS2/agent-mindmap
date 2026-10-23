@@ -6,7 +6,7 @@ import { useNetworkPointer } from "../hooks/useNetworkPointer";
 import type { Activity } from "@shared/types";
 import { useFreshEdges } from "../hooks/useFreshEdges";
 import { useReducedMotionPreference } from "../hooks/useReducedMotion";
-import { sourceKey } from "../utils/edgeActivity";
+import { sourceKey, snapshotConnected } from "../utils/edgeActivity";
 import {
   NetworkModel,
   AmbientClock,
@@ -81,6 +81,15 @@ export function AgentNetwork({
   const [dragging, setDragging] = useState(false);
   const flashTimer = useRef<number>();
   const flashes = useRef(new Map<string, { caption: string; start: number; color: string }>());
+  const scheduleFlashExpiry = useCallback(() => {
+    setTransient(true);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      flashes.current.clear();
+      setTransient(false);
+      setRedraw(v => v + 1);
+    }, FLASH_MS + 100);
+  }, []);
   const fresh = useFreshEdges(activity);
   const emitted = useRef(new Set<string>());
   const camera = useRef<Camera | null>(null);
@@ -119,6 +128,11 @@ export function AgentNetwork({
     if (reduce && model.data.nodes.some(n => n.settledX == null && !n.pinned)) settleLayout(model.data.nodes, model.data.links);
     if (reduce) for (const n of model.data.nodes) { n.ox = 0; n.oy = 0; }
     if (paused) freezeLayout(model.node.values());
+    if (!snapshotConnected(activity)) {
+      flashes.current.clear();
+      setTransient(false);
+      window.clearTimeout(flashTimer.current);
+    }
     const now = performance.now();
     for (const t of r.transitions) {
       flashes.current.set(t.id, {
@@ -127,22 +141,14 @@ export function AgentNetwork({
         color: STATUS_COLOR[t.to],
       });
     }
-    if (r.transitions.length) {
-      setTransient(true);
-      window.clearTimeout(flashTimer.current);
-      flashTimer.current = window.setTimeout(() => {
-        flashes.current.clear();
-        setTransient(false);
-        setRedraw(v => v + 1);
-      }, FLASH_MS + 100);
-    }
+    if (r.transitions.length) scheduleFlashExpiry();
     if (r.topologyChanged) {
       pendingCamera.current ??= saved;
       setData(model.data);
     }
     setPinCount([...model.node.values()].filter((n) => n.pinned).length);
     if (r.visualChanged) setRedraw((v) => v + 1);
-  }, [activity, model, reduce, paused]);
+  }, [activity, model, reduce, paused, scheduleFlashExpiry]);
 
   useEffect(() => () => window.clearTimeout(flashTimer.current), []);
 
@@ -205,9 +211,22 @@ export function AgentNetwork({
     for (const [id, kind] of fresh) {
       if (emitted.current.has(id)) continue;
       emitted.current.add(id);
-      if (motionOn && kind === "new-delegation") queuedParticles.current.add(id);
+      if (kind === "new-delegation") {
+        if (motionOn) queuedParticles.current.add(id);
+        const link = model.data.links.find(l => l.id === id);
+        if (link) {
+          const parent = endpointId(link.source);
+          const existing = flashes.current.get(parent);
+          // Keep attention/completion captions if both deltas arrive in the same poll.
+          if (!existing || performance.now() - existing.start > FLASH_MS || ["STARTED", "RESUMED", "DELEGATED"].includes(existing.caption)) {
+            flashes.current.set(parent, { caption: "DELEGATED", start: performance.now(), color: FRESH_LINK_COLOR });
+            scheduleFlashExpiry();
+            setRedraw(v => v + 1);
+          }
+        }
+      }
     }
-  }, [fresh, motionOn, data]);
+  }, [fresh, motionOn, data, model, scheduleFlashExpiry]);
 
   const fit = useCallback(() => {
     const fg = fgRef.current, next = fittedCamera(model.data.nodes, w, h);

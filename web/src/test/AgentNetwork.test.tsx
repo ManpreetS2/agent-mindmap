@@ -117,6 +117,38 @@ describe("AgentNetwork", () => {
     expect(fgMock.methods.emitParticle).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["IDLE", "IN_PROGRESS", "STARTED"], ["IN_PROGRESS", "BLOCKED", "BLOCKED"],
+    ["IN_PROGRESS", "FAILED", "FAILED"], ["FAILED", "IN_PROGRESS", "RESUMED"],
+    ["IN_PROGRESS", "DONE", "COMPLETED"], ["STALE", "IN_PROGRESS", null],
+  ] as const)("reacts once to %s → %s with %s", (from, to, caption) => {
+    const view = render(<AgentNetwork {...base} activity={t3Activity([sessionNode("a", { status: from })], [])} />);
+    const fillText = vi.fn();
+    const ctx = new Proxy({ fillText, measureText: () => ({ width: 90 }), createRadialGradient: () => ({ addColorStop() {} }) }, {
+      get: (obj, key) => obj[key as keyof typeof obj] ?? (() => {}),
+    });
+    const draw = () => { fillText.mockClear(); props().nodeCanvasObject(gdata().nodes[0], ctx, 1); return fillText.mock.calls.map(c => c[0]); };
+    expect(draw()).not.toContain(caption ?? "RESUMED"); // no first-load reaction
+    const next = t3Activity([sessionNode("a", { status: to })], []);
+    view.rerender(<AgentNetwork {...base} activity={next} />);
+    if (caption) expect(draw()).toContain(caption);
+    else expect(draw()).not.toContain("RESUMED");
+    act(() => vi.advanceTimersByTime(3000));
+    view.rerender(<AgentNetwork {...base} activity={structuredClone(next)} />);
+    expect(draw()).not.toContain(caption ?? "RESUMED");
+  });
+
+  it.each([false, true])("delegation parent reacts only to recent evidence (historical=%s)", historical => {
+    const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    view.rerender(<AgentNetwork {...base} activity={(historical ? historicalActivity : t3Activity)(nodes, [["a", "b"]])} />);
+    const fillText = vi.fn();
+    const ctx = new Proxy({ fillText, measureText: () => ({ width: 90 }), createRadialGradient: () => ({ addColorStop() {} }) }, {
+      get: (obj, key) => obj[key as keyof typeof obj] ?? (() => {}),
+    });
+    props().nodeCanvasObject(gdata().nodes.find(n => n.id === "a"), ctx, 1);
+    expect(fillText.mock.calls.some(c => c[0] === "DELEGATED")).toBe(!historical);
+  });
+
   it("never emits particles for an unevidenced edge or after a mode switch", () => {
     const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
     const noEvidence = t3Activity(nodes, [["a", "b"]]);

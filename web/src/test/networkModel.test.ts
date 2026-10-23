@@ -76,6 +76,27 @@ describe("NetworkModel", () => {
     expect(transitionCaption({ id: "x", from: "IDLE", to: "IN_PROGRESS" })).toBe("STARTED");
   });
 
+  it.each(["outage", "stale", "session-stale", "unknown", "gap"])("does not infer work from %s recovery", scenario => {
+    const m = new NetworkModel();
+    const base = t3Activity([sessionNode("a", { status: scenario === "stale" ? "STALE" : scenario === "unknown" ? "UNKNOWN" : "IDLE" }, { stale: scenario === "session-stale" })], []);
+    if (scenario === "outage") base.meta.t3!.connection = "unavailable";
+    m.sync(base);
+    const next = t3Activity([sessionNode("a")], []);
+    if (scenario === "gap") next.generated_at = "2026-10-22T20:10:00Z";
+    expect(m.sync(next).transitions).toEqual([]);
+  });
+
+  it("does not treat stale/disconnected entry or active-to-review changes as work events", () => {
+    const m = new NetworkModel();
+    m.sync(t3Activity([sessionNode("a")], []));
+    expect(m.sync(t3Activity([sessionNode("a", { status: "IN_REVIEW" })], [])).transitions).toEqual([]);
+    expect(m.sync(t3Activity([sessionNode("a", { status: "STALE" })], [])).transitions).toEqual([]);
+    const offline = t3Activity([sessionNode("a", { status: "FAILED" })], []);
+    offline.meta.t3!.connection = "unavailable";
+    expect(m.sync(offline).transitions).toEqual([]);
+    expect(m.node.get("a")!.active).toBe(false);
+  });
+
   it("reset starts a new baseline with no synthetic carry-over", () => {
     const m = new NetworkModel();
     m.sync(t3Activity(nodes, [["a", "b"]], "demo"));
