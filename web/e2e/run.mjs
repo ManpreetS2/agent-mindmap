@@ -103,13 +103,17 @@ try {
     const canvas = page.locator(".network-canvas canvas").first(); const box = await canvas.boundingBox();
     await page.mouse.move(box.x + box.width * .6, box.y + box.height * .45); await page.mouse.wheel(0, -450); await wait(350);
     const z1 = await page.evaluate(() => window.__mindmap.zoom()); await wait(10500); const z2 = await page.evaluate(() => window.__mindmap.zoom());
-    const before = await getNodes(page); const n = before[0];
-    await page.mouse.click(box.x + n.sx, box.y + n.sy); await wait(300); const opened = await getNodes(page);
+    const before = await getNodes(page); const n = before[0]; const cam0 = await page.evaluate(() => window.__mindmap.camera());
+    await page.mouse.click(box.x + n.sx, box.y + n.sy); await wait(600); const opened = await getNodes(page); const camOpen = await page.evaluate(() => window.__mindmap.camera());
     const selectedAfter = opened.find((v) => v.id === n.id); const shiftOpen = Math.hypot(selectedAfter.sx - n.sx, selectedAfter.sy - n.sy);
-    await page.keyboard.press("Escape"); await wait(300); const closed = await getNodes(page); const selectedClosed = closed.find((v) => v.id === n.id); const shiftClose = Math.hypot(selectedClosed.sx - n.sx, selectedClosed.sy - n.sy);
+    await page.keyboard.press("Escape"); await wait(600); const closed = await getNodes(page); const camClosed = await page.evaluate(() => window.__mindmap.camera()); const selectedClosed = closed.find((v) => v.id === n.id); const shiftClose = Math.hypot(selectedClosed.sx - n.sx, selectedClosed.sy - n.sy);
     await snap(page, "zoom-inspector-resize"); await safeClose(context);
-    check(Math.abs(z2 - z1) < 1e-6, `zoom changed across poll interval: ${z1} -> ${z2}`); check(shiftOpen < 3 && shiftClose < 3, `view centre shifted on inspector resize (open ${shiftOpen.toFixed(1)}px, closed ${shiftClose.toFixed(1)}px)`);
-    return { zoomPoll1: z1, zoomPoll2: z2, zoomStable: true, nodeScreenShiftOpen: +shiftOpen.toFixed(2), nodeScreenShiftClosed: +shiftClose.toFixed(2) };
+    check(Math.abs(z2 - z1) < 1e-6, `zoom changed across poll interval: ${z1} -> ${z2}`); // Spec: the camera CENTRE (world coordinates) and zoom survive the canvas resize. Nodes may move on screen
+    // toward the new canvas centre when the docked inspector narrows the canvas; that is expected.
+    const centreShift = (c) => Math.hypot(c.x - cam0.x, c.y - cam0.y);
+    check(centreShift(camOpen) < 1 && centreShift(camClosed) < 1, `camera centre moved (open ${centreShift(camOpen).toFixed(2)}, closed ${centreShift(camClosed).toFixed(2)} world units)`);
+    check(Math.abs(camOpen.zoom - cam0.zoom) < 1e-6 && Math.abs(camClosed.zoom - cam0.zoom) < 1e-6, "zoom changed across inspector open/close");
+    return { zoomPoll1: z1, zoomPoll2: z2, zoomStable: true, cameraCentreShiftOpen: +centreShift(camOpen).toFixed(3), cameraCentreShiftClosed: +centreShift(camClosed).toFixed(3), nodeScreenShiftOpen: +shiftOpen.toFixed(2), nodeScreenShiftClosed: +shiftClose.toFixed(2) };
   });
 
   await scenario("pause and resume motion", async () => {
@@ -171,6 +175,7 @@ try {
     const reports = [];
     for (const width of [390, 768, 1024]) {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 860 }); await wait(500);
+      await page.getByRole("button", { name: /^(Graph|List) view$/ }).first().waitFor({ timeout: 15000 });
       const toggle = page.getByRole("button", { name: "Graph view" }); const defaultList = await toggle.count();
       if (width === 390) { check(defaultList === 1, "narrow viewport did not default to list view"); await toggle.click(); await wait(600); }
       else if (!(await page.locator(".network-view").count()) && await page.getByRole("button", { name: "Graph view" }).count()) await page.getByRole("button", { name: "Graph view" }).click();
@@ -189,7 +194,7 @@ try {
   });
 
   await scenario("legacy dashboard unaffected", async () => {
-    const { context, page } = await open(legacy, { deviceScaleFactor: 1 }); await wait(1500);
+    const { context, page } = await open(legacy, { deviceScaleFactor: 1 }); await page.waitForFunction(() => document.querySelectorAll(".react-flow__node").length > 10, null, { timeout: 15000 }).catch(() => {}); await wait(500);
     const nodes = await page.locator(".react-flow__node").count(), network = await page.locator(".network-view").count(); await snap(page, "legacy-dashboard"); const errors = [...page.errors]; await safeClose(context);
     check(nodes > 10, `legacy React Flow nodes=${nodes}`); check(network === 0, "legacy dashboard contains network view"); check(errors.length === 0, `legacy console errors: ${errors.join(" | ")}`);
     return { reactFlowNodes: nodes, networkView: network, errors };
