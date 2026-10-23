@@ -1,11 +1,87 @@
 # Agent Mind Map — Project Plan & UI Research
 
-> Research and planning document, updated 2026-10-23. **Proposal, not implementation completion evidence.**
+> Research and planning document, updated 2026-10-23. **Proposal, not implementation completion evidence.** See *Cross-machine handoff* below for current state.
 >
 > Repository: https://github.com/ManpreetS2/agent-mindmap  
 > Active work: [draft PR #36](https://github.com/ManpreetS2/agent-mindmap/pull/36), branch `feat/t3-readonly-activity`.
 >
 > **Scope:** improve the **existing** read-only Agent Mind Map for real T3 Code activity. Do not create a replacement repository, rewrite the backend unnecessarily, merge PR #36 without explicit permission, or expand into a general-purpose workflow editor.
+
+## Cross-machine handoff (written 2026-10-23 — read this first)
+
+Development moves to the owner's original MacBook. **Feature work is paused; all progress is on GitHub.** PR #36 stays **draft and unmerged**; `main` and the legacy daemon on port 8787 were not touched.
+
+### Where everything is (verified on origin via `git ls-remote`)
+
+| Ref | SHA | Contents |
+| --- | --- | --- |
+| `feat/t3-readonly-activity` (PR #36) | `3421ff8` + this handoff commit | T3 view = canvas network on `react-force-graph-2d`; roster, legend, inspector; legacy ledger graph unchanged (React Flow); docs. |
+| `t3/tune-network-physics-renderer` | `af29522` | Astra (Codex GPT-6 Astra) renderer/physics hardening: camera save/restore across topology updates (waits until the link force holds the new links), drag no longer moves camera, pointer hook + tests, label-aware collision, particle queue. **WIP checkpoint**. |
+| `t3/polish-agent-roster-inspector` | `36a9f69` | UI-polish worker (Claude): roster filter/grouping/updated-time, inspector glyph/status/copy-session-id, collapsible legend, responsive+contrast CSS. **WIP checkpoint** (inspector/legend/CSS only partly done). |
+| `t3/browser-qa-harness` | `634f8d7` | QA worker (Codex GPT-6 Luna): new files only, `web/e2e/run.mjs` + README (Playwright-core harness). **WIP**, never run end-to-end against an integrated build (syntax checked only). |
+| tag `checkpoint/pre-force-graph-2d` | `fb47c87` | Earlier React Flow + hand-rolled d3-force prototype, kept for recovery. |
+
+Worker branches were cut from `3421ff8` (Astra from `60d340d`, which only adds the roster-lineage commit) and have **not** been merged into PR #36. A fourth local worktree `t3/browser-qa-t3-view` was an empty duplicate (no commits, no changes) and was intentionally not pushed.
+
+### Test evidence at checkpoint time (honest, not final)
+- PR branch `3421ff8`: pytest 249 passed; vitest 113 passed (20+ files); `tsc --noEmit` clean; `npm run build` OK (existing >500 kB chunk warning).
+- `t3/tune-network-physics-renderer` `af29522`: tsc clean; vitest 22 files / 128 tests passed.
+- `t3/polish-agent-roster-inspector` `36a9f69`: tsc clean; vitest 22 files / 123 tests passed.
+- `t3/browser-qa-harness`: `node --check web/e2e/run.mjs` OK; not executed against a build.
+- Real-browser checks (Chromium via Playwright-core, done by the lead on `3421ff8` before the split): static demo 5 agents/1 delegation; drag→pin stays put ≥3 s; wheel zoom unchanged across polls; pause freezes drift; `reducedMotion` gives zero drift; replay one full cycle max per-sample step 6.7 px, min node distance ≈85 px, no console errors; legacy graph (React Flow) still renders 14 nodes / 5 edges. Live T3 OAuth/MCP was **never** exercised (no T3 in the dev environment).
+
+### Remaining defects / TODO (priority order)
+1. **Security review findings (Codex GPT-6 Luna, read-only):**
+   - *High:* `ingest/t3.py` `safe_text` redacts credential shapes but not filesystem paths: a thread title like `/Users/name/worktrees/x` is published and rendered in roster/canvas. Redact path-shaped values in the adapter + add a Python test (small hardening; do not replace the adapter).
+   - *Medium:* static demo (`meta.t3.mode === "demo"`, no `replay`) is labelled as real ("Verified delegation", "Last verified activity", "T3 subagent lineage") in `MindmapView` legend and `SessionInspector`. Derive the simulated labelling from `mode === "demo"`, not `Boolean(replay)`.
+   - *Medium:* an old delegation edge first seen after an outage is shown as "NEW DELEGATION" with a directional particle (`useFreshEdges`/`AgentNetwork`). Relabel "Newly observed" and consider a non-directional highlight.
+   - Clean: no XSS (`nodeLabel={() => ""}`, text via React/canvas `fillText`, http(s)-only links); `npm audit --omit=dev` 0 vulnerabilities; graph deps permissive-licensed, no postinstall/telemetry.
+2. **Visual defects seen on the integrated build** (Astra was asked to fix; verify on its branch): fit-to-view zoom becomes huge with only 2 agents (cap ≈1.6–2); provider/model labels collide with neighbouring nodes/rings when centres ≈85 px apart; "NEW DELEGATION" tag oversized when zoomed and drawn over the arrowhead; opening the inspector resizes the canvas (camera centre must be preserved — Astra's camera work targets this).
+3. **Integrate** (not done): merge the three worker branches into `feat/t3-readonly-activity` one at a time. File ownership was disjoint, so conflicts are not expected, but dry-run each with `git merge --no-commit --no-ff <branch>` and abort if anything conflicts.
+4. Re-run everything after integrating (below), then an **independent review** of the final diff (first Codex GPT-6 *Sol* review failed with "model at capacity"; use `gpt-6-astra` or `gpt-6-luna`, High).
+5. Final report: files changed, final SHA, test + browser evidence, limitations (live T3 unverified). Keep PR #36 draft until the owner explicitly approves merging.
+
+### Architecture & decisions (short)
+- T3 view only is on `react-force-graph-2d` (MIT). React Flow remains for the legacy ledger graph. Independent evaluation (Astra, **GO-WITH-CHANGES**): keep stable node objects, replace `graphData` identity only on topology change (otherwise the engine reheats), restore camera after topology updates (library auto-rescales), ambient motion must not call `d3ReheatSimulation` (alpha→1) — implemented as a bounded zero-mean per-frame offset; `d3AlphaTarget` is not exposed by the wrapper; emit particles only after link initialization; particle speed is per-frame; canvas needs an accessible DOM roster (implemented).
+- Truthfulness rules: a delegation edge proves lineage only; animate only newly observed, evidence-backed delegations (one-shot), never continuous particles; observed status changes flash a caption (STARTED / BLOCKED / FAILED / COMPLETED / RESUMED); missing data reads "Not reported by T3"; replay is labelled simulated; no prompts/messages/tool output/credentials.
+- QA hook: with `localStorage.mindmapDebug = "1"` the page exposes `window.__mindmap.nodes()` / `zoom()` (positions only).
+
+### File ownership used for the parallel split (reuse it to avoid conflicts)
+- Renderer/physics (Astra): `components/AgentNetwork.tsx`, `utils/networkModel.ts`, `utils/nodeDraw.ts`, `utils/networkPhysics.ts`, `utils/networkCamera.ts`, `hooks/useNetworkPointer.ts`, `hooks/useFreshEdges.ts`, `utils/edgeActivity.ts` + their tests.
+- UI polish: `AgentRoster.tsx`, `NetworkLegend.tsx`, `SessionInspector.tsx`, `utils/sessionInspector.ts`, `utils/provider.ts`, `styles/{graph,responsive,theme}.css`, `Inspector.test.tsx`, `NetworkA11y.test.tsx`.
+- QA: new files under `web/e2e/` only.
+- Lead: `views/MindmapView.tsx`, `DetailPanel.tsx`, docs, `package.json`, `test/setup.tsx`, `test/helpers.ts`, `T3.test.tsx`.
+All paths are under `web/src/` unless noted.
+
+### Continue on a different Mac — exact steps
+```sh
+git clone https://github.com/ManpreetS2/agent-mindmap.git && cd agent-mindmap   # or `git fetch --all --prune` in an existing clone
+git fetch origin
+git checkout feat/t3-readonly-activity            # PR #36 head (includes this document)
+# worker branches (read-only until you decide to merge):
+git branch --track t3/tune-network-physics-renderer origin/t3/tune-network-physics-renderer
+git branch --track t3/polish-agent-roster-inspector origin/t3/polish-agent-roster-inspector
+git branch --track t3/browser-qa-harness origin/t3/browser-qa-harness
+# optional: inspect a worker without disturbing the PR branch
+git worktree add ../mm-renderer t3/tune-network-physics-renderer
+
+# toolchain: Node 24.x (dev used 24.19) + npm, Python 3.12
+python3 -m venv .venv && .venv/bin/pip install -e '.[dev,t3]'
+npm ci --prefix web
+.venv/bin/python -m pytest -q                      # expect 249 passed
+(cd web && npx tsc --noEmit -p tsconfig.json && npx vitest run && npm run build)   # expect 113 tests on the PR branch
+# deterministic demos (never port 8787 — that is the legacy daemon):
+.venv/bin/python -m ingest.live --source t3-demo --demo-replay --demo-step-sec 5 --port 8899
+.venv/bin/python -m ingest.live --source t3-demo --port 8898
+# browser QA harness (from the QA branch): npm i --no-save playwright-core ; node web/e2e/run.mjs   (set CHROME_PATH to your Chrome/Chromium)
+```
+Integrate in this order (smallest blast radius first): `t3/browser-qa-harness` (new files only) → `t3/polish-agent-roster-inspector` → `t3/tune-network-physics-renderer`; run `npx vitest run && npx tsc --noEmit -p tsconfig.json` after each merge. Live T3: follow `docs/t3-integration.md` (`python -m ingest.t3_mcp login --url <your MCP URL>`); do not copy credential files between machines — re-authorize on the new Mac.
+
+### What could NOT be transferred (by design or by nature)
+- **T3 delegated-agent threads/transcripts** (Astra ×2, UI polish, QA, security review) live in the old Mac's T3 app, not in Git; the branches carry their code, and their findings/briefs are summarised above. Agents cannot be resumed on another machine — re-brief new ones using the ownership list.
+- Scratch tooling outside the repo: `/tmp/pw/*.mjs` (superseded by `web/e2e/` on the QA branch), `/tmp/shots/*.png` screenshots, `/tmp/legacy-dist`.
+- Local-only: `.venv/`, `web/node_modules/`, `web/dist/`, `ingest/.cache/`, the Claude auto-memory file `project_t3_force_graph_handoff.md`, and T3 OAuth credentials under `~/.config/agent-mindmap/` (never copy; re-run login).
+- Working-tree state of a worker that was *mid-edit* at interrupt time is captured only as of its last file write; nothing was lost that was on disk, but unwritten in-flight reasoning was.
 
 ## Mission and operating principles
 
