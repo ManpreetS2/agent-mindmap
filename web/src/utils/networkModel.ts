@@ -215,7 +215,7 @@ export function transitionCaption(t: StatusTransition): string {
   return t.to;
 }
 
-export const AMBIENT_PX = 3.2;
+export const AMBIENT_PX = 2.4;
 /** World units per painted frame, including active-status entry. At fit zoom <=1.8: <=0.216 px. */
 export const AMBIENT_MAX_STEP = 0.12;
 

@@ -140,7 +140,11 @@ try {
     let prev = null, maxStep = 0, minGap = Infinity, samples = 0, appearanceCount = 0, disappearanceCount = 0, lastEdge = false, stageSamples = new Map(), jumpCount = 0;
     const frames = []; let priorStage = 0, lastCapturedStage = 0;
     while (true) {
-      const st = await stageOf(page); const ns = await getNodes(page); const edgeCount = await page.locator(".agent-roster .roster-rel").count(); const edge = edgeCount > 0;
+      const st = await stageOf(page); const ns = await getNodes(page);
+      // Stage (banner DOM) and statuses (graph model) come from separate round-trips; a sample that
+      // straddles a stage boundary would pair one stage's banner with the next stage's statuses.
+      if (st !== await stageOf(page)) { await wait(50); continue; }
+      const edgeCount = await page.locator(".agent-roster .roster-rel").count(); const edge = edgeCount > 0;
       if (st) { stageSamples.set(st, ns.map((n) => n.status).join("/")); if (edge && !lastEdge) appearanceCount++; if (!edge && lastEdge) disappearanceCount++; }
       if (prev && ns.length === prev.length) {
         const step = maxDrift(prev, ns); maxStep = Math.max(maxStep, step); if (step > 40) jumpCount++;
