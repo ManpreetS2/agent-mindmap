@@ -66,15 +66,23 @@ describe("roster ordering and filtering", () => {
 });
 
 describe("legend toggle", () => {
-  it("is collapsible via aria-expanded", () => {
+  it("is a compact chip by default and expands via aria-expanded", () => {
     render(<NetworkLegend />);
     const t = screen.getByRole("button", { name: /legend/i });
+    expect(t).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText(/Arrows show delegation lineage/)).not.toBeVisible();
+    fireEvent.click(t);
     expect(t).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/Arrows show delegation lineage/)).toBeVisible();
     fireEvent.click(t);
     expect(t).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText(/Arrows show lineage, never ongoing messages/)).not.toBeVisible();
-    fireEvent.click(t);
-    expect(screen.getByText(/Arrows show lineage, never ongoing messages/)).toBeVisible();
+  });
+
+  it("keeps the full truthfulness explanation one click away", () => {
+    render(<NetworkLegend />);
+    fireEvent.click(screen.getByRole("button", { name: /legend/i }));
+    expect(screen.getByText("How events work")).toBeVisible();
+    expect(screen.getByText(/lineage, never ongoing messages\. With motion enabled/)).toBeInTheDocument();
   });
 
   it("starts compact on narrow screens", () => {

@@ -2,23 +2,16 @@ import type { Status } from "@shared/types";
 
 const STATUS_STYLES: Record<
   Status,
-  { bg: string; fg: string; dashed?: boolean }
+  { bg: string; fg: string; border: string; dashed?: boolean }
 > = {
-  FAILED: { bg: "#491b24", fg: "#ffb5c0" },
-  STALE: { bg: "var(--status-unknown-bg)", fg: "var(--status-unknown-fg)", dashed: true },
-  IDLE: { bg: "var(--status-idle-bg)", fg: "var(--status-idle-fg)" },
-  IN_PROGRESS: {
-    bg: "var(--status-progress-bg)",
-    fg: "var(--status-progress-fg)",
-  },
-  IN_REVIEW: { bg: "var(--status-review-bg)", fg: "var(--status-review-fg)" },
-  BLOCKED: { bg: "var(--status-blocked-bg)", fg: "var(--status-blocked-fg)" },
-  DONE: { bg: "var(--status-done-bg)", fg: "var(--status-done-fg)" },
-  UNKNOWN: {
-    bg: "var(--status-unknown-bg)",
-    fg: "var(--status-unknown-fg)",
-    dashed: true,
-  },
+  FAILED: { bg: "rgba(240, 89, 107, 0.16)", fg: "#ffa3ae", border: "rgba(240, 89, 107, 0.40)" },
+  STALE: { bg: "rgba(123, 132, 153, 0.12)", fg: "#aab3c5", border: "rgba(123, 132, 153, 0.55)", dashed: true },
+  IDLE: { bg: "rgba(123, 132, 153, 0.14)", fg: "#bfc7d6", border: "rgba(123, 132, 153, 0.30)" },
+  IN_PROGRESS: { bg: "rgba(91, 140, 255, 0.16)", fg: "#b3cbff", border: "rgba(91, 140, 255, 0.42)" },
+  IN_REVIEW: { bg: "rgba(139, 124, 255, 0.16)", fg: "#cbc3ff", border: "rgba(139, 124, 255, 0.42)" },
+  BLOCKED: { bg: "rgba(245, 185, 66, 0.14)", fg: "#f7cf7a", border: "rgba(245, 185, 66, 0.40)" },
+  DONE: { bg: "rgba(70, 201, 138, 0.14)", fg: "#8fe3b5", border: "rgba(70, 201, 138, 0.38)" },
+  UNKNOWN: { bg: "rgba(123, 132, 153, 0.12)", fg: "#aab3c5", border: "rgba(123, 132, 153, 0.55)", dashed: true },
 };
 
 interface StatusPillProps {
@@ -33,7 +26,7 @@ export function StatusPill({ status }: StatusPillProps) {
       style={{
         background: style.bg,
         color: style.fg,
-        border: style.dashed ? "1px dashed var(--text-muted)" : "1px solid transparent",
+        border: `1px ${style.dashed ? "dashed" : "solid"} ${style.border}`,
       }}
       aria-label={`Status ${status.replace("_", " ")}`}
     >

@@ -26,9 +26,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Fact({ label, value, missing }: { label: string; value: React.ReactNode; missing?: boolean }) {
+function Fact({ label, value, missing, wide, hero }: { label: string; value: React.ReactNode; missing?: boolean; wide?: boolean; hero?: boolean }) {
   return (
-    <div className="inspector-fact">
+    <div className={`inspector-fact${wide || hero ? " inspector-fact--wide" : ""}${hero ? " inspector-fact--hero" : ""}`}>
       <dt>{label}</dt>
       <dd className={missing ? "detail-muted" : undefined}>{value}</dd>
     </div>
@@ -112,12 +112,13 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
       <dl className="inspector-facts">
         <Fact label="Provider" value={session.provider ?? "Not reported by T3"} missing={!session.provider} />
         <Fact label="Model" value={session.model ?? "Not reported by T3"} missing={!session.model} />
-        <Fact label="Current task" value={node.current_task ?? "Not reported"} missing={!node.current_task} />
+        <Fact hero label="Current task" value={node.current_task ?? "Not reported"} missing={!node.current_task} />
         <Fact label="Project" value={session.project} />
         <Fact label="Branch" value={session.branch ?? "Not reported"} missing={!session.branch} />
-        <Fact label="Session" value={<><span className="mono">{session.thread_id}</span><div><CopySessionId id={session.thread_id} /></div></>} />
+        <Fact wide label="Session" value={<><span className="mono">{session.thread_id}</span><div><CopySessionId id={session.thread_id} /></div></>} />
         <Fact label="Source" value={session.source} />
         <Fact
+          wide
           label={simulated ? "Simulated activity time" : "Last verified activity"}
           missing={!node.last_activity_ts}
           value={

@@ -1,7 +1,7 @@
 import type { Edge, Node } from "@shared/types";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { formatRelativeAgo } from "../utils/format";
-import { groupRoster, updatedLabel } from "../utils/rosterOrder";
+import { groupRoster, rosterGroupOf, updatedLabel, type RosterGroupKey } from "../utils/rosterOrder";
 import { providerKey, providerLabel } from "../utils/provider";
 import { StatusPill } from "./StatusPill";
 
@@ -19,7 +19,16 @@ interface Props {
 /** Keyboard / screen-reader entry point to the canvas network (canvas itself is not focusable). */
 export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect, onHover, now }: Props) {
   const [query, setQuery] = useState("");
-  const groups = groupRoster(nodes, query);
+  const [only, setOnly] = useState<RosterGroupKey | "all">("all");
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return window.localStorage?.getItem("mindmapRosterCollapsed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage?.setItem("mindmapRosterCollapsed", collapsed ? "1" : "0"); } catch { /* storage unavailable */ }
+  }, [collapsed]);
+  const counts = { attention: 0, working: 0, settled: 0 } as Record<RosterGroupKey, number>;
+  for (const n of nodes) counts[rosterGroupOf(n.status)]++;
+  const groups = groupRoster(nodes, query).filter((g) => only === "all" || g.key === only);
   const shown = groups.reduce((n, g) => n + g.nodes.length, 0);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   // Delegation lineage as text, so keyboard / screen-reader users get the network's structure too.
@@ -44,19 +53,47 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
   const ago = (iso: string) => formatRelativeAgo(iso, now);
   const total = nodes.length;
   return (
-    <nav className="agent-roster" aria-label="Agents" onKeyDown={move}>
-      <h2 className="agent-roster__title">
-        Agents <span>{shown === total ? total : `${shown} of ${total}`}</span>
-      </h2>
-      <input
-        type="search"
-        className="roster-filter"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Filter agents"
-        aria-label="Filter agents by provider, model, task or status"
-        data-testid="roster-filter"
-      />
+    <nav className={`agent-roster${collapsed ? " is-collapsed" : ""}`} aria-label="Agents" onKeyDown={move}>
+      <div className="agent-roster__head">
+        <h2 className="agent-roster__title">
+          Agents <span>{shown === total ? total : `${shown} of ${total}`}</span>
+        </h2>
+        <button
+          type="button"
+          className="roster-collapse"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand agents panel" : "Collapse agents panel"}
+          title={collapsed ? "Expand agents panel" : "Collapse agents panel"}
+          onClick={() => setCollapsed((c) => !c)}
+        >
+          <span aria-hidden="true">{collapsed ? "»" : "«"}</span>
+        </button>
+      </div>
+      <div className="roster-tools">
+        <input
+          type="search"
+          className="roster-filter"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filter agents"
+          aria-label="Filter agents by provider, model, task or status"
+          data-testid="roster-filter"
+        />
+        <div className="roster-chips" role="group" aria-label="Show agents by state">
+          {([["all", "All", total], ["attention", "Attention", counts.attention], ["working", "Working", counts.working], ["settled", "Done", counts.settled]] as const).map(([k, label, n]) => (
+            <button
+              key={k}
+              type="button"
+              className={`roster-chip${only === k ? " is-on" : ""}`}
+              aria-pressed={only === k}
+              disabled={k !== "all" && n === 0}
+              onClick={() => setOnly(k)}
+            >
+              {label}<span>{n}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="sr-only" role="status">
         {shown === 0 ? "No agents match" : `${shown} of ${total} agents shown`}
       </p>
@@ -80,10 +117,12 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                     <button
                       type="button"
                       data-testid={`agent-node-${n.id}`}
+                      data-status={n.status}
                       className={`roster-item roster-item--${key}${selectedId === n.id ? " is-selected" : ""}${hoveredId === n.id ? " is-hovered" : ""}`}
                       aria-pressed={selectedId === n.id}
                       aria-label={`${providerLabel(s.provider)}, ${model}, ${n.status}, ${task}`}
                       aria-description={rel ?? undefined}
+                      title={`${providerLabel(s.provider)} · ${model}\n${task}`}
                       onClick={() => onSelect(n.id)}
                       onMouseEnter={() => onHover(n.id)}
                       onMouseLeave={() => onHover(null)}
@@ -93,12 +132,14 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                       <span className={`roster-shape roster-shape--${key}`} aria-hidden="true" />
                       <span className="roster-main">
                         <span className="roster-line">
-                          <strong>{providerLabel(s.provider)}</strong>
+                          <span className="roster-task">{task}</span>
                           <StatusPill status={n.status} />
                         </span>
-                        <span className="roster-model mono">{model}</span>
-                        <span className="roster-task">{task}</span>
-                        <span className="roster-updated">{updatedLabel(n.last_activity_ts, ago)}</span>
+                        <span className="roster-sub">
+                          <strong>{providerLabel(s.provider)}</strong>
+                          <span className="roster-model mono">{model}</span>
+                          <span className="roster-updated">{updatedLabel(n.last_activity_ts, ago)}</span>
+                        </span>
                         {rel && <span className="roster-rel">{rel}</span>}
                       </span>
                     </button>

@@ -9,11 +9,9 @@ const STATUSES = [
   ["STALE", "Stale / unknown"],
 ] as const;
 
-const NARROW = "(max-width: 767px)";
-
 export function NetworkLegend({ simulated = false }: { simulated?: boolean }) {
-  // Compact by default on narrow screens, expanded elsewhere; the user's toggle always wins.
-  const [open, setOpen] = useState(() => !(typeof window !== "undefined" && window.matchMedia?.(NARROW).matches));
+  // A compact chip by default everywhere so the network stays the centrepiece; the user's toggle wins.
+  const [open, setOpen] = useState(false);
   return (
     <div className={`network-legend${open ? "" : " is-collapsed"}`} role="group" aria-label="Legend">
       <button
@@ -40,9 +38,13 @@ export function NetworkLegend({ simulated = false }: { simulated?: boolean }) {
           </span>
         ))}
       </div>
-      <div className="network-legend__note">
-        Arrows show lineage, never ongoing messages. With motion enabled, a recent delegation seen during uninterrupted observation gets one travelling particle. “Newly observed” uses a static glow: the relationship was just discovered, and its creation time may be earlier.
-      </div>
+      <div className="network-legend__note">Arrows show delegation lineage.</div>
+      <details className="network-legend__more">
+        <summary>How events work</summary>
+        <p>
+          Arrows show lineage, never ongoing messages. With motion enabled, a recent delegation seen during uninterrupted observation gets one travelling particle. “Newly observed” uses a static glow: the relationship was just discovered, and its creation time may be earlier.
+        </p>
+      </details>
       </div>
     </div>
   );

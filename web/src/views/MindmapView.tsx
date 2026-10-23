@@ -23,6 +23,7 @@ import { NumberTicker } from "../components/magic/number-ticker";
 import { useResponsiveListDefault } from "../hooks/useResponsiveView";
 import { formatSourceTime } from "../utils/format";
 import { handoffEdgeCount } from "../utils/nodeFacts";
+import { agentMetrics, sourceKind } from "../utils/headerMetrics";
 import {
   EMPTY_FILTERS,
   filterTimelineEvents,
@@ -86,6 +87,9 @@ export function MindmapView({
     null,
   );
   const filterRegionRef = useRef<HTMLDivElement>(null);
+  // The legacy timeline is a drawer for T3 sessions (the network is the centrepiece); the ledger
+  // view keeps it open as before.
+  const [timelineOpen, setTimelineOpen] = useState(() => !activity.meta.t3);
   const [focusedTimelineEventId, setFocusedTimelineEventId] = useState<
     string | null
   >(null);
@@ -96,6 +100,8 @@ export function MindmapView({
   );
 
   const handoffs = useMemo(() => handoffEdgeCount(activity), [activity]);
+  const metrics = useMemo(() => agentMetrics(activity), [activity]);
+  const kind = sourceKind(activity);
   const nodeIds = useMemo(
     () => new Set(activity.nodes.map((n) => n.id)),
     [activity.nodes],
@@ -235,10 +241,10 @@ export function MindmapView({
         const target = e.target as HTMLElement;
         if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
         e.preventDefault();
-        const firstChip = filterRegionRef.current?.querySelector<HTMLButtonElement>(
-          ".filter-chip",
-        );
-        firstChip?.focus();
+        setTimelineOpen(true);
+        window.setTimeout(() => {
+          filterRegionRef.current?.querySelector<HTMLButtonElement>(".filter-chip")?.focus();
+        }, 0);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -248,23 +254,69 @@ export function MindmapView({
   return (
     <div className="mindmap-layout">
       {activity.meta.t3?.mode === "demo" && activity.meta.t3.replay && (
-        <div className="demo-replay-banner" role="status" aria-live="polite">
+        <div
+          className="demo-replay-banner"
+          role="status"
+          aria-live="polite"
+          title="Synthetic replay: no agents are connected and no API calls are made. Everything shown is simulated."
+        >
           <strong>DEMO REPLAY — SIMULATED ACTIVITY</strong>
           <span>No agents connected · no API calls</span>
           <span>Cycle {activity.meta.t3.replay.cycle + 1} · Stage {activity.meta.t3.replay.stage + 1}/{activity.meta.t3.replay.stage_count}: {activity.meta.t3.replay.label}</span>
         </div>
       )}
       {activity.meta.t3?.mode === "demo" && !activity.meta.t3.replay && (
-        <div className="demo-replay-banner" role="status">
+        <div
+          className="demo-replay-banner"
+          role="status"
+          title="Synthetic fixture: these example agents are not real T3 activity and no API calls are made."
+        >
           <strong>DEMO — SYNTHETIC FIXTURE DATA</strong>
           <span>Offline example agents · not real T3 activity · no API calls</span>
         </div>
       )}
       <header className="app-header">
         <div className="app-header__brand">
+          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
           <span className="app-header__title">MINDMAP</span>
-          <span className="app-header__project">
-            Project: {activity.project}
+          <span className="app-header__project" title={`Project: ${activity.project}`}>
+            {activity.project}
+          </span>
+        </div>
+        <div className="app-header__center">
+          <span className={`source-chip source-chip--${kind}`}>
+            <span className="source-chip__dot" aria-hidden="true" />
+            {activity.meta.t3 ? `Source: ${activity.meta.t3.replay && activity.meta.t3.mode === "demo" ? "Synthetic replay" : `T3 MCP · ${activity.meta.t3.mode === "demo" ? "DEMO — offline fixtures" : activity.meta.t3.connection}`}` : `Source: ledger + GitHub (${activity.meta.github})`}
+          </span>
+          {activity.meta.t3 ? (
+            <ul className="metric-list" aria-label="Agent summary">
+              <li className="metric"><strong>{metrics.total}</strong> agent{metrics.total === 1 ? "" : "s"}</li>
+              {metrics.working > 0 && <li className="metric metric--working"><i aria-hidden="true" /><strong>{metrics.working}</strong> working</li>}
+              {metrics.blocked > 0 && <li className="metric metric--blocked"><i aria-hidden="true" /><strong>{metrics.blocked}</strong> blocked</li>}
+              {metrics.failed > 0 && <li className="metric metric--failed"><i aria-hidden="true" /><strong>{metrics.failed}</strong> failed</li>}
+              <li
+                className="metric metric--delegations"
+                aria-label="Delegation relationship count"
+                title="Parent → child delegations reported by T3. Lineage only — not messages. (Legacy ledger 'handoffs' are a different concept.)"
+              >
+                <strong>{metrics.delegations}</strong> delegation{metrics.delegations === 1 ? "" : "s"}
+              </li>
+            </ul>
+          ) : (
+            <span className="app-header__handoffs" aria-label="Handoff edge count">
+              Handoffs{" "}
+              <NumberTicker value={handoffs} className="text-sm" />
+            </span>
+          )}
+        </div>
+        <div className="app-header__meta">
+          <span className={stale ? "timestamp-stale" : ""}>
+            Updated {formatSourceTime(activity.generated_at)}
+            {stale && (
+              <span className="timestamp-stale__hint">
+                (stale · {staleAgeLabel(staleRef, nowMs)} — refresh)
+              </span>
+            )}
           </span>
         </div>
         <div className="app-header__actions">
@@ -278,23 +330,6 @@ export function MindmapView({
           >
             {listView ? "Graph view" : "List view"}
           </Button>
-        </div>
-        <div className="app-header__meta">
-          <span className="app-header__handoffs" aria-label="Handoff edge count">
-            Handoffs{" "}
-            <NumberTicker value={handoffs} className="text-sm" />
-          </span>
-          <span className={stale ? "timestamp-stale" : ""}>
-            Updated {formatSourceTime(activity.generated_at)}
-            {stale && (
-              <span className="timestamp-stale__hint">
-                (stale · {staleAgeLabel(staleRef, nowMs)} — refresh)
-              </span>
-            )}
-          </span>
-          <span className="app-header__sources">
-            {activity.meta.t3 ? `Source: ${activity.meta.t3.replay && activity.meta.t3.mode === "demo" ? "Synthetic replay" : `T3 MCP · ${activity.meta.t3.mode === "demo" ? "DEMO — offline fixtures" : activity.meta.t3.connection}`}` : `Source: ledger + GitHub (${activity.meta.github})`}
-          </span>
         </div>
       </header>
 
@@ -387,28 +422,42 @@ export function MindmapView({
         )}
 
         <section
-          className={`timeline-region focus-region${listView ? " timeline-region--feed" : ""}`}
+          className={`timeline-region focus-region${listView ? " timeline-region--feed" : ""}${activity.meta.t3 ? " timeline-region--overlay" : ""}${timelineOpen ? "" : " is-collapsed"}`}
           aria-label="Activity timeline"
           tabIndex={0}
           onKeyDown={handleTimelineKeyDown}
         >
-          <div ref={filterRegionRef}>
-            <TimelineFilters
-              nodes={activity.nodes}
-              taskIds={taskIdsForFilters}
-              filters={filters}
-              onChange={setFilters}
+          <button
+            type="button"
+            className="timeline-toggle"
+            aria-expanded={timelineOpen}
+            aria-controls="timeline-drawer"
+            onClick={() => setTimelineOpen((o) => !o)}
+          >
+            <span className="timeline-toggle__chev" aria-hidden="true">{timelineOpen ? "▾" : "▸"}</span>
+            <span className="timeline-toggle__title">Activity timeline</span>
+            <span className="timeline-toggle__count">{visibleEvents.length} event{visibleEvents.length === 1 ? "" : "s"}</span>
+            <span className="timeline-toggle__hint">{timelineOpen ? "Hide filters & history" : "Filters & history"}</span>
+          </button>
+          <div id="timeline-drawer" className="timeline-drawer" hidden={!timelineOpen}>
+            <div ref={filterRegionRef}>
+              <TimelineFilters
+                nodes={activity.nodes}
+                taskIds={taskIdsForFilters}
+                filters={filters}
+                onChange={setFilters}
+              />
+            </div>
+            <TimelineSwimlanes
+              activity={activity}
+              events={visibleEvents}
+              highlightedTaskId={highlightedTaskId}
+              highlightedEventIds={highlightedEventIds}
+              onTaskIdClick={onTaskIdClick}
+              focusedEventId={focusedTimelineEventId}
+              nowMs={nowMs}
             />
           </div>
-          <TimelineSwimlanes
-            activity={activity}
-            events={visibleEvents}
-            highlightedTaskId={highlightedTaskId}
-            highlightedEventIds={highlightedEventIds}
-            onTaskIdClick={onTaskIdClick}
-            focusedEventId={focusedTimelineEventId}
-            nowMs={nowMs}
-          />
         </section>
 
         <UnparsedPanel lines={activity.unparsed} />

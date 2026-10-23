@@ -4,6 +4,7 @@ import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { UnsourcedTag } from "./UnsourcedTag";
 import { StatusPill } from "./StatusPill";
 import { formatSourceTime } from "../utils/format";
+import { providerKey, providerLabel } from "../utils/provider";
 
 type SortDir = "asc" | "desc";
 
@@ -117,6 +118,15 @@ export function ListView({
     return rows;
   }, [activity.edges, edgeSort.dir, edgeSort.key]);
 
+  const hasSessions = activity.nodes.some((n) => n.session);
+  const t3 = Boolean(activity.meta.t3);
+  const titles = t3
+    ? { bots: "Agents", tasks: "Tasks", edges: "Relationships", events: "Events" }
+    : { bots: "Bots", tasks: "Tasks", edges: "Edges", events: "Events" };
+  const emptyRow = (cols: number, text: string) => (
+    <tr className="list-empty-row"><td colSpan={cols} className="list-empty">{text}</td></tr>
+  );
+
   const eventById = useMemo(() => {
     const map = new Map<string, Event>();
     for (const e of activity.events) map.set(e.id, e);
@@ -125,8 +135,14 @@ export function ListView({
 
   return (
     <div className="list-view focus-region" role="region" aria-label="List view" tabIndex={0}>
-      <section>
-        <h2>Bots</h2>
+      <nav className="list-nav" aria-label="Jump to section">
+        <a href="#list-agents">{titles.bots}<span>{bots.length}</span></a>
+        <a href="#list-tasks">Tasks<span>{tasks.length}</span></a>
+        <a href="#list-edges">{titles.edges}<span>{edges.length}</span></a>
+        <a href="#list-events">Events<span>{events.length}</span></a>
+      </nav>
+      <section id="list-agents" aria-label="Bots">
+        <h2>{titles.bots} <span className="list-count">{bots.length}</span></h2>
         <table>
           <caption className="sr-only">Bots roster</caption>
           <thead>
@@ -144,6 +160,8 @@ export function ListView({
                 onSort={() => botSort.toggle("status")}
               />
               <th scope="col">Task</th>
+              {hasSessions && <th scope="col" className="col-hide-narrow">Provider · model</th>}
+              {hasSessions && <th scope="col" className="col-hide-narrow">Project · branch</th>}
             </tr>
           </thead>
           <tbody>
@@ -153,20 +171,34 @@ export function ListView({
                 className={selectedNodeId === n.id ? "is-selected" : ""}
               >
                 <td>
-                  <button type="button" onClick={() => onSelectNode(n.id)}>
-                    {n.label}
-                  </button>
+                  <span className={`list-agent${n.session ? ` list-agent--${providerKey(n.session.provider)}` : ""}`}>
+                    {n.session && <span className={`list-agent__shape list-agent__shape--${providerKey(n.session.provider)}`} aria-hidden="true" />}
+                    <button type="button" onClick={() => onSelectNode(n.id)}>
+                      {n.label}
+                    </button>
+                  </span>
                 </td>
                 <td><StatusPill status={n.status} /></td>
                 <td className="mono">{n.current_task ?? "—"}</td>
+                {hasSessions && (
+                  <td className="col-hide-narrow">
+                    {n.session ? (<>{providerLabel(n.session.provider)} <span className="mono">· {n.session.model ?? "model not reported"}</span></>) : "—"}
+                  </td>
+                )}
+                {hasSessions && (
+                  <td className="col-hide-narrow mono">
+                    {n.session ? `${n.session.project}${n.session.branch ? ` · ${n.session.branch}` : ""}` : "—"}
+                  </td>
+                )}
               </tr>
             ))}
+            {bots.length === 0 && emptyRow(hasSessions ? 5 : 3, "No agents reported.")}
           </tbody>
         </table>
       </section>
 
-      <section>
-        <h2>Tasks</h2>
+      <section id="list-tasks" aria-label="Tasks">
+        <h2>{titles.tasks} <span className="list-count">{tasks.length}</span></h2>
         <table>
           <caption className="sr-only">Tasks</caption>
           <thead>
@@ -202,12 +234,13 @@ export function ListView({
                 </td>
               </tr>
             ))}
+            {tasks.length === 0 && emptyRow(4, t3 ? "No ledger tasks — T3 sessions are listed under Agents." : "No tasks recorded.")}
           </tbody>
         </table>
       </section>
 
-      <section>
-        <h2>Edges</h2>
+      <section id="list-edges" aria-label="Edges">
+        <h2>{titles.edges} <span className="list-count">{edges.length}</span></h2>
         <table>
           <caption className="sr-only">Derived edges</caption>
           <thead>
@@ -252,12 +285,13 @@ export function ListView({
                 </td>
               </tr>
             ))}
+            {edges.length === 0 && emptyRow(5, t3 ? "No delegation relationships reported." : "No edges derived.")}
           </tbody>
         </table>
       </section>
 
-      <section>
-        <h2>Events</h2>
+      <section id="list-events" aria-label="Events">
+        <h2>{titles.events} <span className="list-count">{events.length}</span></h2>
         <table>
           <caption className="sr-only">Events</caption>
           <thead>
@@ -293,6 +327,7 @@ export function ListView({
                 </td>
               </tr>
             ))}
+            {events.length === 0 && emptyRow(4, "No events recorded.")}
           </tbody>
         </table>
       </section>
