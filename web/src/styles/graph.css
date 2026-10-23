@@ -1027,6 +1027,7 @@
   .network-canvas { order: 1; border-left: 0; }
   .agent-roster { order: 2; max-height: 170px; border-top: 1px solid var(--border-subtle); }
   .agent-roster ul { grid-auto-flow: column; grid-auto-columns: 220px; overflow-x: auto; }
-  .network-legend { right: 8px; bottom: 8px; max-width: calc(100% - 16px); }
+  /* sits above the roster strip (roster max-height 170px + border) */
+  .network-legend { right: 8px; bottom: 182px; max-width: calc(100% - 16px); }
   .network-legend__note { display: none; }
 }
