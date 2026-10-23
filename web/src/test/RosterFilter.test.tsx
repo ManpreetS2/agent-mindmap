@@ -72,9 +72,9 @@ describe("legend toggle", () => {
     expect(t).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(t);
     expect(t).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText(/Arrows show lineage only/)).not.toBeVisible();
+    expect(screen.queryByText(/Arrows show lineage, never ongoing messages/)).not.toBeVisible();
     fireEvent.click(t);
-    expect(screen.getByText(/Arrows show lineage only/)).toBeVisible();
+    expect(screen.getByText(/Arrows show lineage, never ongoing messages/)).toBeVisible();
   });
 
   it("starts compact on narrow screens", () => {

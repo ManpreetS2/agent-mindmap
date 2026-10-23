@@ -375,7 +375,8 @@ describe("real vs replay separation", () => {
     renderMindmap(<MindmapView activity={t3Activity(nodes, [["a", "b"]], "live")} initialListView={false} />);
     expect(screen.queryByText(/SIMULATED|DEMO/i)).toBeNull();
     expect(screen.getByText(/Verified delegation/)).toBeInTheDocument();
-    expect(screen.getByText(/never as proof of ongoing messages/)).toBeInTheDocument();
+    expect(screen.getByText(/lineage, never ongoing messages/)).toBeInTheDocument();
+    expect(screen.getByText(/“Newly observed” uses a static glow/)).toBeInTheDocument();
   });
   it("replay is labelled simulated everywhere", () => {
     const replay = { stage: 4, stage_count: 10, cycle: 0, step_sec: 5, label: "Delegation" };
