@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isEvidenced, newlyObservedEdgeIds, sourceKey, FRESH_EDGE_MS } from "../utils/edgeActivity";
 import { useFreshEdges } from "../hooks/useFreshEdges";
+import type { Activity } from "@shared/types";
 import { delegation, sessionNode, t3Activity } from "./helpers";
 
 const a = sessionNode("a"), b = sessionNode("b"), c = sessionNode("c");
@@ -55,10 +56,10 @@ describe("delegation evidence timing", () => {
   it.each(["continuous", "old", "outage", "stale", "gap", "invalid"] as const)("classifies %s observation without inventing new work", scenario => {
     const base = t3Activity([a, b], []);
     if (scenario === "outage") base.meta.t3!.connection = "unavailable";
-    if (scenario === "stale") base.nodes = [sessionNode("a", { status: "STALE" }), b];
     const { result, rerender } = renderHook(({ activity }) => useFreshEdges(activity), { initialProps: { activity: base } });
     const next = t3Activity([a, b], [["a", "b"]]);
     next.events.find(e => e.id === "delegation-b")!.source_time = scenario === "old" ? "2026-10-22T19:59:58Z" : scenario === "invalid" ? "invalid" : base.generated_at;
+    if (scenario === "stale") next.nodes = [sessionNode("a", { status: "STALE" }), b]; // a stale endpoint proves nothing is happening now
     if (scenario === "gap") next.generated_at = "2026-10-22T20:10:00Z";
     rerender({ activity: next });
     expect(result.current.get("delegation-b")).toBe(scenario === "continuous" ? "new-delegation" : "newly-observed");
@@ -70,5 +71,38 @@ describe("delegation evidence timing", () => {
     const offline = structuredClone(base); offline.meta.t3!.connection = "unavailable";
     rerender({ activity: offline }); rerender({ activity: structuredClone(base) });
     expect(result.current.size).toBe(0);
+  });
+});
+
+describe("continuity is bounded by the producer cadence", () => {
+  const at = (iso: string, poll?: number) => {
+    const act = t3Activity([a, b], [["a", "b"]]);
+    act.generated_at = iso;
+    act.events.find(e => e.id === "delegation-b")!.source_time = iso;
+    if (poll) act.meta.t3!.poll_sec = poll;
+    return act;
+  };
+  const observe = (prev: Activity, next: Activity) => {
+    const { result, rerender } = renderHook(({ activity }) => useFreshEdges(activity), { initialProps: { activity: prev } });
+    rerender({ activity: next });
+    return result.current.get("delegation-b");
+  };
+  const empty = (iso: string, poll?: number) => { const x = t3Activity([a, b], []); x.generated_at = iso; if (poll) x.meta.t3!.poll_sec = poll; return x; };
+
+  it("a healthy 15 s poll is continuous", () => {
+    expect(observe(empty("2026-10-22T20:00:00Z", 15), at("2026-10-22T20:00:15Z", 15))).toBe("new-delegation");
+  });
+  it("a missed two-minute stretch is history even with a connected snapshot and fresh-looking evidence", () => {
+    expect(observe(empty("2026-10-22T20:00:00Z", 15), at("2026-10-22T20:02:00Z", 15))).toBe("newly-observed");
+  });
+  it("a slower published cadence widens the window; a missing cadence assumes 15 s", () => {
+    expect(observe(empty("2026-10-22T20:00:00Z", 60), at("2026-10-22T20:01:40Z", 60))).toBe("new-delegation");
+    expect(observe(empty("2026-10-22T20:00:00Z"), at("2026-10-22T20:01:40Z"))).toBe("newly-observed");
+  });
+  it("an unrelated stale session does not veto a genuinely new delegation", () => {
+    const prev = t3Activity([a, b, sessionNode("quiet", { status: "STALE" })], []);
+    const next = t3Activity([a, b, sessionNode("quiet", { status: "STALE" })], [["a", "b"]]);
+    next.events.find(e => e.id === "delegation-b")!.source_time = prev.generated_at;
+    expect(observe(prev, next)).toBe("new-delegation");
   });
 });

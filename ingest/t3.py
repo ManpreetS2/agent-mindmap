@@ -87,8 +87,11 @@ def _looks_sensitive(text: str, *, blobs: bool = True) -> bool:
     return False
 
 
+_SLASHES = str.maketrans({"\u2215": "/", "\u2044": "/", "\u29f8": "/", "\uff0f": "/", "\u2216": "\\", "\u29f5": "\\", "\uff3c": "\\"})
+
+
 def _normalize(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
+    text = unicodedata.normalize("NFKC", text).translate(_SLASHES)
     text = "".join(" " if c.isspace() else c for c in text if unicodedata.category(c)[0] != "C" or c.isspace())
     return " ".join(text.split())
 
@@ -158,24 +161,34 @@ _PATH_ROOTS = (
 )
 _PATHLIKE = re.compile(
     r"""(?ix)
-      (?:^|[\s"'`(\[=:,;])
+      (?:^|[^a-z0-9])                       # path roots may follow any punctuation, not only spaces
       (?:
           ~[\w.-]*[\\/]                      # ~/x  ~user/x
         | \.{1,2}[\\/][^\s]                   # ./x  ../x
         | [a-z]:[\\/]                          # C:\x  C:/x
-        | \\\\[^\s\\/]+[\\/]                 # \\server\share
+        | \\\\[^\s\\/]+[\\/]                 # \\server\share, \\wsl$\distro
         | file:/{1,3}[^\s]
-        | /(?:""" + "|".join(_PATH_ROOTS) + r""")(?:[\\/]|$)   # /Users/...  /tmp
+        | /(?:""" + "|".join(_PATH_ROOTS) + r""")(?![\w.-])   # /Users  /tmp  [/Users]
         | /[\w.@+-]+/[\w.@+-]                  # any absolute path with 2+ segments
       )
     """
 )
+# Unambiguous macOS/home roots count even when glued to a word ("prefix/Users/me").
+_EMBEDDED_ROOT = re.compile(r"(?i)/(?:users|volumes|private)/[^/\s]")
+_URL = re.compile(r"(?i)\bhttps?://[^\s]+")
 _WIN_HOME = re.compile(r"(?i)[\\/](?:users|home)[\\/][^\\/\s]+[\\/]")
 _WORKTREE = re.compile(r"(?i)\.(?:t3|claude|codex|config|ssh|aws|gnupg)[\\/]")
 
 
 def _looks_like_path(text: str) -> bool:
-    return bool(_PATHLIKE.search(text) or _WIN_HOME.search(text) or _WORKTREE.search(text))
+    # Public http(s) URLs are not filesystem paths (https://github.com/Users/x/repo stays visible).
+    text = _URL.sub(" ", text)
+    return bool(
+        _PATHLIKE.search(text)
+        or _EMBEDDED_ROOT.search(text)
+        or _WIN_HOME.search(text)
+        or _WORKTREE.search(text)
+    )
 
 
 def _pathlike_any(text: str) -> bool:
@@ -240,7 +253,12 @@ def safe_thread_id(value: Any) -> bool:
 
 def safe_ident(value: Any) -> str | None:
     """Strict allowlist for machine-ish fields (status, model, version, ids)."""
-    if isinstance(value, str) and _IDENT.fullmatch(value) and not _looks_sensitive(value):
+    if (
+        isinstance(value, str)
+        and _IDENT.fullmatch(value)
+        and not _looks_sensitive(value)
+        and not _pathlike_any(value)
+    ):
         return value
     return None
 
@@ -383,8 +401,11 @@ async def collect(session: Any, cache: dict | None = None) -> dict:
 
 
 class T3Projection:
-    def __init__(self, source: str, *, demo: bool = False, stale_after: float = 300):
+    def __init__(
+        self, source: str, *, demo: bool = False, stale_after: float = 300, poll_sec: float | None = None
+    ):
         self.source = source
+        self.poll_sec = poll_sec  # producer cadence; lets clients bound "continuous observation"
         self.demo = demo
         self.stale_after = stale_after
         self.last: dict | None = None
@@ -463,7 +484,7 @@ class T3Projection:
                         "attribution": {"method": "unknown"},
                         "source_url": "t3-thread://v1/" + thread_id,
                         "source_time": ts,
-                        "raw": "T3 reported thread status: " + reported,
+                        "raw": ("Simulated thread status: " if self.demo else "T3 reported thread status: ") + reported,
                     }
                 )
             parent = t.get("parentThreadId")
@@ -485,7 +506,7 @@ class T3Projection:
                             "attribution": {"method": "unknown"},
                             "source_url": "t3-thread://v1/" + thread_id,
                             "source_time": created,
-                            "raw": "T3 reported subagent lineage",
+                            "raw": "Simulated subagent lineage" if self.demo else "T3 reported subagent lineage",
                         }
                     )
                     edges.append(
@@ -513,6 +534,7 @@ class T3Projection:
                         raw["environment"].get("serverVersion")
                     ),
                     "stale_after_sec": self.stale_after,
+                    **({"poll_sec": self.poll_sec} if self.poll_sec else {}),
                 },
             },
             "nodes": nodes,

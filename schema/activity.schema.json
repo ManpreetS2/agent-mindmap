@@ -103,6 +103,10 @@
             "stale_after_sec": {
               "type": "number",
               "minimum": 1
+            },
+            "poll_sec": {
+              "type": "number",
+              "exclusiveMinimum": 0
             }
           }
         },

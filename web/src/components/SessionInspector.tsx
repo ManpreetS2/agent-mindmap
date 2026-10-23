@@ -106,7 +106,7 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
 
       <div className="inspector-status" data-testid="inspector-status">
         <StatusPill status={node.status} />
-        <span className="detail-meta">T3 reported: {session.reported_status}</span>
+        <span className="detail-meta">{simulated ? "Simulated status" : "T3 reported"}: {session.reported_status}</span>
       </div>
 
       <dl className="inspector-facts">

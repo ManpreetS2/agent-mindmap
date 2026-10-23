@@ -551,3 +551,56 @@ def test_path_titles_never_reach_snapshot_or_served_json(tmp_path, monkeypatch):
     for leak in ("/Users/manpreetsingh", ".t3/worktrees", "~/code/private-project", "/home/dev"):
         assert leak not in body
     assert "[redacted path]" in body
+
+
+# ---- fifth review round: path gaps, URL exemption, simulated wording, cadence ----------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["see [/Users]", "prefix/Users/me", "see ∕Users∕me", "x ⁄home⁄dev⁄app", "(/Users/me/proj)", "a:/tmp", "\\\\wsl$\\Ubuntu\\home\\me"],
+)
+def test_remaining_path_shapes_and_slash_lookalikes_are_redacted(title):
+    assert safe_text(title).startswith("[redacted"), title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "https://github.com/Users/name/repo",
+        "See https://github.com/manpreets2/agent-mindmap/pull/36",  # mixed-case URL paths stay fail-closed (webhook secrets live in paths)
+        "feature/home-page",
+        "Review /usage-limits command",
+    ],
+)
+def test_public_urls_branches_and_slash_commands_stay_visible(title):
+    assert safe_text(title) == title
+
+
+def test_safe_ident_rejects_paths():
+    assert safe_ident("v1:/Users/me/private") is None
+    assert safe_ident("~/x") is None
+    assert safe_ident("openai/gpt-5") == "openai/gpt-5"
+    assert safe_ident("0.1.2") == "0.1.2"
+
+
+def test_server_version_path_never_reaches_snapshot():
+    raw = copy.deepcopy(read_demo())
+    raw["environment"]["serverVersion"] = "v1:/Users/me/private"
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert "/Users" not in json.dumps(snap)
+
+
+def test_static_demo_events_are_not_worded_as_t3_reports():
+    snap = T3Projection("local", demo=True).snapshot(read_demo(), NOW)
+    raws = [e["raw"] for e in snap["events"]]
+    assert raws and not any("T3 reported" in r for r in raws)
+    assert all(r.startswith("Simulated") for r in raws)
+    live = T3Projection("local").snapshot(read_demo(), NOW)
+    assert any(e["raw"].startswith("T3 reported") for e in live["events"])
+
+
+def test_poll_cadence_is_published_for_clients():
+    snap = T3Projection("local", poll_sec=15).snapshot(read_demo(), NOW)
+    assert snap["meta"]["t3"]["poll_sec"] == 15
+    assert "poll_sec" not in T3Projection("local").snapshot(read_demo(), NOW)["meta"]["t3"]

@@ -42,7 +42,10 @@ class T3Daemon(LiveDaemon):
             else "t3-" + hashlib.sha256(self.t3_url.encode()).hexdigest()[:16]
         )
         self._projection = T3Projection(
-            source, demo=self.demo, stale_after=self.stale_after
+            source,
+            demo=self.demo,
+            stale_after=self.stale_after,
+            poll_sec=self.demo_step_sec if self.replay else self.poll_sec,
         )
 
     def run_poll_cycle(self):
@@ -70,7 +73,7 @@ class T3Daemon(LiveDaemon):
                 activity["project"] = "BlockForge · SIMULATED"
                 for event in activity["events"]:
                     event["raw"] = event["raw"].replace(
-                        "T3 reported", "SIMULATED replay"
+                        "Simulated", "SIMULATED replay", 1
                     )
         except Exception:  # noqa: BLE001 — redact upstream error payloads
             activity = self._projection.snapshot(None, self.clock())
