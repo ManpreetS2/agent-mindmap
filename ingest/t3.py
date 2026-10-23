@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import copy
 import hashlib
 import html
@@ -57,7 +59,7 @@ _SUSPICIOUS = re.compile(
     | \beyJ[\w-]{8,}\.[\w-]{8,}(?:\.[\w-]*)?
     | -----BEGIN[ A-Z]*(?:PRIVATE KEY|CERTIFICATE|PGP)
     | \b[a-z][a-z0-9+.-]*://[^\s/@:]+:[^\s/@]+@
-    | (?:[\w-]*(?:token|secret|passw(?:or)?d|passwd|pwd|api[_-]?key|apikey|credential|private[_-]?key|cookie|session[_-]?id|access[_-]?key)[\w-]*)\s*[:=]
+    | (?:token|secret|passw(?:or)?d|passwd|pwd|api[_-]?key|apikey|credential|private[_-]?key|cookie|session[_-]?id|access[_-]?key)[\w-]*\s*[:=]
     | [?&](?:token|key|secret|sig|signature|password|access_token|api_key)=
     """
 )
@@ -91,17 +93,55 @@ def _normalize(text: str) -> str:
 
 
 _MAX_DECODE_PASSES = 6
+# Only the first SCAN_LIMIT characters are ever inspected or published (output is far shorter),
+# which also bounds the work done on hostile input.
+SCAN_LIMIT = 1000
+_ESCAPES = re.compile(r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})")
+_B64 = re.compile(r"[A-Za-z0-9+/]{16,}={0,2}")
+
+
+def _unescape(text: str) -> str:
+    return _ESCAPES.sub(lambda m: chr(int(m.group(1) or m.group(2), 16)), text)
+
+
+def _utf7(text: str) -> str:
+    if "+" not in text:
+        return text
+    try:
+        return text.encode("ascii", "ignore").decode("utf-7", "ignore")
+    except (UnicodeError, ValueError):
+        return text
+
+
+def _base64_payloads(text: str) -> list[str]:
+    out = []
+    for blob in _B64.findall(text)[:8]:
+        if len(blob) % 4:
+            continue
+        try:
+            raw = base64.b64decode(blob, validate=True)
+        except (ValueError, binascii.Error):
+            continue
+        decoded = raw.decode("utf-8", "ignore")
+        if decoded and all(c.isprintable() for c in decoded):
+            out.append(decoded)
+    return out
 
 
 def _sensitive_any(text: str, *, blobs: bool = True) -> bool:
-    """True if the text, or any bounded percent/HTML-decoded + NFKC-normalized form, looks
-    like a credential. Fails closed if decoding never settles (deep nesting)."""
-    variant = _normalize(text)
+    """True if the text, or any bounded percent/HTML/escape/UTF-7-decoded + NFKC-normalized
+    form (or a base64 payload inside it), looks like a credential. Fails closed if decoding
+    never settles (deep nesting)."""
+    variant = _normalize(text[: SCAN_LIMIT * 4])[:SCAN_LIMIT]
     for _ in range(_MAX_DECODE_PASSES + 1):
         squashed = re.sub(r"[\s\u200b-\u200f]+", "", variant)
         if _looks_sensitive(variant, blobs=blobs) or _looks_sensitive(squashed, blobs=False):
             return True
-        decoded = _normalize(html.unescape(unquote_plus(variant)))
+        if any(_looks_sensitive(p, blobs=False) for p in _base64_payloads(squashed)):
+            return True
+        if "+" in variant and _looks_sensitive(_normalize(_utf7(variant)), blobs=False):
+            return True  # UTF-7 must be checked before unquote_plus turns "+" into a space
+        decoded = _normalize(_utf7(_unescape(html.unescape(unquote_plus(variant)))))[:SCAN_LIMIT]
         if decoded == variant:
             return False
         variant = decoded
@@ -127,14 +167,19 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@%+-]{0,299}")
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
 
-def safe_thread_id(value: str) -> bool:
-    """Plain IDs only. UUIDs pass outright; `thread:` forms get shape checks; anything else
-    also gets the blob heuristic. Raises TypeError for non-strings (malformed snapshot)."""
-    if not _THREAD_ID.fullmatch(value):
+def safe_thread_id(value: Any) -> bool:
+    """Plain IDs only. UUIDs pass; composite `thread:...%3A...` forms are split into segments
+    (UUID segments skipped) and every other segment gets the full credential check."""
+    if not isinstance(value, str) or not _THREAD_ID.fullmatch(value):
         return False
     if _UUID.fullmatch(value):
         return True
-    return not _sensitive_any(value, blobs=not value.startswith("thread:"))
+    if _sensitive_any(value, blobs=False):
+        return False
+    segments = unquote_plus(value).split(":")
+    return not any(
+        _sensitive_any(seg) for seg in segments if seg and not _UUID.fullmatch(seg)
+    )
 
 
 def safe_ident(value: Any) -> str | None:

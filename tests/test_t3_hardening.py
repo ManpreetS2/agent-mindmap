@@ -440,3 +440,39 @@ def test_thread_id_bypasses_are_dropped(thread_id):
     snap = T3Projection("local").snapshot(raw, NOW)
     assert thread_id not in json.dumps(snap)
     assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
+
+
+# ---- fourth review round -----------------------------------------------------
+
+
+def test_long_titles_are_scanned_in_bounded_time():
+    import time
+
+    start = time.perf_counter()
+    assert safe_text("word " * 100_000) == ("word " * 100_000).strip()[:160]
+    assert time.perf_counter() - start < 2
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        "cGFzc3dvcmQ9YWJjMTIz",  # base64("password=abc123")
+        "Zm9vIEF1dGhvcml6YXRpb246IEJhc2ljIGFiYw==",  # base64("foo Authorization: Basic abc")
+        r"password=abc123",
+        r"api_key\x3dabcd1234",
+        "+AHA-assword+AD0-x",  # UTF-7 "password=x"
+    ],
+)
+def test_other_encoded_credentials_are_redacted(encoded):
+    assert safe_text(encoded) == "[redacted]"
+
+
+@pytest.mark.parametrize(
+    "thread_id",
+    ["thread:aB3dE5gH7jK9mN1pQ3sT5vW7yZ", None, 5, ["x"]],
+)
+def test_composite_and_malformed_thread_ids_never_abort_snapshot(thread_id):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = thread_id
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
