@@ -330,3 +330,102 @@ def read_demo() -> dict:
     return json.loads(
         (Path(__file__).resolve().parents[1] / "fixtures/t3-demo.json").read_text()
     )
+
+
+# Fixed synthetic scenario: no discovery, provider calls or wall-clock timestamps.
+DEMO_REPLAY_EPOCH = 1792699200
+DEMO_REPLAY_STAGES = (
+    ("Agents idle", "idle", "idle"),
+    ("Minecraft navigation task assigned", "idle", "idle"),
+    ("Codex plans a safe route to the village", "running", "idle"),
+    ("Codex delegates navigation tests to Claude", "running", "queued"),
+    (
+        "Route implementation and navigation tests run concurrently",
+        "running",
+        "running",
+    ),
+    ("Codex waits for the chunk-map dependency", "waiting", "running"),
+    ("Claude's simulated obstacle test fails", "waiting", "failed"),
+    ("Dependency ready; implementation and test retry begin", "running", "running"),
+    ("Navigation implementation and tests complete", "completed", "completed"),
+    ("Replay resets: tasks and delegation cleared", "idle", "idle"),
+)
+
+
+def demo_replay(elapsed: float, step_sec: float = 5) -> tuple[dict, dict, float]:
+    """Pure, seekable replay. Identical elapsed time always produces identical data."""
+    import math
+
+    if not math.isfinite(step_sec) or not 2 <= step_sec <= 300:
+        raise ValueError("Demo replay step must be 2–300 seconds")
+    if not math.isfinite(elapsed):
+        raise ValueError("Demo replay elapsed time must be finite")
+    tick = math.floor(max(0, elapsed) / step_sec)
+    cycle, stage = divmod(tick, len(DEMO_REPLAY_STAGES))
+    label, codex_status, claude_status = DEMO_REPLAY_STAGES[stage]
+    observed = DEMO_REPLAY_EPOCH + tick * step_sec
+    ts = datetime.fromtimestamp(observed, UTC).isoformat()
+    delegated_at = datetime.fromtimestamp(
+        DEMO_REPLAY_EPOCH + (cycle * len(DEMO_REPLAY_STAGES) + 3) * step_sec, UTC
+    ).isoformat()
+    delegated = 3 <= stage <= 8
+    assigned = 1 <= stage <= 8
+    raw = {
+        "environment": {"serverVersion": "SYNTHETIC REPLAY"},
+        "providers": [
+            {"providerInstanceId": "demo-codex", "driverKind": "codex"},
+            {"providerInstanceId": "demo-claude", "driverKind": "claudeAgent"},
+        ],
+        "threads": [],
+    }
+    for agent, status, title, model in (
+        (
+            "codex",
+            codex_status,
+            "Navigate Minecraft safely to the village"
+            if assigned
+            else "Codex · awaiting a demo task",
+            "GPT-5-Codex (simulated)",
+        ),
+        (
+            "claude",
+            claude_status,
+            "Retry obstacle and safe-path tests"
+            if stage == 7
+            else "Test Minecraft obstacle avoidance"
+            if delegated
+            else "Claude · awaiting a demo task",
+            "Claude Sonnet (simulated)",
+        ),
+    ):
+        raw["threads"].append(
+            {
+                "threadId": "demo-replay-" + agent,
+                "projectTitle": "BlockForge · Minecraft Navigation (synthetic)",
+                "title": "[SIMULATED] " + title,
+                "status": status,
+                "providerInstanceId": "demo-" + agent,
+                "model": model,
+                "updatedAt": ts,
+                "createdAt": delegated_at if agent == "claude" and delegated else ts,
+                "branch": "demo/minecraft-navigation" if assigned else None,
+                "linkedPullRequest": None,
+                "parentThreadId": "demo-replay-codex"
+                if agent == "claude" and delegated
+                else None,
+                "relationshipToParent": "subagent"
+                if agent == "claude" and delegated
+                else None,
+            }
+        )
+    return (
+        raw,
+        {
+            "stage": stage,
+            "stage_count": len(DEMO_REPLAY_STAGES),
+            "cycle": cycle,
+            "step_sec": step_sec,
+            "label": label,
+        },
+        observed,
+    )

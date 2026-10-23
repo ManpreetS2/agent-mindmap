@@ -3,7 +3,7 @@ import type { EdgeType } from "@shared/types";
 
 const ORDER: EdgeType[] = ["handoff", "verdict", "pr", "merge"];
 
-export function EdgeLegend({ t3 = false }: { t3?: boolean }) {
+export function EdgeLegend({ t3 = false, simulated = false }: { t3?: boolean; simulated?: boolean }) {
   return (
     <div className="edge-legend" role="list" aria-label="Edge types legend">
       {(t3 ? ["delegation" as EdgeType] : ORDER).map((type) => {
@@ -21,7 +21,7 @@ export function EdgeLegend({ t3 = false }: { t3?: boolean }) {
                 strokeDasharray={v.strokeDasharray}
               />
             </svg>
-            <span>{v.label}</span>
+            <span>{simulated && type === "delegation" ? "Simulated delegation" : v.label}</span>
           </div>
         );
       })}

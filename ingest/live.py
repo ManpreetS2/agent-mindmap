@@ -645,6 +645,8 @@ def resolve_live_ledger(
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MINDMAP live daemon + localhost server")
     parser.add_argument("--source", choices=("legacy", "t3", "t3-demo"), default="legacy")
+    parser.add_argument("--demo-replay", action="store_true", help="Replay synthetic activity (t3-demo only)")
+    parser.add_argument("--demo-step-sec", type=float, default=5, help="Replay stage duration: 2–300 seconds")
     parser.add_argument("--t3-url", default="http://127.0.0.1:3773/mcp")
     parser.add_argument("--t3-poll-sec", type=float, default=15)
     parser.add_argument("--t3-stale-sec", type=float, default=300)
@@ -682,6 +684,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
+    if args.demo_replay and args.source != "t3-demo":
+        parser.error("--demo-replay requires --source t3-demo")
+    if args.demo_replay:
+        from .t3 import demo_replay
+        try:
+            demo_replay(0, args.demo_step_sec)
+        except ValueError as exc:
+            parser.error(str(exc))
+
     ledger_poll = args.ledger_poll_sec
     if ledger_poll is None:
         ledger_poll = _env_float("MINDMAP_LEDGER_POLL_SEC", DEFAULT_LEDGER_POLL_SEC)
@@ -709,7 +720,8 @@ def main(argv: list[str] | None = None) -> int:
         daemon = T3Daemon(activity_path=args.activity_out, static_dir=args.static_dir,
                           cache_dir=args.cache_dir, bots=[], t3_url=args.t3_url,
                           demo=args.source == "t3-demo", poll_sec=args.t3_poll_sec,
-                          stale_after=args.t3_stale_sec)
+                          stale_after=args.t3_stale_sec, replay=args.demo_replay,
+                          demo_step_sec=args.demo_step_sec)
     else:
         try:
             source, ledger_path, ledger_url = resolve_live_ledger(

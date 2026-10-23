@@ -78,12 +78,12 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
       <FactRow label="Current task">{node.current_task ?? "Unknown task"}</FactRow>
       <FactRow label="Project">{node.session.project}</FactRow>
       <FactRow label="Branch">{node.session.branch ?? "Not reported"}</FactRow>
-      <FactRow label="Last verified T3 activity">{node.last_activity_ts ? formatSourceTime(node.last_activity_ts) : "Not reported"}</FactRow>
+      <FactRow label={activity.meta.t3?.replay ? "Simulated activity time" : "Last verified T3 activity"}>{node.last_activity_ts ? formatSourceTime(node.last_activity_ts) : "Not reported"}</FactRow>
       <FactRow label="Source">{node.session.source}<div className="mono">Thread: {node.session.thread_id}</div></FactRow>
       <FactRow label="Source links">{node.session.source_links.length ? node.session.source_links.filter(isHttpSourceUrl).map(url => (
         <div key={url}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></div>
       )) : "No external links reported"}</FactRow>
-      <p className="detail-muted">Read-only metadata. Conversation text and tool output are not published.</p>
+      <p className="detail-muted">{activity.meta.t3?.replay ? "Synthetic replay metadata. These are simulated agents, models, tasks and delegation." : "Read-only metadata. Conversation text and tool output are not published."}</p>
     </aside>
   );
 

@@ -123,7 +123,7 @@ export interface SessionMetadata {
 }
 
 export interface ActivityMeta {
-  t3?: { source: string; mode: "live" | "demo"; connection: "connected" | "unavailable"; server_version: string | null; stale_after_sec: number };
+  t3?: { source: string; mode: "live" | "demo"; connection: "connected" | "unavailable"; server_version: string | null; stale_after_sec: number; replay?: { stage: number; stage_count: number; cycle: number; step_sec: number; label: string } };
   github: GitHubMetaStatus;
   /** Present when ingest reports ledger read status (MM-010). */
   ledger?: LedgerMetaStatus;

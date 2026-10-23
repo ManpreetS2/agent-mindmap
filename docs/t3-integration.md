@@ -20,7 +20,7 @@ For deterministic offline mode (no T3 installation, authentication or network re
 python -m ingest.live --source t3-demo
 ```
 
-Open http://127.0.0.1:8787. The header explicitly says **DEMO — offline fixtures**. Five example threads demonstrate Codex, Claude Code, delegation, waiting, completion and failure. Model strings are deliberately labeled examples (`reported-codex-model`, `reported-claude-model`), not claims about a real model. The observation clock is frozen at 2026-10-22 20:00 UTC. Tests exercise transitions separately; the demo does not invent a stream of activity.
+Open http://127.0.0.1:8787. The header explicitly says **DEMO — offline fixtures**. Five example threads demonstrate Codex, Claude Code, delegation, waiting, completion and failure. Model strings are deliberately labeled examples (`reported-codex-model`, `reported-claude-model`), not claims about a real model. The observation clock is frozen at 2026-10-22 20:00 UTC. Tests exercise transitions separately; the static demo does not invent a stream of activity. For an explicitly synthetic animated scenario, use `python -m ingest.live --source t3-demo --demo-replay --demo-step-sec 5`; see the README for stage/cadence details.
 
 ## Connect your installed T3
 
@@ -100,3 +100,13 @@ A real T3 connection and OAuth handshake remain unverified. Browser screenshot v
 ## Later direct CLI monitoring
 
 Add separate source adapters behind the same normalized contract, using documented Claude Code hooks/events and Codex app-server/structured events after reviewing the installed versions. Keep provider-native IDs, provenance and genuine parent-child links. Do not infer work from terminal text. Multi-environment selection, durable event history and incremental MCP activity reads can follow without turning this dashboard into an agent executor.
+
+## DEMO REPLAY verification
+
+The optional `--demo-replay --demo-step-sec 5` uses a pure elapsed-time scenario in `ingest/t3.py` and the existing daemon/writer/HTTP transport. The synthetic clock advances only at stage boundaries. Repeated reads within a stage retain the same snapshot and ETag; later cycles change timestamps without accumulating entities. Two session IDs survive all stages, with a single delegation edge only in stages 4–9 (one-based display). Stage 10 clears the tasks/edge, then stage 1 begins the next cycle. No source discovery, static fixture read, provider/API execution or GitHub poll runs in replay mode.
+
+The daemon checks replay every 0.5 seconds; the existing browser transport detects demo replay metadata and uses conditional polling every 0.5–1 seconds, including rescheduling its first timer when replay is discovered. Static demo and real T3 keep their normal polling cadence. Replay is rejected for real/legacy sources. The ten stages follow elapsed time rather than queued frame delivery, so suspended tabs or slow connections can miss stages.
+
+Verification for this update: **147 Python tests passed, 1 skipped; 64 frontend tests passed; TypeScript and production build passed; replay adapter/test lint passed.** Injectable-clock tests cover every status transition, exact boundaries, multiple cycles, stable IDs/layouts, bounded events/edges, ETags, restart and source isolation. HTTP tests verify 304, updated snapshots and edge removal. React tests cover every stage through the real feed, cadence isolation, status pulses and graph reconciliation preserving dragged coordinates/selection. A spring-with-three-keyframes error exposed by the replay test was fixed by using a short tween for the existing status pulse; the reduced-motion branch remains unchanged.
+
+Full visual/browser testing remains **unverified**: the local Playwright Chromium executable is absent, and the available cloud browser returned `ERR_CONNECTION_REFUSED` for the actual local replay server. No public bind or tunnel was added. Existing jsdom canvas and bundle-size warnings remain. The original live T3/OAuth verification boundary is unchanged.

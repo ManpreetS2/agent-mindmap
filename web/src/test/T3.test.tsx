@@ -86,3 +86,63 @@ it("expires running sessions even when the server returns unchanged 304 snapshot
   expect(expired.nodes[0].status).toBe("STALE");
   expect(expired.nodes[0].id).toBe("codex");
 });
+
+function replayStage(tick: number): Activity {
+  const stage = tick % 10;
+  const states = [
+    ["IDLE", "IDLE"], ["IDLE", "IDLE"], ["IN_PROGRESS", "IDLE"],
+    ["IN_PROGRESS", "BLOCKED"], ["IN_PROGRESS", "IN_PROGRESS"],
+    ["BLOCKED", "IN_PROGRESS"], ["BLOCKED", "FAILED"],
+    ["IN_PROGRESS", "IN_PROGRESS"], ["DONE", "DONE"], ["IDLE", "IDLE"],
+  ] as const;
+  return { ...sample, generated_at: new Date(tick * 5000).toISOString(),
+    meta: { ...sample.meta, t3: { ...sample.meta.t3!, replay: {
+      stage, stage_count: 10, cycle: Math.floor(tick / 10), step_sec: 5, label: `Simulated stage ${stage + 1}`,
+    } } },
+    nodes: sample.nodes.map((n, i) => ({ ...n, status: states[stage][i] })),
+    edges: stage >= 3 && stage <= 8 ? sample.edges : [],
+  };
+}
+
+it("shows every replay stage through the existing feed without reloading or duplicate nodes", async () => {
+  vi.useFakeTimers();
+  let tick = 0;
+  const fetchImpl = vi.fn(async () => new Response(JSON.stringify(replayStage(tick))));
+  const transport = createPollTransport({ fetchImpl }); // production default is still 10s
+  function ReplayView() {
+    const feed = useActivityFeed(transport);
+    return feed.activity ? <MindmapView activity={feed.activity} statusPulseNodeIds={feed.statusPulseNodeIds} /> : null;
+  }
+  renderMindmap(<ReplayView />);
+  await act(async () => {});
+  expect(screen.getByText("DEMO REPLAY — SIMULATED ACTIVITY")).toBeInTheDocument();
+  expect(screen.getByText("Simulated delegation")).toBeInTheDocument();
+  // Subscribe starts before the first response: discovering replay must shorten its first timer too.
+  for (tick = 1; tick <= 10; tick++) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.getByText(new RegExp(`Stage ${tick % 10 + 1}/10:`))).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^agent-node-/)).toHaveLength(2);
+    const expected = replayStage(tick);
+    for (const node of expected.nodes) {
+      expect(screen.getByTestId(`agent-node-${node.id}`)).toHaveAttribute("aria-label", expect.stringContaining(node.status));
+    }
+    if (tick === 2) expect(screen.getByTestId("agent-node-codex")).toHaveClass("is-status-pulse");
+  }
+  expect(screen.getByText(/Cycle 2/)).toBeInTheDocument();
+  expect(fetchImpl.mock.calls.length).toBe(11);
+});
+
+it("keeps the normal cadence for static demo and live sources with stray replay metadata", async () => {
+  vi.useFakeTimers();
+  for (const activity of [sample, { ...replayStage(0), meta: { ...sample.meta, t3: { ...replayStage(0).meta.t3!, mode: "live" as const } } }]) {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(activity)));
+    const transport = createPollTransport({ fetchImpl });
+    await transport.fetch();
+    const stop = transport.subscribe!(vi.fn());
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    stop();
+  }
+});

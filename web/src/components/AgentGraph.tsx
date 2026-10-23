@@ -125,7 +125,7 @@ export function AgentGraph({
         const dimmed = lifecycleActive && !lifecycleEdgeIds!.has(e.id);
         const highlighted =
           lifecycleActive && lifecycleEdgeIds!.has(e.id);
-        const tooltip = `${visual.label}: ${e.source} → ${e.target} (${e.count})`;
+        const tooltip = `${activity.meta.t3?.replay && e.type === "delegation" ? "Simulated delegation" : visual.label}: ${e.source} → ${e.target} (${e.count})`;
         const recent = isRecentHandoff(e, activity.events, nowMs);
         return {
           id: e.id,

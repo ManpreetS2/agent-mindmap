@@ -913,3 +913,18 @@
 
 .agent-node-card--session { width: 260px; min-height: 150px; }
 .agent-node-card--session .agent-node-card__meta { overflow-wrap: anywhere; }
+
+.demo-replay-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 14px 20px;
+  border: 2px solid #f4c66b;
+  border-radius: 8px;
+  background: #2c2414;
+  color: #ffe2a3;
+  font-size: 13px;
+}
+.demo-replay-banner strong { font-size: 15px; letter-spacing: 0.04em; }
+.demo-replay-banner span:last-child { flex-basis: 100%; }

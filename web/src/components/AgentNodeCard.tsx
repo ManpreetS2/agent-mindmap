@@ -74,7 +74,9 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
       transition={
         reduceMotion
           ? { duration: 0 }
-          : { type: "spring", stiffness: 320, damping: 22 }
+          : statusPulse
+            ? { type: "tween", duration: 0.7, ease: "easeOut" }
+            : { type: "spring", stiffness: 320, damping: 22 }
       }
     >
       <div className="agent-node-card__header">

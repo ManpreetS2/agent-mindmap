@@ -241,6 +241,13 @@ export function MindmapView({
 
   return (
     <div className="mindmap-layout">
+      {activity.meta.t3?.mode === "demo" && activity.meta.t3.replay && (
+        <div className="demo-replay-banner" role="status" aria-live="polite">
+          <strong>DEMO REPLAY — SIMULATED ACTIVITY</strong>
+          <span>No agents connected · no API calls</span>
+          <span>Cycle {activity.meta.t3.replay.cycle + 1} · Stage {activity.meta.t3.replay.stage + 1}/{activity.meta.t3.replay.stage_count}: {activity.meta.t3.replay.label}</span>
+        </div>
+      )}
       <header className="app-header">
         <div className="app-header__brand">
           <span className="app-header__title">MINDMAP</span>
@@ -274,7 +281,7 @@ export function MindmapView({
             )}
           </span>
           <span className="app-header__sources">
-            {activity.meta.t3 ? `Source: T3 MCP · ${activity.meta.t3.mode === "demo" ? "DEMO — offline fixtures" : activity.meta.t3.connection}` : `Source: ledger + GitHub (${activity.meta.github})`}
+            {activity.meta.t3 ? `Source: ${activity.meta.t3.replay && activity.meta.t3.mode === "demo" ? "Synthetic replay" : `T3 MCP · ${activity.meta.t3.mode === "demo" ? "DEMO — offline fixtures" : activity.meta.t3.connection}`}` : `Source: ledger + GitHub (${activity.meta.github})`}
           </span>
         </div>
       </header>
@@ -338,7 +345,7 @@ export function MindmapView({
                 statusPulseNodeIds={statusPulseNodeIds}
                 nowMs={nowMs}
               />
-              <EdgeLegend t3={Boolean(activity.meta.t3)} />
+              <EdgeLegend t3={Boolean(activity.meta.t3)} simulated={Boolean(activity.meta.t3?.replay)} />
             </section>
 
             {selectedNode && (

@@ -46,6 +46,39 @@
             "stale_after_sec"
           ],
           "properties": {
+            "replay": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "stage",
+                "stage_count",
+                "cycle",
+                "step_sec",
+                "label"
+              ],
+              "properties": {
+                "stage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9
+                },
+                "stage_count": {
+                  "const": 10
+                },
+                "cycle": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "step_sec": {
+                  "type": "number",
+                  "minimum": 2,
+                  "maximum": 300
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            },
             "source": {
               "type": "string"
             },

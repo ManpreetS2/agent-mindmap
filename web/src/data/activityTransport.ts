@@ -20,6 +20,13 @@ export function createPollTransport(options: PollTransportOptions = {}): Activit
   let etag: string | null = null;
   let last: Activity | null = null;
   let fingerprint = "";
+  const cadenceListeners = new Set<() => void>();
+  function pollDelay(): number {
+    const replay = last?.meta.t3?.mode === "demo" ? last.meta.t3.replay : undefined;
+    return replay && Number.isFinite(replay.step_sec) && replay.step_sec >= 2
+      ? Math.max(250, Math.min(1000, replay.step_sec * 250))
+      : intervalMs;
+  }
   function ageSessions(data: Activity): Activity {
     if (!data.meta.t3 || data.meta.t3.mode === "demo") return data;
     const now = Date.now();
@@ -47,7 +54,9 @@ export function createPollTransport(options: PollTransportOptions = {}): Activit
       etag = res.headers?.get("ETag") ?? null;
       if (last && nextFingerprint === fingerprint) { last = ageSessions(last); return last; }
       fingerprint = nextFingerprint;
+      const previousDelay = pollDelay();
       last = ageSessions(data);
+      if (pollDelay() !== previousDelay) cadenceListeners.forEach(reschedule => reschedule());
       return last;
     } finally { clearTimeout(timeout); }
   }
@@ -69,11 +78,16 @@ export function createPollTransport(options: PollTransportOptions = {}): Activit
           failed = true;
           if (!cancelled) onError?.(error instanceof Error ? error : new Error("Connection unavailable"));
         } finally {
-          if (!cancelled) timer = setTimeout(tick, intervalMs);
+          if (!cancelled) schedule();
         }
       }
-      timer = setTimeout(tick, intervalMs);
-      return () => { cancelled = true; clearTimeout(timer); };
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(tick, pollDelay());
+      }
+      cadenceListeners.add(schedule);
+      schedule();
+      return () => { cancelled = true; clearTimeout(timer); cadenceListeners.delete(schedule); };
     },
   };
 }
