@@ -104,5 +104,23 @@ describe("createPollTransport", () => {
       void next.catch(() => undefined);
       expect(seen[seen.length - 1]).toEqual({ "If-None-Match": '"newer"' });
     });
+
+    it("a 304 that resolves first does not suppress a newer 200 still in flight", async () => {
+      const prime = deferred();
+      const first = deferred();
+      const second = deferred();
+      const queue = [prime, first, second];
+      const fetchImpl = vi.fn(async () => (queue.shift() as ReturnType<typeof deferred>).promise) as unknown as typeof fetch;
+      const transport = createPollTransport({ fetchImpl });
+      const p = transport.fetch();
+      prime.resolve(ok(at("2026-10-20T03:00:00-07:00"), '"A"'));
+      await p;
+      const r1 = transport.fetch();
+      const r2 = transport.fetch();
+      second.resolve(new Response(null, { status: 304 }));
+      await r2;
+      first.resolve(ok(at("2026-10-20T07:00:00-07:00"), '"B"'));
+      expect((await r1).generated_at).toBe("2026-10-20T07:00:00-07:00");
+    });
   });
 });

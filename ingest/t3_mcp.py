@@ -8,6 +8,7 @@ import fcntl
 import hashlib
 import json
 import os
+import stat
 import tempfile
 import threading
 import webbrowser
@@ -40,15 +41,24 @@ class TokenStore:
         self.path = credential_path(url)
 
     def read(self):
-        if not self.path.exists():
+        try:
+            fd = os.open(self.path, os.O_RDONLY | os.O_NOFOLLOW)
+        except FileNotFoundError:
             return {}
-        if self.path.is_symlink() or self.path.stat().st_mode & 0o077:
-            raise ValueError("T3 credential file must be private (0600)")
-        return json.loads(self.path.read_text())
+        except OSError as exc:  # ELOOP: symlinked credential file
+            raise ValueError("T3 credential file must be a regular private file") from exc
+        with os.fdopen(fd) as f:
+            st = os.fstat(f.fileno())  # inspect the opened file, not a path that may be swapped
+            if not stat.S_ISREG(st.st_mode) or st.st_mode & 0o077 or st.st_uid != os.getuid():
+                raise ValueError("T3 credential file must be private (0600)")
+            return json.load(f)
 
     def save(self, key, value):
         """Locked read-modify-write with a unique private temp file and atomic replace."""
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        parent = self.path.parent.stat()
+        if parent.st_uid != os.getuid() or parent.st_mode & 0o022:
+            raise ValueError("T3 credential directory must be owned by you and not group/world writable")
         lock_fd = os.open(
             self.path.with_name(self.path.name + ".lock"),
             os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import html
 import json
 import re
 import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote_plus
 
 READ_TOOLS = frozenset(
     {
@@ -38,7 +40,7 @@ REDACTED = "[redacted]"
 # we never publish a partially scrubbed string. Titles/branches are untrusted input.
 _SUSPICIOUS = re.compile(
     r"""(?ix)
-      \b(?:authorization|proxy-authorization)\b
+      \b(?:proxy-)?authorization\s*[:=]
     | \bbearer\s+[\w+/=.~-]{3,}
     | \b(?:basic|digest|negotiate)\s+(?=[\w+/=.~-]*(?:\d|[+/=]|(?-i:[a-z][A-Z])))[\w+/=.~-]{8,}
     | \bxox[abeoprs]-[\w-]{6,}
@@ -96,6 +98,15 @@ def safe_text(value: Any, limit: int = 160) -> str | None:
     squashed = re.sub(r"[\s\u200b-\u200f]+", "", text)
     if _looks_sensitive(text) or _looks_sensitive(squashed, blobs=False):
         return REDACTED
+    # Bounded decoding passes (percent-encoding, HTML entities) so encoded forms cannot hide.
+    variant = text
+    for _ in range(3):
+        decoded = html.unescape(unquote_plus(variant))
+        if decoded == variant:
+            break
+        variant = decoded
+        if _looks_sensitive(variant) or _looks_sensitive(re.sub(r"\s+", "", variant), blobs=False):
+            return REDACTED
     return text[:limit]
 
 
@@ -265,11 +276,13 @@ class T3Projection:
         providers = {
             p.get("providerInstanceId"): p.get("driverKind") for p in raw["providers"]
         }
-        # Thread IDs reach node IDs, source URLs and the browser: drop any that are not plain IDs.
+        # Thread IDs reach node IDs, source URLs and the browser: drop any that are not plain IDs
+        # or that look like credentials (real IDs are UUIDs / `thread:...` forms).
         rows = {
             t["threadId"]: t
             for t in raw["threads"]
-            if _THREAD_ID.fullmatch(t["threadId"])
+            if _THREAD_ID.fullmatch(t["threadId"]) and not _looks_sensitive(t["threadId"], blobs=False)
+            and not _looks_sensitive(unquote_plus(t["threadId"]), blobs=False)
         }
         nodes, events, edges = [], [], []
         for thread_id, t in sorted(rows.items()):

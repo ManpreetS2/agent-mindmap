@@ -348,3 +348,69 @@ def test_save_rejects_symlinked_lock_and_failed_save_keeps_existing(tmp_path):
         store.save("c", _Value(3))
     assert (tmp_path / "elsewhere").read_text() == "x"
     assert path.read_text() == original
+
+
+# ---- second review round -----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "thread_id",
+    ["ghp_abcdefghijklmnopqrstuvwxyz0123456789", "xoxb-123456789012-abcdefghij", "password%3Dhunter2"],
+)
+def test_credential_shaped_thread_ids_are_dropped(thread_id):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = thread_id
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert thread_id not in json.dumps(snap)
+    assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
+
+
+@pytest.mark.parametrize(
+    "thread_id",
+    [
+        "1558cabe-7e29-4358-8547-081eab7c1ab6",
+        "thread:delegated-task:command%3Amcp%3A6e496b21-1c90-4a4d-a0f5-2b26a88e4809%3Adelegate-task%3Amm-fix-review-4",
+    ],
+)
+def test_real_thread_id_shapes_are_kept(thread_id):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = thread_id
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert len(snap["nodes"]) == len(read_demo()["threads"])
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        "password%3Dhunter2",
+        "https://example.com/y?access_token%3dabc123",
+        "Authorization%3A%20Bearer%20abc123",
+        "api_key&#61;abcd1234",
+        "password%253Dhunter2",  # double-encoded
+    ],
+)
+def test_encoded_secrets_are_redacted(encoded):
+    assert safe_text(encoded) == "[redacted]"
+
+
+def test_authorization_word_alone_is_not_redacted():
+    assert safe_text("Review authorization flow") == "Review authorization flow"
+    assert safe_text("Authorization: anything") == "[redacted]"
+
+
+def test_unsafe_credential_directory_and_symlink_rejected(tmp_path):
+    store = TokenStore("https://example.com/mcp")
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o777)
+    store.path = shared / "tokens.json"
+    with pytest.raises(ValueError):
+        store.save("a", _Value(1))
+    target = tmp_path / "real.json"
+    target.write_text("{}")
+    target.chmod(0o600)
+    link = tmp_path / "link.json"
+    link.symlink_to(target)
+    store.path = link
+    with pytest.raises(ValueError):
+        store.read()
