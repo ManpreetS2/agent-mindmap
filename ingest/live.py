@@ -46,6 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATIC = ROOT / "web" / "dist"
 DEFAULT_ACTIVITY = DEFAULT_STATIC / "activity.json"
 DEFAULT_CACHE = ROOT / "ingest" / ".cache"
+# T3 sources never share the legacy default activity/cache paths (gitignored under ingest/.cache).
+DEFAULT_T3_STATE = DEFAULT_CACHE / "t3"
 BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DEFAULT_LEDGER_POLL_SEC = 30.0
@@ -657,9 +659,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="path",
         help="path (default) or gh (data/ledger mirror via gh api)",
     )
-    parser.add_argument("--activity-out", type=Path, default=DEFAULT_ACTIVITY)
+    parser.add_argument(
+        "--activity-out",
+        type=Path,
+        default=None,
+        help=f"Snapshot path (legacy default {DEFAULT_ACTIVITY}; t3 sources default under {DEFAULT_T3_STATE}/<source>/)",
+    )
     parser.add_argument("--static-dir", type=Path, default=DEFAULT_STATIC)
-    parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=f"Cache dir (legacy default {DEFAULT_CACHE}; t3 sources default under {DEFAULT_T3_STATE}/<source>/cache)",
+    )
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
@@ -683,6 +695,14 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    if args.source == "legacy":
+        args.activity_out = args.activity_out or DEFAULT_ACTIVITY
+        args.cache_dir = args.cache_dir or DEFAULT_CACHE
+    else:
+        state = DEFAULT_T3_STATE / args.source
+        args.activity_out = args.activity_out or state / "activity.json"
+        args.cache_dir = args.cache_dir or state / "cache"
 
     if args.demo_replay and args.source != "t3-demo":
         parser.error("--demo-replay requires --source t3-demo")
@@ -750,27 +770,29 @@ def main(argv: list[str] | None = None) -> int:
             ledger_poll_sec=ledger_poll,
             gh_poll_sec=gh_poll,
         )
-        daemon._load_activity_from_disk()
-    daemon.run_poll_cycle()
-    daemon.start_polling()
-
+    # Bind first: a port conflict must fail before any poll/write can touch activity files.
     try:
         httpd = create_http_server(daemon, port=args.port)
-    except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    except (ValueError, OSError) as exc:
+        print(f"error: cannot start server on port {args.port}: {exc}", file=sys.stderr)
         return 2
 
     def shutdown(signum: int, _frame: Any) -> None:
         daemon.stop_polling()
         threading.Thread(target=httpd.shutdown, daemon=True).start()
 
-    signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGINT, shutdown)
-
-    host, port = httpd.server_address
-    ledger_desc = (ledger_path if ledger_path else "gh:data/ledger") if args.source == "legacy" else args.source
-    print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
     try:
+        if args.source == "legacy":
+            daemon._load_activity_from_disk()
+        daemon.run_poll_cycle()
+        daemon.start_polling()
+
+        signal.signal(signal.SIGTERM, shutdown)
+        signal.signal(signal.SIGINT, shutdown)
+
+        host, port = httpd.server_address
+        ledger_desc = (ledger_path if ledger_path else "gh:data/ledger") if args.source == "legacy" else args.source
+        print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
         httpd.serve_forever(poll_interval=0.5)
     finally:
         daemon.stop_polling()

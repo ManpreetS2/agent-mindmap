@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import re
+import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,21 +32,84 @@ STATUS = {
 }
 
 
+REDACTED = "[redacted]"
+
+# Fail-closed credential detection. Anything suspicious replaces the WHOLE value;
+# we never publish a partially scrubbed string. Titles/branches are untrusted input.
+_SUSPICIOUS = re.compile(
+    r"""(?ix)
+      \b(?:authorization|proxy-authorization)\b
+    | \bbearer\s+[\w+/=.~-]{3,}
+    | \b(?:basic|digest|negotiate)\s+(?=[\w+/=.~-]*(?:\d|[+/=]|(?-i:[a-z][A-Z])))[\w+/=.~-]{8,}
+    | \bxox[abeoprs]-[\w-]{6,}
+    | \bxapp-[\w-]{6,}
+    | \b(?:sk|pk|rk)[-_](?:live|test|ant|proj|or)?[-_]?[\w-]{12,}
+    | \bsk-[\w-]{16,}
+    | \bgh[pousr]_[\w]{16,}
+    | \bgithub_pat_[\w]{16,}
+    | \bglpat-[\w-]{12,}
+    | \bnpm_[\w]{20,}
+    | \b(?:AKIA|ASIA|AGPA|AIDA|AROA)[A-Z0-9]{12,}
+    | \bAIza[\w-]{20,}
+    | \bya29\.[\w.-]{10,}
+    | \beyJ[\w-]{8,}\.[\w-]{8,}(?:\.[\w-]*)?
+    | -----BEGIN[ A-Z]*(?:PRIVATE KEY|CERTIFICATE|PGP)
+    | \b[a-z][a-z0-9+.-]*://[^\s/@:]+:[^\s/@]+@
+    | (?:[\w-]*(?:token|secret|passw(?:or)?d|passwd|pwd|api[_-]?key|apikey|credential|private[_-]?key|cookie|session[_-]?id|access[_-]?key)[\w-]*)\s*[:=]
+    | [?&](?:token|key|secret|sig|signature|password|access_token|api_key)=
+    """
+)
+_LONG_BLOB = re.compile(r"[A-Za-z0-9_+/=.-]{24,}")
+
+
+def _looks_sensitive(text: str, *, blobs: bool = True) -> bool:
+    if _SUSPICIOUS.search(text):
+        return True
+    if not blobs:
+        return False
+    for blob in _LONG_BLOB.findall(text):
+        compact = blob.strip("-_.=/+")
+        has_digit = any(c.isdigit() for c in compact)
+        if re.fullmatch(r"[0-9a-fA-F]{32,}", compact):
+            return True
+        if (
+            len(compact) >= 24
+            and has_digit
+            and any(c.islower() for c in compact)
+            and any(c.isupper() for c in compact)
+        ):
+            return True
+    return False
+
+
 def safe_text(value: Any, limit: int = 160) -> str | None:
+    """Sanitize untrusted display metadata; suspicious values are fully replaced."""
     if not isinstance(value, str) or not value.strip():
         return None
-    # Titles are metadata but can still contain pasted credentials. Never publish prompts.
-    text = re.sub(
-        r"(?i)(?:bearer\s+\S+|(?:sk-|ghp_|github_pat_|sk-ant-)[\w-]+)",
-        "[redacted]",
-        value,
-    )
-    text = re.sub(
-        r"(?i)\b(?:[\w-]*(?:token|secret|password|api[_-]?key)[\w-]*)\s*[:=]\s*\S+",
-        "[redacted]",
-        text,
-    )
-    return " ".join(text.split())[:limit]
+    text = unicodedata.normalize("NFKC", value)
+    text = "".join(" " if c.isspace() else c for c in text if unicodedata.category(c)[0] != "C" or c.isspace())
+    text = " ".join(text.split())
+    if not text:
+        return None
+    # Check the full string (before truncation). The separator-stripped form only gets the
+    # prefix/shape patterns: the blob heuristic would flag ordinary words run together.
+    squashed = re.sub(r"[\s\u200b-\u200f]+", "", text)
+    if _looks_sensitive(text) or _looks_sensitive(squashed, blobs=False):
+        return REDACTED
+    return text[:limit]
+
+
+_IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@%+-]{0,119}")
+
+
+_THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@%+-]{0,299}")
+
+
+def safe_ident(value: Any) -> str | None:
+    """Strict allowlist for machine-ish fields (status, model, version, ids)."""
+    if isinstance(value, str) and _IDENT.fullmatch(value) and not _looks_sensitive(value):
+        return value
+    return None
 
 
 def timestamp(value: Any) -> str | None:
@@ -201,21 +265,26 @@ class T3Projection:
         providers = {
             p.get("providerInstanceId"): p.get("driverKind") for p in raw["providers"]
         }
-        rows = {t["threadId"]: t for t in raw["threads"]}
+        # Thread IDs reach node IDs, source URLs and the browser: drop any that are not plain IDs.
+        rows = {
+            t["threadId"]: t
+            for t in raw["threads"]
+            if _THREAD_ID.fullmatch(t["threadId"])
+        }
         nodes, events, edges = [], [], []
         for thread_id, t in sorted(rows.items()):
             nid = stable_id(self.source, thread_id)
             slot = self.slots.setdefault(nid, len(self.slots))
             ts = timestamp(t.get("updatedAt"))
             age = now - datetime.fromisoformat(ts).timestamp() if ts else float("inf")
-            reported = safe_text(t.get("status")) or "unknown"
+            reported = safe_ident(t.get("status")) or "unknown"
             stale = not connected or (
                 reported in {"running", "queued", "waiting", "preparing", "starting"}
                 and (age > self.stale_after or age < -60)
             )
             driver = providers.get(t.get("providerInstanceId"))
             provider = {"codex": "Codex", "claudeAgent": "Claude Code"}.get(
-                driver, safe_text(driver)
+                driver, safe_ident(driver)
             )
             links = []
             pr = t.get("linkedPullRequest") or {}
@@ -306,7 +375,7 @@ class T3Projection:
                     "source": self.source,
                     "mode": "demo" if self.demo else "live",
                     "connection": "connected" if connected else "unavailable",
-                    "server_version": safe_text(
+                    "server_version": safe_ident(
                         raw["environment"].get("serverVersion")
                     ),
                     "stale_after_sec": self.stale_after,

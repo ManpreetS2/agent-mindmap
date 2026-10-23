@@ -20,6 +20,10 @@ export function createPollTransport(options: PollTransportOptions = {}): Activit
   let etag: string | null = null;
   let last: Activity | null = null;
   let fingerprint = "";
+  // Requests are ordered by start time; once a later-started request has been applied, any
+  // earlier-started response (200 or 304) is discarded so state and ETag never roll back.
+  let started = 0;
+  let applied = 0;
   const cadenceListeners = new Set<() => void>();
   function pollDelay(): number {
     const replay = last?.meta.t3?.mode === "demo" ? last.meta.t3.replay : undefined;
@@ -44,12 +48,20 @@ export function createPollTransport(options: PollTransportOptions = {}): Activit
   async function read(): Promise<Activity> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
+    const seq = ++started;
     try {
       const res = await fetchImpl(url, { headers: etag ? { "If-None-Match": etag } : {}, signal: controller.signal });
-      if (res.status === 304 && last) { last = ageSessions(last); return last; }
+      if (res.status === 304 && last) {
+        if (seq < applied) return last;
+        applied = seq;
+        last = ageSessions(last);
+        return last;
+      }
       if (res.status === 404 || res.status === 422) throw new LedgerLoadError();
       if (!res.ok) throw new Error(`Failed to load activity.json (${res.status})`);
       const data = await res.json() as Activity;
+      if (seq < applied && last) return last;
+      applied = seq;
       const nextFingerprint = JSON.stringify(data);
       etag = res.headers?.get("ETag") ?? null;
       if (last && nextFingerprint === fingerprint) { last = ageSessions(last); return last; }

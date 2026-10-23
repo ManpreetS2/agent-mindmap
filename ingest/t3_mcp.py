@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import fcntl
 import hashlib
 import json
 import os
+import tempfile
 import threading
 import webbrowser
 from datetime import timedelta
@@ -45,18 +47,33 @@ class TokenStore:
         return json.loads(self.path.read_text())
 
     def save(self, key, value):
-        data = self.read()
-        data[key] = value.model_dump(mode="json")
+        """Locked read-modify-write with a unique private temp file and atomic replace."""
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        tmp = self.path.with_suffix(".tmp")
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        lock_fd = os.open(
+            self.path.with_name(self.path.name + ".lock"),
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+            0o600,
+        )
+        tmp_name = None
         try:
+            os.fchmod(lock_fd, 0o600)
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)  # serialize concurrent login/refresh writers
+            data = self.read()
+            data[key] = value.model_dump(mode="json")
+            fd, tmp_name = tempfile.mkstemp(
+                dir=self.path.parent, prefix=self.path.name + ".", suffix=".tmp"
+            )
             os.fchmod(fd, 0o600)
             with os.fdopen(fd, "w") as f:
                 json.dump(data, f)
-            tmp.replace(self.path)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_name, self.path)
+            tmp_name = None
         finally:
-            tmp.unlink(missing_ok=True)
+            if tmp_name:
+                Path(tmp_name).unlink(missing_ok=True)
+            os.close(lock_fd)  # closing releases the flock
 
     async def get_tokens(self):
         from mcp.shared.auth import OAuthToken

@@ -1,0 +1,350 @@
+"""Regression tests: credential boundary, startup ordering/paths, token-store concurrency."""
+
+from __future__ import annotations
+
+import copy
+import json
+import os
+import socket
+import threading
+import urllib.request
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+import pytest
+
+from ingest import live
+from ingest.live import DEFAULT_ACTIVITY, DEFAULT_T3_STATE, create_http_server, main
+from ingest.t3 import T3Projection, read_demo, safe_ident, safe_text
+from ingest.t3_live import T3Daemon
+from ingest.t3_mcp import TokenStore
+
+NOW = 1792699200
+ROOT = Path(__file__).resolve().parents[1]
+LEDGER = ROOT / "tests" / "fixtures" / "ledger-sample.md"
+
+# Synthetic examples only; none of these are real credentials.
+SECRETS = [
+    "Authorization: Basic dXNlcjpwYXNzd29yZA==",
+    "authorization:Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl",
+    "please use Bearer abcdef123456 for the call",
+    "Basic dXNlcjpwYXNzd29yZA==",
+    "rotate xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx",
+    "xapp-1-A0123456789-0123456789-abcdef0123456789",
+    "key sk-ant-api03-AbCdEfGhIjKlMnOpQrStUv",
+    "sk-proj-abcdefghijklmnopqrstuvwx",
+    "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+    "github_pat_11ABCDEFG0abcdefghijkl_mnopqrstuvwxyz",
+    "glpat-abcdefghijklmnopqrst",
+    "AKIAIOSHFODNN7EXAMPLE",
+    "AIzaSyA-abcdefghijklmnopqrstuvwxyz01234",
+    "password=hunter2",
+    "API_KEY: abcd1234",
+    "client_secret = notarealsecret",
+    "https://user:pw@example.com/repo",
+    "https://example.com/hook?token=abc123",
+    "-----BEGIN RSA PRIVATE KEY-----",
+    "aB3dE5gH7jK9mN1pQ3sT5vW7yZ",
+    "0123456789abcdef0123456789abcdef01234567",
+    "x\u200bo\u200bx\u200bb-123456789012-abcdefghij",  # zero-width obfuscation
+    "ｘｏｘｂ-123456789012-abcdefghij",  # fullwidth (NFKC)
+]
+REAL_LOOKING = SECRETS
+
+BENIGN = [
+    "Check System Architecture and Claude Command",
+    "Basic functionality check",
+    "Add token handling to parser",
+    "MM-020k fix SSE",
+    "feature/t3-readonly-activity",
+    # Real thread titles observed against a live T3 server.
+    "Check T3 Environment Details",
+    "Continue T3 Integration Work",
+    "Independent review of T3 integration",
+    "Read-only status-mapping inspection",
+]
+
+
+@pytest.mark.parametrize("secret", REAL_LOOKING)
+def test_safe_text_fails_closed(secret):
+    assert safe_text(secret) == "[redacted]"
+    assert safe_text("prefix " + secret + " suffix") == "[redacted]"
+
+
+@pytest.mark.parametrize("text", BENIGN)
+def test_safe_text_keeps_ordinary_titles(text):
+    assert safe_text(text) == text
+
+
+def test_safe_text_strips_control_characters_and_truncates():
+    assert safe_text("a\x00b\x1b[31m  c\n d") == "ab[31m c d"
+    assert len(safe_text("word " * 100)) <= 160
+    assert safe_text("   ") is None
+
+
+def test_safe_ident_is_strict():
+    assert safe_ident("claude-sonnet-5-5") == "claude-sonnet-5-5"
+    assert safe_ident("0.1.2") == "0.1.2"
+    assert safe_ident("has space") is None
+    assert safe_ident("sk-ant-api03-AbCdEfGhIjKlMnOpQrStUv") is None
+    assert safe_ident(None) is None
+
+
+def _raw_with_secret(secret: str) -> dict:
+    raw = copy.deepcopy(read_demo())
+    t = raw["threads"][0]
+    t["title"] = secret
+    t["projectTitle"] = secret
+    t["branch"] = secret
+    t["model"] = secret
+    t["status"] = secret
+    raw["environment"]["serverVersion"] = secret
+    raw["providers"][0]["driverKind"] = secret
+    return raw
+
+
+@pytest.mark.parametrize("secret", REAL_LOOKING)
+def test_secrets_never_reach_snapshot_or_served_response(tmp_path, secret, monkeypatch):
+    monkeypatch.setattr("ingest.t3_live.read_demo", lambda: _raw_with_secret(secret))
+    daemon = T3Daemon(
+        activity_path=tmp_path / "activity.json",
+        static_dir=tmp_path,
+        cache_dir=tmp_path,
+        bots=[],
+        demo=True,
+        clock=lambda: NOW,
+    )
+    daemon.run_poll_cycle()
+    on_disk = (tmp_path / "activity.json").read_text()
+    server = create_http_server(daemon, port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = server.server_address[1]
+        served = urllib.request.urlopen(f"http://127.0.0.1:{port}/activity.json").read().decode()
+    finally:
+        server.shutdown()
+        server.server_close()
+    # Distinctive fragments of each example must not appear anywhere browser-visible.
+    fragments = [f for f in secret.replace("=", " ").replace(":", " ").split() if len(f) >= 8]
+    for body in (on_disk, served):
+        json.loads(body)
+        for fragment in fragments:
+            assert fragment not in body
+        assert "[redacted]" in body or "Unknown" in body or "unknown" in body
+
+
+def test_invalid_thread_ids_are_dropped():
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = "Authorization: Bearer abc/../../x"
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert "Authorization" not in json.dumps(snap)
+    assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
+
+
+# ---- startup ordering, default paths, cleanup --------------------------------
+
+
+@pytest.fixture
+def busy_port():
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    try:
+        yield sock.getsockname()[1]
+    finally:
+        sock.close()
+
+
+def test_port_conflict_does_not_touch_existing_t3_activity(tmp_path, busy_port, capsys):
+    existing = tmp_path / "activity.json"
+    existing.write_text('{"keep":"me"}\n')
+    before = (existing.read_bytes(), existing.stat().st_mtime_ns)
+    rc = main(
+        ["--source", "t3-demo", "--port", str(busy_port), "--activity-out", str(existing),
+         "--cache-dir", str(tmp_path / "cache")]
+    )
+    assert rc == 2
+    assert (existing.read_bytes(), existing.stat().st_mtime_ns) == before
+    assert not (tmp_path / "cache").exists()
+    assert "cannot start server" in capsys.readouterr().err
+
+
+def test_port_conflict_does_not_touch_legacy_activity(tmp_path, busy_port):
+    existing = tmp_path / "activity.json"
+    existing.write_text('{"legacy":"data"}\n')
+    before = (existing.read_bytes(), existing.stat().st_mtime_ns)
+    rc = main(
+        ["--ledger", str(LEDGER), "--port", str(busy_port), "--activity-out", str(existing),
+         "--static-dir", str(tmp_path), "--cache-dir", str(tmp_path / "cache")]
+    )
+    assert rc == 2
+    assert (existing.read_bytes(), existing.stat().st_mtime_ns) == before
+
+
+def _capture_daemon(monkeypatch):
+    captured = {}
+
+    def fake_create(daemon, **_kwargs):
+        captured["daemon"] = daemon
+        raise OSError("stop before polling")
+
+    monkeypatch.setattr(live, "create_http_server", fake_create)
+    return captured
+
+
+@pytest.mark.parametrize("source", ["t3", "t3-demo"])
+def test_t3_sources_default_to_separate_paths(monkeypatch, source):
+    captured = _capture_daemon(monkeypatch)
+    assert main(["--source", source]) == 2
+    daemon = captured["daemon"]
+    assert daemon.activity_path == DEFAULT_T3_STATE / source / "activity.json"
+    assert daemon.cache_dir == DEFAULT_T3_STATE / source / "cache"
+    assert daemon.activity_path != DEFAULT_ACTIVITY
+
+
+def test_legacy_defaults_and_explicit_overrides_preserved(monkeypatch, tmp_path):
+    captured = _capture_daemon(monkeypatch)
+    assert main(["--ledger", str(LEDGER)]) == 2
+    assert captured["daemon"].activity_path == DEFAULT_ACTIVITY
+    assert captured["daemon"].cache_dir == live.DEFAULT_CACHE
+    out = tmp_path / "x" / "a.json"
+    assert main(["--source", "t3-demo", "--activity-out", str(out), "--cache-dir", str(tmp_path / "c")]) == 2
+    assert captured["daemon"].activity_path == out
+    assert captured["daemon"].cache_dir == tmp_path / "c"
+
+
+def test_start_stop_restart_releases_port_and_writes_only_after_bind(tmp_path, monkeypatch):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    order: list[str] = []
+    servers = []
+    real_create = create_http_server
+
+    def tracking_create(daemon, **kwargs):
+        order.append("bind")
+        if not servers:
+            assert not daemon.activity_path.exists()  # nothing written before bind
+        server = real_create(daemon, **kwargs)
+        server.serve_forever = lambda poll_interval=0.5: order.append("serve")  # return at once
+        servers.append(server)
+        return server
+
+    monkeypatch.setattr(live, "create_http_server", tracking_create)
+    out = tmp_path / "activity.json"
+    args = ["--source", "t3-demo", "--port", str(port), "--activity-out", str(out),
+            "--cache-dir", str(tmp_path / "cache")]
+    assert main(args) == 0
+    assert order == ["bind", "serve"] and out.is_file()
+    assert servers[0].socket.fileno() == -1  # closed on exit
+    assert main(args) == 0  # restart on the same port works
+    assert len(servers) == 2
+
+
+def test_poll_failure_after_bind_closes_server(tmp_path, monkeypatch):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    servers = []
+    real_create = create_http_server
+
+    def tracking_create(daemon, **kwargs):
+        server = real_create(daemon, **kwargs)
+        servers.append(server)
+        return server
+
+    def boom(self):
+        raise RuntimeError("poll failed")
+
+    monkeypatch.setattr(live, "create_http_server", tracking_create)
+    monkeypatch.setattr(T3Daemon, "run_poll_cycle", boom)
+    with pytest.raises(RuntimeError):
+        main(["--source", "t3-demo", "--port", str(port), "--activity-out", str(tmp_path / "a.json")])
+    assert servers[0].socket.fileno() == -1
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", port))  # port is free again
+    probe.close()
+
+
+# ---- token store concurrency ---------------------------------------------------
+
+
+class _Value:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def model_dump(self, **_kwargs):
+        return {"value": self.payload}
+
+
+def _writer(path: str, key: str) -> str:
+    store = TokenStore("https://example.com/mcp")
+    store.path = Path(path)
+    store.save(key, _Value(key))
+    return key
+
+
+def test_concurrent_saves_keep_all_keys_private_and_clean(tmp_path, monkeypatch):
+    path = tmp_path / "cfg" / "tokens.json"
+    monkeypatch.setattr("ingest.t3_mcp.credential_path", lambda _: path)
+    store = TokenStore("https://example.com/mcp")
+    store.save("existing", _Value("keep"))
+    keys = [f"k{i}" for i in range(24)]
+    errors: list[BaseException] = []
+
+    def run(key):
+        try:
+            _writer(str(path), key)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run, args=(k,)) for k in keys]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    data = json.loads(path.read_text())
+    assert set(data) == {"existing", *keys}
+    assert data["existing"] == {"value": "keep"}
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert [p.name for p in path.parent.iterdir() if p.suffix == ".tmp"] == []
+    assert (path.parent / (path.name + ".lock")).stat().st_mode & 0o777 == 0o600
+    TokenStore("https://example.com/mcp").read()  # still accepted as private
+
+
+def test_concurrent_saves_across_processes(tmp_path):
+    path = tmp_path / "tokens.json"
+    keys = [f"p{i}" for i in range(16)]
+    with ProcessPoolExecutor(max_workers=4) as pool:
+        assert sorted(pool.map(_writer, [str(path)] * len(keys), keys)) == sorted(keys)
+    assert set(json.loads(path.read_text())) == set(keys)
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert not [p for p in tmp_path.iterdir() if p.suffix == ".tmp"]
+
+
+def test_save_rejects_symlinked_lock_and_failed_save_keeps_existing(tmp_path):
+    path = tmp_path / "tokens.json"
+    store = TokenStore("https://example.com/mcp")
+    store.path = path
+    store.save("a", _Value(1))
+    original = path.read_text()
+
+    class Bad:
+        def model_dump(self, **_kwargs):
+            raise RuntimeError("dump failed")
+
+    with pytest.raises(RuntimeError):
+        store.save("b", Bad())
+    assert path.read_text() == original
+    assert not [p for p in tmp_path.iterdir() if p.suffix == ".tmp"]
+    os.remove(tmp_path / "tokens.json.lock")
+    (tmp_path / "elsewhere").write_text("x")
+    (tmp_path / "tokens.json.lock").symlink_to(tmp_path / "elsewhere")
+    with pytest.raises(OSError):
+        store.save("c", _Value(3))
+    assert (tmp_path / "elsewhere").read_text() == "x"
+    assert path.read_text() == original
