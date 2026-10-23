@@ -84,36 +84,57 @@ def _looks_sensitive(text: str, *, blobs: bool = True) -> bool:
     return False
 
 
+def _normalize(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = "".join(" " if c.isspace() else c for c in text if unicodedata.category(c)[0] != "C" or c.isspace())
+    return " ".join(text.split())
+
+
+_MAX_DECODE_PASSES = 6
+
+
+def _sensitive_any(text: str, *, blobs: bool = True) -> bool:
+    """True if the text, or any bounded percent/HTML-decoded + NFKC-normalized form, looks
+    like a credential. Fails closed if decoding never settles (deep nesting)."""
+    variant = _normalize(text)
+    for _ in range(_MAX_DECODE_PASSES + 1):
+        squashed = re.sub(r"[\s\u200b-\u200f]+", "", variant)
+        if _looks_sensitive(variant, blobs=blobs) or _looks_sensitive(squashed, blobs=False):
+            return True
+        decoded = _normalize(html.unescape(unquote_plus(variant)))
+        if decoded == variant:
+            return False
+        variant = decoded
+    return True
+
+
 def safe_text(value: Any, limit: int = 160) -> str | None:
     """Sanitize untrusted display metadata; suspicious values are fully replaced."""
     if not isinstance(value, str) or not value.strip():
         return None
-    text = unicodedata.normalize("NFKC", value)
-    text = "".join(" " if c.isspace() else c for c in text if unicodedata.category(c)[0] != "C" or c.isspace())
-    text = " ".join(text.split())
+    text = _normalize(value)
     if not text:
         return None
-    # Check the full string (before truncation). The separator-stripped form only gets the
-    # prefix/shape patterns: the blob heuristic would flag ordinary words run together.
-    squashed = re.sub(r"[\s\u200b-\u200f]+", "", text)
-    if _looks_sensitive(text) or _looks_sensitive(squashed, blobs=False):
+    if _sensitive_any(text):
         return REDACTED
-    # Bounded decoding passes (percent-encoding, HTML entities) so encoded forms cannot hide.
-    variant = text
-    for _ in range(3):
-        decoded = html.unescape(unquote_plus(variant))
-        if decoded == variant:
-            break
-        variant = decoded
-        if _looks_sensitive(variant) or _looks_sensitive(re.sub(r"\s+", "", variant), blobs=False):
-            return REDACTED
     return text[:limit]
 
 
 _IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@%+-]{0,119}")
-
-
 _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@%+-]{0,299}")
+
+
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
+
+
+def safe_thread_id(value: str) -> bool:
+    """Plain IDs only. UUIDs pass outright; `thread:` forms get shape checks; anything else
+    also gets the blob heuristic. Raises TypeError for non-strings (malformed snapshot)."""
+    if not _THREAD_ID.fullmatch(value):
+        return False
+    if _UUID.fullmatch(value):
+        return True
+    return not _sensitive_any(value, blobs=not value.startswith("thread:"))
 
 
 def safe_ident(value: Any) -> str | None:
@@ -281,8 +302,7 @@ class T3Projection:
         rows = {
             t["threadId"]: t
             for t in raw["threads"]
-            if _THREAD_ID.fullmatch(t["threadId"]) and not _looks_sensitive(t["threadId"], blobs=False)
-            and not _looks_sensitive(unquote_plus(t["threadId"]), blobs=False)
+            if safe_thread_id(t["threadId"])
         }
         nodes, events, edges = [], [], []
         for thread_id, t in sorted(rows.items()):

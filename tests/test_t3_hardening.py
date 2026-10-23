@@ -414,3 +414,29 @@ def test_unsafe_credential_directory_and_symlink_rejected(tmp_path):
     store.path = link
     with pytest.raises(ValueError):
         store.read()
+
+
+# ---- third review round ------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        "password%EF%BC%9Dhunter2",  # decodes to a fullwidth "=", needs NFKC after decoding
+        "password%25252525253Dhunter2",  # nesting beyond the decode limit fails closed
+    ],
+)
+def test_decoded_forms_are_normalized_and_depth_fails_closed(encoded):
+    assert safe_text(encoded) == "[redacted]"
+
+
+@pytest.mark.parametrize(
+    "thread_id",
+    ["password%253Dhunter2", "aB3dE5gH7jK9mN1pQ3sT5vW7yZ", "thread:ghp_abcdefghijklmnopqrstuvwxyz0123456789"],
+)
+def test_thread_id_bypasses_are_dropped(thread_id):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["threadId"] = thread_id
+    snap = T3Projection("local").snapshot(raw, NOW)
+    assert thread_id not in json.dumps(snap)
+    assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
