@@ -8,6 +8,8 @@ import {
 } from "react";
 import type { Activity, Node } from "@shared/types";
 import { AgentGraph } from "../components/AgentGraph";
+import { AgentNetwork } from "../components/AgentNetwork";
+import { NetworkLegend } from "../components/NetworkLegend";
 import { DetailPanel } from "../components/DetailPanel";
 import { EdgeLegend } from "../components/EdgeLegend";
 import { HandoffBanner } from "../components/HandoffBanner";
@@ -21,7 +23,6 @@ import { NumberTicker } from "../components/magic/number-ticker";
 import { useResponsiveListDefault } from "../hooks/useResponsiveView";
 import { formatSourceTime } from "../utils/format";
 import { handoffEdgeCount } from "../utils/nodeFacts";
-import { networkLayoutFor } from "../utils/networkLayout";
 import {
   EMPTY_FILTERS,
   filterTimelineEvents,
@@ -94,13 +95,6 @@ export function MindmapView({
     [activity.nodes, selectedNodeId],
   );
 
-  // Keyboard navigation must follow the on-screen network layout, not the adapter's grid slots.
-  const navNodes = useMemo(() => {
-    if (!activity.meta.t3) return activity.nodes;
-    const pos = networkLayoutFor(activity.nodes, activity.edges);
-    return activity.nodes.map((n) => ({ ...n, layout: pos.get(n.id) ?? n.layout }));
-  }, [activity.nodes, activity.edges, activity.meta.t3]);
-
   const handoffs = useMemo(() => handoffEdgeCount(activity), [activity]);
   const nodeIds = useMemo(
     () => new Set(activity.nodes.map((n) => n.id)),
@@ -172,14 +166,14 @@ export function MindmapView({
       const dir = dirMap[e.key];
       if (dir) {
         e.preventDefault();
-        const order = hierarchyNodeOrder(navNodes);
+        const order = hierarchyNodeOrder(activity.nodes);
         const current =
           focusedNodeId ??
           focusGraphNodeIdFromActiveElement() ??
           order[0]?.id ??
           null;
         if (!current) return;
-        const next = nearestNodeInDirection(navNodes, current, dir);
+        const next = nearestNodeInDirection(activity.nodes, current, dir);
         if (next) {
           setFocusedNodeId(next);
           focusGraphNodeButton(next);
@@ -195,7 +189,7 @@ export function MindmapView({
         }
       }
     },
-    [navNodes, focusedNodeId],
+    [activity.nodes, focusedNodeId],
   );
 
   const handleTimelineKeyDown = useCallback(
@@ -348,17 +342,31 @@ export function MindmapView({
               tabIndex={0}
               onKeyDown={handleGraphKeyDown}
             >
-              <AgentGraph
-                activity={activity}
-                selectedNodeId={selectedNodeId}
-                onOpenNodeDetail={onOpenNodeDetail}
-                onClearNodeDetail={onClearNodeDetail}
-                lifecycleNodeIds={lifecycleNodeIds}
-                lifecycleEdgeIds={lifecycleEdgeIds}
-                statusPulseNodeIds={statusPulseNodeIds}
-                nowMs={nowMs}
-              />
-              <EdgeLegend t3={Boolean(activity.meta.t3)} simulated={Boolean(activity.meta.t3?.replay)} />
+              {activity.meta.t3 ? (
+                <>
+                  <AgentNetwork
+                    activity={activity}
+                    selectedNodeId={selectedNodeId}
+                    onOpenNodeDetail={onOpenNodeDetail}
+                    onClearNodeDetail={onClearNodeDetail}
+                  />
+                  <NetworkLegend simulated={Boolean(activity.meta.t3.replay)} />
+                </>
+              ) : (
+                <>
+                  <AgentGraph
+                    activity={activity}
+                    selectedNodeId={selectedNodeId}
+                    onOpenNodeDetail={onOpenNodeDetail}
+                    onClearNodeDetail={onClearNodeDetail}
+                    lifecycleNodeIds={lifecycleNodeIds}
+                    lifecycleEdgeIds={lifecycleEdgeIds}
+                    statusPulseNodeIds={statusPulseNodeIds}
+                    nowMs={nowMs}
+                  />
+                  <EdgeLegend />
+                </>
+              )}
             </section>
 
             {selectedNode && (

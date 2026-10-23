@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Activity } from "@shared/types";
 import { MindmapView } from "../views/MindmapView";
 import { renderMindmap } from "./renderMindmap";
+import { fgMock } from "./forceGraphMock";
 import { createPollTransport, type ActivityTransport } from "../data/activityTransport";
 import { useActivityFeed } from "../hooks/useActivityFeed";
 
@@ -23,7 +24,7 @@ describe("T3 sessions", () => {
     expect(within(codex).getByText("Codex")).toBeInTheDocument();
     expect(within(codex).getByText("reported-model")).toBeInTheDocument();
     expect(screen.getAllByText("Model not reported").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Verified T3 delegation/)).toBeInTheDocument();
+    expect(screen.getByText(/Verified delegation/)).toBeInTheDocument();
     expect(screen.queryByText(/showing ledger only/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("agent-node-codex")); // jsdom mouse events lack `view`, which d3-drag needs
     const panel = screen.getByRole("complementary");
@@ -117,7 +118,7 @@ it("shows every replay stage through the existing feed without reloading or dupl
   renderMindmap(<ReplayView />);
   await act(async () => {});
   expect(screen.getByText("DEMO REPLAY — SIMULATED ACTIVITY")).toBeInTheDocument();
-  expect(screen.getByText("Simulated delegation")).toBeInTheDocument();
+  expect(screen.getByText(/Simulated delegation/)).toBeInTheDocument();
   // Subscribe starts before the first response: discovering replay must shorten its first timer too.
   for (tick = 1; tick <= 10; tick++) {
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
@@ -127,7 +128,10 @@ it("shows every replay stage through the existing feed without reloading or dupl
     for (const node of expected.nodes) {
       expect(screen.getByTestId(`agent-node-${node.id}`)).toHaveAttribute("aria-label", expect.stringContaining(node.status));
     }
-    if (tick === 2) expect(screen.getByTestId("agent-node-codex")).toHaveClass("is-status-pulse");
+    // the canvas model follows the feed in place: same two agents, same objects, current statuses
+    const g = (fgMock.props.graphData as { nodes: Array<{ id: string; status: string }> }).nodes;
+    expect(g.map((n) => n.id).sort()).toEqual(expected.nodes.map((n) => n.id).sort());
+    for (const node of expected.nodes) expect(g.find((n) => n.id === node.id)!.status).toBe(node.status);
   }
   expect(screen.getByText(/Cycle 2/)).toBeInTheDocument();
   expect(fetchImpl.mock.calls.length).toBe(11);

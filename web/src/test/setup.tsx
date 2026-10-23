@@ -2,10 +2,19 @@ import "@testing-library/jest-dom/vitest";
 import "vitest-axe/extend-expect";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
-import { physicsConfig } from "../utils/forceNetwork";
+import { forwardRef, useImperativeHandle } from "react";
+import { vi } from "vitest";
+import { fgMock } from "./forceGraphMock";
 
-// Component tests use synchronous settling; physics tests opt back into the animation loop.
-physicsConfig.loop = false;
+// The canvas force graph cannot render in jsdom: replace it with a recorder (see forceGraphMock.ts).
+vi.mock("react-force-graph-2d", () => ({
+  default: forwardRef(function ForceGraphStub(props: Record<string, unknown>, ref) {
+    fgMock.props = props;
+    fgMock.renders++;
+    useImperativeHandle(ref, () => fgMock.methods as never);
+    return <canvas data-testid="force-graph" />;
+  }),
+}));
 
 class ResizeObserverMock {
   observe() {}
