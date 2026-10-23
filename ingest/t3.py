@@ -37,6 +37,7 @@ STATUS = {
 
 
 REDACTED = "[redacted]"
+REDACTED_PATH = "[redacted path]"
 
 # Fail-closed credential detection. Anything suspicious replaces the WHOLE value;
 # we never publish a partially scrubbed string. Titles/branches are untrusted input.
@@ -148,6 +149,48 @@ def _sensitive_any(text: str, *, blobs: bool = True) -> bool:
     return True
 
 
+# Private filesystem locations (home dirs, worktrees, temp dirs, UNC/drive paths) must not reach
+# the browser even though they are not credentials. A single leading-slash word such as a slash
+# command ("/usage-limits") and ordinary branch names ("feature/x") are not paths.
+_PATH_ROOTS = (
+    "users", "home", "volumes", "private", "var", "tmp", "etc", "opt", "root", "mnt", "srv",
+    "library", "applications", "system", "usr", "proc", "dev", "nix", "snap",
+)
+_PATHLIKE = re.compile(
+    r"""(?ix)
+      (?:^|[\s"'`(\[=:,;])
+      (?:
+          ~[\w.-]*[\\/]                      # ~/x  ~user/x
+        | \.{1,2}[\\/][^\s]                   # ./x  ../x
+        | [a-z]:[\\/]                          # C:\x  C:/x
+        | \\\\[^\s\\/]+[\\/]                 # \\server\share
+        | file:/{1,3}[^\s]
+        | /(?:""" + "|".join(_PATH_ROOTS) + r""")(?:[\\/]|$)   # /Users/...  /tmp
+        | /[\w.@+-]+/[\w.@+-]                  # any absolute path with 2+ segments
+      )
+    """
+)
+_WIN_HOME = re.compile(r"(?i)[\\/](?:users|home)[\\/][^\\/\s]+[\\/]")
+_WORKTREE = re.compile(r"(?i)\.(?:t3|claude|codex|config|ssh|aws|gnupg)[\\/]")
+
+
+def _looks_like_path(text: str) -> bool:
+    return bool(_PATHLIKE.search(text) or _WIN_HOME.search(text) or _WORKTREE.search(text))
+
+
+def _pathlike_any(text: str) -> bool:
+    """Path check on the text and its bounded percent/HTML-decoded forms."""
+    variant = text[:SCAN_LIMIT]
+    for _ in range(_MAX_DECODE_PASSES + 1):
+        if _looks_like_path(variant):
+            return True
+        decoded = _normalize(html.unescape(unquote_plus(variant)))[:SCAN_LIMIT]
+        if decoded == variant:
+            return False
+        variant = decoded
+    return True
+
+
 def safe_text(value: Any, limit: int = 160) -> str | None:
     """Sanitize untrusted display metadata; suspicious values are fully replaced."""
     if not isinstance(value, str) or not value.strip():
@@ -157,6 +200,8 @@ def safe_text(value: Any, limit: int = 160) -> str | None:
         return None
     if _sensitive_any(text):
         return REDACTED
+    if _pathlike_any(text):
+        return REDACTED_PATH
     return text[:limit]
 
 

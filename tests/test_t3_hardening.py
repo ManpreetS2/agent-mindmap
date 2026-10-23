@@ -499,3 +499,55 @@ def test_delegated_ids_embedding_credentials_are_dropped(rid):
     snap = T3Projection("local").snapshot(raw, NOW)
     assert rid not in json.dumps(snap)
     assert len(snap["nodes"]) == len(read_demo()["threads"]) - 1
+
+
+# ---- path-shaped private titles ----------------------------------------------
+
+PATH_TITLES = [
+    "/Users/manpreetsingh/.t3/worktrees/agent-mindmap/t3-d4fbf680",
+    "Fix bug in /Users/name/worktrees/x",
+    "~/code/agent-mindmap",
+    "../secret/dir/file",
+    "./build/out",
+    "C:\\Users\\me\\proj",
+    "\\\\server\\share\\x",
+    "file:///etc/passwd",
+    "%2FUsers%2Fname%2Fproj",
+    "/var/folders/ab/cd",
+    "open /tmp",
+    "see /opt/x/y",
+    ".t3/worktrees/abc",
+    "/home/dev/app/main.py",
+    "title=/Users/me/x",
+]
+
+
+@pytest.mark.parametrize("title", PATH_TITLES)
+def test_path_shaped_values_are_redacted(title):
+    assert safe_text(title).startswith("[redacted")
+    assert "Users" not in safe_text(title) and "/" not in safe_text(title)
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["Review /usage-limits command", "feature/t3-readonly-activity", "t3/astra-physics-finish", "Fix a/b split", "Compare 1/2 vs 3/4"],
+)
+def test_slash_commands_branches_and_fractions_are_not_paths(title):
+    assert safe_text(title) == title
+
+
+def test_path_titles_never_reach_snapshot_or_served_json(tmp_path, monkeypatch):
+    raw = copy.deepcopy(read_demo())
+    raw["threads"][0]["title"] = "/Users/manpreetsingh/.t3/worktrees/agent-mindmap/t3-d4fbf680"
+    raw["threads"][1]["projectTitle"] = "~/code/private-project"
+    raw["threads"][2]["branch"] = "/home/dev/app"
+    monkeypatch.setattr("ingest.t3_live.read_demo", lambda: raw)
+    daemon = T3Daemon(
+        activity_path=tmp_path / "activity.json", static_dir=tmp_path, cache_dir=tmp_path,
+        bots=[], demo=True, clock=lambda: NOW,
+    )
+    daemon.run_poll_cycle()
+    body = daemon.activity_body().decode()
+    for leak in ("/Users/manpreetsingh", ".t3/worktrees", "~/code/private-project", "/home/dev"):
+        assert leak not in body
+    assert "[redacted path]" in body
