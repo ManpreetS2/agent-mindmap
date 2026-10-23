@@ -35,7 +35,7 @@ describe("useFreshEdges", () => {
     expect(result.current.size).toBe(0); // baseline
 
     rerender({ act: t3Activity([a, b, c], [["a", "b"], ["a", "c"]]) });
-    expect([...result.current]).toEqual(["delegation-c"]);
+    expect([...result.current.keys()]).toEqual(["delegation-c"]);
 
     // repeated polls must not extend or re-trigger the highlight
     act(() => { vi.advanceTimersByTime(FRESH_EDGE_MS - 100); });
@@ -48,5 +48,27 @@ describe("useFreshEdges", () => {
     rerender({ act: t3Activity([a, b, c], [["a", "b"], ["a", "c"]], "demo") });
     expect(result.current.size).toBe(0);
     expect(delegation("a", "b").edge.type).toBe("delegation");
+  });
+});
+
+describe("delegation evidence timing", () => {
+  it.each(["continuous", "old", "outage", "stale", "gap", "invalid"] as const)("classifies %s observation without inventing new work", scenario => {
+    const base = t3Activity([a, b], []);
+    if (scenario === "outage") base.meta.t3!.connection = "unavailable";
+    if (scenario === "stale") base.nodes = [sessionNode("a", { status: "STALE" }), b];
+    const { result, rerender } = renderHook(({ activity }) => useFreshEdges(activity), { initialProps: { activity: base } });
+    const next = t3Activity([a, b], [["a", "b"]]);
+    next.events.find(e => e.id === "delegation-b")!.source_time = scenario === "old" ? "2026-10-22T19:59:58Z" : scenario === "invalid" ? "invalid" : base.generated_at;
+    if (scenario === "gap") next.generated_at = "2026-10-22T20:10:00Z";
+    rerender({ activity: next });
+    expect(result.current.get("delegation-b")).toBe(scenario === "continuous" ? "new-delegation" : "newly-observed");
+  });
+
+  it("reconnects with identical edges without highlighting them", () => {
+    const base = t3Activity([a, b], [["a", "b"]]);
+    const { result, rerender } = renderHook(({ activity }) => useFreshEdges(activity), { initialProps: { activity: base } });
+    const offline = structuredClone(base); offline.meta.t3!.connection = "unavailable";
+    rerender({ activity: offline }); rerender({ activity: structuredClone(base) });
+    expect(result.current.size).toBe(0);
   });
 });

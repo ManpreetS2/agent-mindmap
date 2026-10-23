@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Status } from "@shared/types";
-import { drawNode, drawTag, linkCaptionPosition, hexA, NODE_R, STATUS_COLOR, containsNode, fitText, layoutLabels } from "../utils/nodeDraw";
+import { drawNode, bodyPath, drawTag, linkCaptionPosition, hexA, NODE_R, STATUS_COLOR, containsNode, fitText, layoutLabels } from "../utils/nodeDraw";
 import type { GNode } from "../utils/networkModel";
 
 function ctx() {
@@ -51,6 +51,37 @@ describe("drawNode", () => {
     expect(layoutLabels(nodes, 0.4).size).toBe(0);
     expect([...layoutLabels(nodes, 0.7).values()].every(l => l.lines === 1)).toBe(true);
   });
+  it("uses a circle for Claude and a six-sided polygon for Codex", () => {
+    const arc = vi.fn(), lineTo = vi.fn(), moveTo = vi.fn();
+    const c = { arc, lineTo, moveTo, beginPath() {}, closePath() {} } as unknown as CanvasRenderingContext2D;
+    bodyPath(c, node({ provider: "claude" }), NODE_R);
+    expect(arc).toHaveBeenCalledTimes(1);
+    expect(lineTo).not.toHaveBeenCalled();
+    arc.mockClear();
+    bodyPath(c, node({ provider: "codex" }), NODE_R);
+    expect(arc).not.toHaveBeenCalled();
+    expect(moveTo).toHaveBeenCalledTimes(1);
+    expect(lineTo).toHaveBeenCalledTimes(5);
+  });
+
+  it("status is encoded by distinct glyphs even with the same body/provider", () => {
+    const paths = ["FAILED", "DONE", "BLOCKED", "IN_PROGRESS", "IDLE"].map(status => {
+      const { c, calls } = ctx();
+      drawNode(c, node({ status: status as Status, active: false }), { ...st, t: null, label: null });
+      return calls.filter(v => ["beginPath", "moveTo", "lineTo", "fillRect", "arc", "closePath", "fill", "stroke"].includes(v)).join("|");
+    });
+    expect(new Set(paths).size).toBe(5);
+  });
+
+  it("reduced-motion reactions keep a static ring and caption with no pulse or fade", () => {
+    const early = ctx(), later = ctx();
+    drawNode(early.c, node(), { ...st, t: null, flash: { caption: "STARTED", age: 100, color: "#ffffff" } });
+    drawNode(later.c, node(), { ...st, t: null, flash: { caption: "STARTED", age: 1800, color: "#ffffff" } });
+    expect(later.calls).toEqual(early.calls);
+    expect(early.calls).toContain("set:lineWidth=1.6");
+    expect(early.calls).toContain("fillText");
+  });
+
   it("draws every status and provider without throwing and balances save/restore", () => {
     for (const status of Object.keys(STATUS_COLOR) as Status[]) {
       for (const provider of ["claude", "codex", "other", "unknown"] as const) {

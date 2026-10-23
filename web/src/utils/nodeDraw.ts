@@ -150,13 +150,11 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
   // Observed-change pulse + caption (fades over ~2.4 s).
   if (s.flash && s.flash.age < 2400) {
     const k = s.flash.age / 2400;
-    if (s.t !== null) {
-      ctx.beginPath();
-      ctx.arc(x, y, NODE_R + 6 + k * 34, 0, Math.PI * 2);
-      ctx.lineWidth = 3 * (1 - k);
-      ctx.strokeStyle = hexA(s.flash.color, 0.9 * (1 - k));
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.arc(x, y, NODE_R + 6 + (s.t === null ? 2 : k * 12), 0, Math.PI * 2);
+    ctx.lineWidth = s.t === null ? 1.6 : 2 * (1 - k);
+    ctx.strokeStyle = hexA(s.flash.color, s.t === null ? 0.65 : 0.75 * (1 - k));
+    ctx.stroke();
     ctx.globalAlpha = (s.t === null ? 1 : Math.min(1, 2.2 * (1 - k))) * s.alpha;
     drawTag(ctx, s.flash.caption, x, y - NODE_R - 18 / s.zoom, s.flash.color, s.zoom);
   }
