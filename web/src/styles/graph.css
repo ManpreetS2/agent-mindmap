@@ -909,3 +909,7 @@
   color: var(--status-blocked-fg);
   background: var(--status-blocked-bg);
 }
+
+
+.agent-node-card--session { width: 260px; min-height: 150px; }
+.agent-node-card--session .agent-node-card__meta { overflow-wrap: anywhere; }

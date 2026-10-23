@@ -29,7 +29,7 @@ describe("createPollTransport", () => {
     expect(fetchImpl).toHaveBeenCalled();
   });
 
-  it("subscribe polls on an interval", async () => {
+  it("subscribe polls without duplicate delivery", async () => {
     vi.useFakeTimers();
     const fetchImpl = vi.fn(async () =>
       new Response(JSON.stringify(sample), { status: 200 }),
@@ -40,9 +40,11 @@ describe("createPollTransport", () => {
     });
     const seen: Activity[] = [];
     const stop = transport.subscribe!((a) => seen.push(a));
-    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersByTimeAsync(2500);
     stop();
-    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(seen.length).toBe(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
 });
+

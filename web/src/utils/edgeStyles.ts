@@ -7,6 +7,7 @@ export interface EdgeVisual {
 }
 
 export const EDGE_VISUALS: Record<EdgeType, EdgeVisual> = {
+  delegation: { stroke: "var(--edge-handoff)", label: "Verified T3 delegation" },
   handoff: { stroke: "var(--edge-handoff)", label: "Handoff / assignment" },
   verdict: {
     stroke: "var(--edge-verdict)",
@@ -24,3 +25,4 @@ export const EDGE_VISUALS: Record<EdgeType, EdgeVisual> = {
 export function strokeWidthForCount(count: number): number {
   return Math.min(3, Math.max(1, count));
 }
+

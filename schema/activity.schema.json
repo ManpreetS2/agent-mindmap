@@ -28,13 +28,51 @@
     },
     "project": {
       "type": "string",
-      "const": "fencepost"
+      "minLength": 1
     },
     "meta": {
       "type": "object",
       "additionalProperties": false,
       "required": ["github"],
       "properties": {
+        "t3": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "mode",
+            "connection",
+            "server_version",
+            "stale_after_sec"
+          ],
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "live",
+                "demo"
+              ]
+            },
+            "connection": {
+              "enum": [
+                "connected",
+                "unavailable"
+              ]
+            },
+            "server_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stale_after_sec": {
+              "type": "number",
+              "minimum": 1
+            }
+          }
+        },
         "github": {
           "type": "string",
           "enum": ["ok", "error", "skipped", "rate_limited"]
@@ -76,11 +114,11 @@
   "$defs": {
     "status": {
       "type": "string",
-      "enum": ["IDLE", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE", "UNKNOWN"]
+      "enum": ["IDLE", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE", "UNKNOWN", "FAILED", "STALE"]
     },
     "nodeGroup": {
       "type": "string",
-      "enum": ["owner", "build", "qr", "radar"]
+      "enum": ["owner", "build", "qr", "radar", "sessions"]
     },
     "eventType": {
       "type": "string",
@@ -99,7 +137,7 @@
     },
     "edgeType": {
       "type": "string",
-      "enum": ["handoff", "verdict", "pr", "merge"]
+      "enum": ["handoff", "verdict", "pr", "merge", "delegation"]
     },
     "verdict": {
       "type": "string",
@@ -147,6 +185,62 @@
         "label": { "type": "string", "minLength": 1 },
         "group": { "$ref": "#/$defs/nodeGroup" },
         "status": { "$ref": "#/$defs/status" },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "thread_id",
+            "project",
+            "provider",
+            "model",
+            "reported_status",
+            "branch",
+            "source_links",
+            "stale"
+          ],
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "thread_id": {
+              "type": "string"
+            },
+            "project": {
+              "type": "string"
+            },
+            "reported_status": {
+              "type": "string"
+            },
+            "provider": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "branch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_links": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "stale": {
+              "type": "boolean"
+            }
+          }
+        },
         "current_task": { "type": "string" },
         "last_activity_ts": {
           "type": "string",
@@ -258,3 +352,4 @@
     }
   }
 }
+

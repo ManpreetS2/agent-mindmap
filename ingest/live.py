@@ -644,6 +644,10 @@ def resolve_live_ledger(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MINDMAP live daemon + localhost server")
+    parser.add_argument("--source", choices=("legacy", "t3", "t3-demo"), default="legacy")
+    parser.add_argument("--t3-url", default="http://127.0.0.1:3773/mcp")
+    parser.add_argument("--t3-poll-sec", type=float, default=15)
+    parser.add_argument("--t3-stale-sec", type=float, default=300)
     parser.add_argument("--ledger", type=Path, default=None, help="Path to task-ledger.md")
     parser.add_argument(
         "--ledger-source",
@@ -685,34 +689,56 @@ def main(argv: list[str] | None = None) -> int:
     if gh_poll is None:
         gh_poll = _env_float("MINDMAP_GH_POLL_SEC", DEFAULT_GH_POLL_SEC)
 
-    try:
-        source, ledger_path, ledger_url = resolve_live_ledger(
-            ledger_source=args.ledger_source,
-            ledger_path=args.ledger,
+    if args.source != "legacy":
+        from .t3_live import T3Daemon
+        from .t3_mcp import credential_path, validate_url
+
+        try:
+            validate_url(args.t3_url)
+            import math
+            if not math.isfinite(args.t3_poll_sec) or not 5 <= args.t3_poll_sec <= 300:
+                raise ValueError("T3 poll interval must be 5–300 seconds")
+            if not math.isfinite(args.t3_stale_sec) or args.t3_stale_sec < args.t3_poll_sec * 2:
+                raise ValueError("T3 stale interval must be at least twice the poll interval")
+            credentials = credential_path(args.t3_url).resolve()
+            if credentials.is_relative_to(args.static_dir.resolve()):
+                raise ValueError("Static directory must not contain T3 credentials")
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        daemon = T3Daemon(activity_path=args.activity_out, static_dir=args.static_dir,
+                          cache_dir=args.cache_dir, bots=[], t3_url=args.t3_url,
+                          demo=args.source == "t3-demo", poll_sec=args.t3_poll_sec,
+                          stale_after=args.t3_stale_sec)
+    else:
+        try:
+            source, ledger_path, ledger_url = resolve_live_ledger(
+                ledger_source=args.ledger_source,
+                ledger_path=args.ledger,
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        if source == "path" and (ledger_path is None or not ledger_path.is_file()):
+            print(f"ledger not found: {ledger_path}", file=sys.stderr)
+            return 1
+
+        with args.bots.open(encoding="utf-8") as f:
+            bots = json.load(f)["bots"]
+
+        daemon = LiveDaemon(
+            ledger_source=source,
+            ledger_path=ledger_path,
+            ledger_source_url=ledger_url,
+            activity_path=args.activity_out,
+            static_dir=args.static_dir,
+            cache_dir=args.cache_dir,
+            bots=bots,
+            ledger_poll_sec=ledger_poll,
+            gh_poll_sec=gh_poll,
         )
-    except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-
-    if source == "path" and (ledger_path is None or not ledger_path.is_file()):
-        print(f"ledger not found: {ledger_path}", file=sys.stderr)
-        return 1
-
-    with args.bots.open(encoding="utf-8") as f:
-        bots = json.load(f)["bots"]
-
-    daemon = LiveDaemon(
-        ledger_source=source,
-        ledger_path=ledger_path,
-        ledger_source_url=ledger_url,
-        activity_path=args.activity_out,
-        static_dir=args.static_dir,
-        cache_dir=args.cache_dir,
-        bots=bots,
-        ledger_poll_sec=ledger_poll,
-        gh_poll_sec=gh_poll,
-    )
-    daemon._load_activity_from_disk()
+        daemon._load_activity_from_disk()
     daemon.run_poll_cycle()
     daemon.start_polling()
 
@@ -730,7 +756,7 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGINT, shutdown)
 
     host, port = httpd.server_address
-    ledger_desc = ledger_path if ledger_path else "gh:data/ledger"
+    ledger_desc = (ledger_path if ledger_path else "gh:data/ledger") if args.source == "legacy" else args.source
     print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
     try:
         httpd.serve_forever(poll_interval=0.5)
@@ -742,3 +768,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

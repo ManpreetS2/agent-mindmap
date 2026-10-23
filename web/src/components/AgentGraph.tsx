@@ -75,9 +75,10 @@ export function AgentGraph({
   const lifecycleActive = lifecycleNodeIds !== null;
 
   const laidOutNodes = useMemo(() => {
+    if (activity.meta.t3) return activity.nodes;
     const positions = layoutNodesWithDagre(activity.nodes, activity.edges);
     return applyLayoutPositions(activity.nodes, positions);
-  }, [activity.nodes, activity.edges]);
+  }, [activity.nodes, activity.edges, activity.meta.t3]);
 
   const frames = useMemo(
     () => buildGroupFrames(laidOutNodes),
@@ -170,20 +171,10 @@ export function AgentGraph({
     // until the next layout pass (poll with identical node set keeps dagre/grid coords).
     setNodes((prev) => {
       const prevPos = new Map(prev.map((n) => [n.id, n.position]));
-      const layoutChanged = builtNodes.some((n) => {
-        const p = prevPos.get(n.id);
-        if (!p) return true;
-        return (
-          Math.hypot(p.x - n.position.x, p.y - n.position.y) > 1
-        );
-      });
-      if (!layoutChanged && prev.length === builtNodes.length) {
-        return prev.map((p) => {
-          const next = builtNodes.find((n) => n.id === p.id);
-          return next ? { ...next, position: p.position } : p;
-        });
-      }
-      return builtNodes;
+      return builtNodes.map((next) => ({
+        ...next,
+        position: prevPos.get(next.id) ?? next.position,
+      }));
     });
   }, [builtNodes, setNodes]);
 
@@ -246,3 +237,4 @@ export function AgentGraph({
     </motion.div>
   );
 }
+

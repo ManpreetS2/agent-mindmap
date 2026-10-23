@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
+t3 = ["mcp==1.30.0", "jsonschema>=4.23.0"]
 dev = [
   "jsonschema>=4.23.0",
   "pytest>=8.3.0",
@@ -22,3 +23,4 @@ packages = []
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+

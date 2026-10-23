@@ -4,6 +4,8 @@ const STATUS_STYLES: Record<
   Status,
   { bg: string; fg: string; dashed?: boolean }
 > = {
+  FAILED: { bg: "#491b24", fg: "#ffb5c0" },
+  STALE: { bg: "var(--status-unknown-bg)", fg: "var(--status-unknown-fg)", dashed: true },
   IDLE: { bg: "var(--status-idle-bg)", fg: "var(--status-idle-fg)" },
   IN_PROGRESS: {
     bg: "var(--status-progress-bg)",
@@ -39,3 +41,4 @@ export function StatusPill({ status }: StatusPillProps) {
     </span>
   );
 }
+

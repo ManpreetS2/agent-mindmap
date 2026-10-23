@@ -237,3 +237,12 @@ Third-party libraries and adapted UI patterns (shadcn/ui, Magic UI, Tailwind, Re
 1. No live Grok / room chat API — only ledger + GitHub + agent links (links only).
 2. Localhost only (`127.0.0.1`).
 3. No secrets in the repo; no tokens in ingest — `gh` CLI login only.
+
+
+## T3 Code monitoring (Codex / Claude Code)
+
+The existing dashboard now has an opt-in, read-only T3 MCP source and explicit offline DEMO mode. Legacy ledger ingestion remains the default. See [setup, pipeline, compatibility and limitations](docs/t3-integration.md).
+
+```sh
+python -m ingest.live --source t3-demo
+```

@@ -66,6 +66,27 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
   );
   const lastActivity = resolveLastActivity(node, activity.events);
 
+  if (node.session) return (
+    <aside className="detail-panel" aria-label={`Details for ${node.label}`}>
+      <div className="detail-panel__header"><h2>{node.label}</h2>
+        <button type="button" className="detail-panel__close" onClick={onClose} aria-label="Close detail panel">×</button>
+      </div>
+      <FactRow label="Status"><StatusPill status={node.status} />
+        <div>Last reported: {node.session.reported_status}</div>
+      </FactRow>
+      <FactRow label="Provider / model">{node.session.provider ?? "Unknown provider"} / {node.session.model ?? "Unknown model"}</FactRow>
+      <FactRow label="Current task">{node.current_task ?? "Unknown task"}</FactRow>
+      <FactRow label="Project">{node.session.project}</FactRow>
+      <FactRow label="Branch">{node.session.branch ?? "Not reported"}</FactRow>
+      <FactRow label="Last verified T3 activity">{node.last_activity_ts ? formatSourceTime(node.last_activity_ts) : "Not reported"}</FactRow>
+      <FactRow label="Source">{node.session.source}<div className="mono">Thread: {node.session.thread_id}</div></FactRow>
+      <FactRow label="Source links">{node.session.source_links.length ? node.session.source_links.filter(isHttpSourceUrl).map(url => (
+        <div key={url}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></div>
+      )) : "No external links reported"}</FactRow>
+      <p className="detail-muted">Read-only metadata. Conversation text and tool output are not published.</p>
+    </aside>
+  );
+
   return (
     <aside className="detail-panel" aria-label={`Details for ${node.label}`}>
       <div className="detail-panel__header">
@@ -207,3 +228,4 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
     </aside>
   );
 }
+

@@ -3,10 +3,10 @@ import type { EdgeType } from "@shared/types";
 
 const ORDER: EdgeType[] = ["handoff", "verdict", "pr", "merge"];
 
-export function EdgeLegend() {
+export function EdgeLegend({ t3 = false }: { t3?: boolean }) {
   return (
     <div className="edge-legend" role="list" aria-label="Edge types legend">
-      {ORDER.map((type) => {
+      {(t3 ? ["delegation" as EdgeType] : ORDER).map((type) => {
         const v = EDGE_VISUALS[type];
         return (
           <div key={type} className="edge-legend__item" role="listitem">
@@ -28,3 +28,4 @@ export function EdgeLegend() {
     </div>
   );
 }
+
