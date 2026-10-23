@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Activity, Node } from "@shared/types";
 import { formatSourceTime, formatRelativeAgo } from "../utils/format";
 import { providerKey, providerLabel } from "../utils/provider";
@@ -34,6 +35,28 @@ function Fact({ label, value, missing }: { label: string; value: React.ReactNode
   );
 }
 
+function CopySessionId({ id }: { id: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+  };
+  return (
+    <>
+      <button type="button" className="inspector-copy" onClick={copy}>
+        Copy session id
+      </button>
+      <span className="detail-meta" role="status">
+        {state === "copied" ? "Copied" : state === "failed" ? "Copy unavailable in this browser" : ""}
+      </span>
+    </>
+  );
+}
+
 export function SessionInspector({ node, activity, onClose, onSelectNode }: Props) {
   const session = node.session!;
   const t3 = activity.meta.t3;
@@ -52,6 +75,7 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
       <div className="detail-panel__header">
         <div>
           <span className={`inspector__provider inspector__provider--${key}`}>
+            <span className={`roster-shape roster-shape--${key} inspector__glyph`} aria-hidden="true" />
             {providerLabel(session.provider)}
           </span>
           {simulated && <span className="inspector__sim">SIMULATED</span>}
@@ -79,14 +103,18 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
         </p>
       )}
 
+      <div className="inspector-status" data-testid="inspector-status">
+        <StatusPill status={node.status} />
+        <span className="detail-meta">T3 reported: {session.reported_status}</span>
+      </div>
+
       <dl className="inspector-facts">
-        <Fact label="Status" value={<><StatusPill status={node.status} /> <span className="detail-meta">reported: {session.reported_status}</span></>} />
         <Fact label="Provider" value={session.provider ?? "Not reported by T3"} missing={!session.provider} />
         <Fact label="Model" value={session.model ?? "Not reported by T3"} missing={!session.model} />
         <Fact label="Current task" value={node.current_task ?? "Not reported"} missing={!node.current_task} />
         <Fact label="Project" value={session.project} />
         <Fact label="Branch" value={session.branch ?? "Not reported"} missing={!session.branch} />
-        <Fact label="Session" value={<span className="mono">{session.thread_id}</span>} />
+        <Fact label="Session" value={<><span className="mono">{session.thread_id}</span><div><CopySessionId id={session.thread_id} /></div></>} />
         <Fact label="Source" value={session.source} />
         <Fact
           label={simulated ? "Simulated activity time" : "Last verified activity"}
