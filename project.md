@@ -21,6 +21,8 @@ Development moves to the owner's original MacBook. **Feature work is paused; all
 | `t3/browser-qa-harness` | `634f8d7` | QA worker (Codex GPT-6 Luna): new files only, `web/e2e/run.mjs` + README (Playwright-core harness). **WIP**, never run end-to-end against an integrated build (syntax checked only). |
 | tag `checkpoint/pre-force-graph-2d` | `fb47c87` | Earlier React Flow + hand-rolled d3-force prototype, kept for recovery. |
 
+**Merge dry-run (done 2026-10-23, `git merge-tree` against PR head `4484049`): each worker branch merges cleanly on its own, and all three merge cleanly together — zero conflicts.** (Note: `git diff 3421ff8 origin/t3/tune-network-physics-renderer` looks like it deletes `NetworkA11y.test.tsx` and edits `graph.css`; that is only because Astra's branch point `60d340d` predates `3421ff8` — use `git diff 60d340d..origin/t3/tune-network-physics-renderer` to see its real changes.)
+
 Worker branches were cut from `3421ff8` (Astra from `60d340d`, which only adds the roster-lineage commit) and have **not** been merged into PR #36. A fourth local worktree `t3/browser-qa-t3-view` was an empty duplicate (no commits, no changes) and was intentionally not pushed.
 
 ### Test evidence at checkpoint time (honest, not final)
