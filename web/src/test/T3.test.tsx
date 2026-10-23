@@ -34,6 +34,8 @@ describe("T3 sessions", () => {
     expect(within(panel).getByText("SIMULATED")).toBeInTheDocument();
     expect(within(panel).getByText("Simulated activity time")).toBeInTheDocument();
     expect(within(panel).queryByText("Last verified activity")).not.toBeInTheDocument();
+    expect(within(panel).queryByText(/last T3 thread update/)).not.toBeInTheDocument();
+    expect(within(panel).getByText(/simulated timestamp/)).toBeInTheDocument();
     expect(within(panel).getByText("Relationships (simulated)")).toBeInTheDocument();
     expect(within(panel).queryByText("T3 subagent lineage")).not.toBeInTheDocument();
     expect(within(panel).getByText("feat/t3")).toBeInTheDocument();

@@ -1,11 +1,23 @@
 # Agent Mind Map — Project Plan & UI Research
 
-> Research and planning document, updated 2026-10-23. **Proposal, not implementation completion evidence.** See *Cross-machine handoff* below for current state.
+> Research and planning document, updated 2026-10-23. See *Status update* and *Cross-machine handoff* below for current state.
 >
 > Repository: https://github.com/ManpreetS2/agent-mindmap  
 > Active work: [draft PR #36](https://github.com/ManpreetS2/agent-mindmap/pull/36), branch `feat/t3-readonly-activity`.
 >
 > **Scope:** improve the **existing** read-only Agent Mind Map for real T3 Code activity. Do not create a replacement repository, rewrite the backend unnecessarily, merge PR #36 without explicit permission, or expand into a general-purpose workflow editor.
+
+## Status update (2026-10-23, after the handoff below — read this first)
+
+The three worker branches from the handoff **have been integrated** into PR #36 (`feat/t3-readonly-activity`, still **draft**, never merged) on the original MacBook, and the remaining defects are fixed:
+
+- Integrated in order: `t3/browser-qa-harness`, `t3/polish-agent-roster-inspector`, `t3/tune-network-physics-renderer` work (via `t3/astra-physics-finish` and `t3/astra-living-network`, Codex GPT-6 Astra). Worker branches were left in place.
+- Security/correctness findings from the handoff are fixed with tests: path-shaped private titles are redacted (`[redacted path]`); the static demo is labelled synthetic everywhere (`mode === "demo"`); a delegation first seen after an outage, a missed stretch of polls or a wholly stale snapshot is "Newly observed" (static glow) and never "NEW DELEGATION" (backend now publishes `meta.t3.poll_sec` for the continuity bound).
+- Visual defects fixed: bounded fit-to-view, label placement/culling, screen-space captions, camera centre/zoom preserved across polling and inspector resize, drag never moves the camera, settled agents are exactly still, gentler ambient motion (2.4 px), pause/reduced-motion, legend no longer overlaps the roster at tablet width, no graph-view flash on phones.
+- Verification: pytest 285, vitest 193, `tsc`, `npm run build`, and the real-Chrome QA harness (`web/e2e/run.mjs`, 12/12). The harness now measures idle drift only after the 3–10 s intro layout has settled and asserts camera *centre* (not node screen position) across inspector open/close.
+- Still true: live T3 usage limits are **not** exposed by the read-only MCP (see "Usage feature" below); known cosmetic issue: two "unsourced" tags overlap in the pre-existing timeline strip.
+
+The handoff text below is kept as history.
 
 ## Cross-machine handoff (written 2026-10-23 — read this first)
 

@@ -124,7 +124,7 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
             node.last_activity_ts ? (
               <>
                 {formatSourceTime(node.last_activity_ts)}
-                <div className="detail-meta">{formatRelativeAgo(node.last_activity_ts)} · last T3 thread update, not proof of a specific action</div>
+                <div className="detail-meta">{formatRelativeAgo(node.last_activity_ts)} · {simulated ? "simulated timestamp" : "last T3 thread update, not proof of a specific action"}</div>
               </>
             ) : (
               "Not reported"
