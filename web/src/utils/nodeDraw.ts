@@ -1,5 +1,5 @@
 import type { Status } from "@shared/types";
-import type { GNode } from "./networkModel";
+import { nodePosition, type GNode } from "./networkModel";
 
 export const NODE_R = 15;
 
@@ -31,6 +31,7 @@ export interface DrawState {
   /** Transient caption for an observed status change. */
   flash: { caption: string; age: number; color: string } | null;
   zoom: number;
+  label?: LabelPlacement | null;
 }
 
 function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
@@ -47,8 +48,7 @@ function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
 
 /** Body outline: Claude = circle, Codex = hexagon (shape, not just colour, tells them apart). */
 export function bodyPath(ctx: CanvasRenderingContext2D, n: GNode, r: number): void {
-  const x = n.x ?? 0;
-  const y = n.y ?? 0;
+  const { x, y } = nodePosition(n);
   if (n.provider === "codex") hexPath(ctx, x, y, r * 1.08);
   else {
     ctx.beginPath();
@@ -57,8 +57,7 @@ export function bodyPath(ctx: CanvasRenderingContext2D, n: GNode, r: number): vo
 }
 
 export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState): void {
-  const x = n.x ?? 0;
-  const y = n.y ?? 0;
+  const { x, y } = nodePosition(n);
   const color = PROVIDER_COLOR[n.provider];
   const sc = STATUS_COLOR[n.status];
   const faded = n.stale || n.status === "UNKNOWN";
@@ -158,49 +157,81 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
       ctx.strokeStyle = hexA(s.flash.color, 0.9 * (1 - k));
       ctx.stroke();
     }
-    ctx.globalAlpha = Math.min(1, 2.2 * (1 - k)) * s.alpha;
-    drawTag(ctx, s.flash.caption, x, y - NODE_R - 18, s.flash.color);
+    ctx.globalAlpha = (s.t === null ? 1 : Math.min(1, 2.2 * (1 - k))) * s.alpha;
+    drawTag(ctx, s.flash.caption, x, y - NODE_R - 18 / s.zoom, s.flash.color, s.zoom);
   }
 
   // Labels (level of detail by zoom).
   ctx.globalAlpha = s.alpha * (faded ? 0.8 : 1);
-  const fs = Math.min(13, Math.max(3.2, 11 / s.zoom));
-  const show = s.zoom > 0.55 || s.selected || s.hovered;
-  if (show) {
+  const fs = Math.min(13, 11 / Math.max(0.3, s.zoom));
+  const label = s.label === undefined ? layoutLabels([n], s.zoom, s.selected || s.hovered ? n.id : null).get(n.id) : s.label;
+  if (label) {
+    const { x: lx, y: ly, lines } = label;
+    ctx.fillStyle = "#10151e";
+    ctx.fillRect(lx - 80, ly - 2, 160, label.height);
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillStyle = color;
-    ctx.fillText(n.providerName, x, y + NODE_R + 9);
-    ctx.font = `500 ${fs * 0.88}px ui-monospace, Menlo, monospace`;
-    ctx.fillStyle = "#c7cfdb";
-    ctx.fillText(n.model ?? "model not reported", x, y + NODE_R + 9 + fs * 1.2);
-    if ((s.zoom > 1.15 || s.selected || s.hovered) && n.task) {
+    ctx.fillText(fitText(ctx, n.providerName, 154), lx, ly);
+    if (lines >= 2) {
+      ctx.font = `500 ${fs * 0.88}px ui-monospace, Menlo, monospace`;
+      ctx.fillStyle = "#c7cfdb";
+      ctx.fillText(fitText(ctx, n.model ?? "model not reported", 154), lx, ly + fs * 1.3);
+    }
+    if (lines >= 3 && n.task) {
       ctx.font = `600 ${fs * 0.95}px ui-sans-serif, system-ui, sans-serif`;
       ctx.fillStyle = "#eef2f8";
-      ctx.fillText(clip(n.task, 34), x, y + NODE_R + 9 + fs * 2.45);
+      ctx.fillText(fitText(ctx, n.task, 154), lx, ly + fs * 2.6);
     }
   }
   ctx.restore();
 }
 
-function clip(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1) + "…" : text;
+// Bounded shared cache: no measureText calls per animated frame for unchanged labels.
+const textCache = new Map<string, string>();
+export function fitText(ctx: CanvasRenderingContext2D, text: string, width: number): string {
+  const key = `${ctx.font}|${width}|${text}`;
+  const cached = textCache.get(key);
+  if (cached !== undefined) return cached;
+  let result = text;
+  if (ctx.measureText(text).width > width) {
+    let lo = 0, hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (ctx.measureText(text.slice(0, mid) + "…").width <= width) lo = mid;
+      else hi = mid - 1;
+    }
+    result = text.slice(0, lo) + "…";
+  }
+  if (textCache.size >= 2048) textCache.clear();
+  textCache.set(key, result);
+  return result;
 }
 
-function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string): void {
-  ctx.font = "700 8px ui-sans-serif, system-ui, sans-serif";
-  const w = ctx.measureText(text).width + 10;
+/** Analytic hit testing uses the current visible position, not the library's 800 ms shadow cache. */
+export function containsNode(n: GNode, x: number, y: number): boolean {
+  const p = nodePosition(n), dx = Math.abs(x - p.x), dy = Math.abs(y - p.y);
+  const r = NODE_R + 6; // ring plus a one-unit pointer gutter
+  if (n.provider !== "codex") return dx * dx + dy * dy <= r * r;
+  const hr = r * 1.08;
+  return dx <= hr * Math.sqrt(3) / 2 && dy <= hr - dx / Math.sqrt(3);
+}
+
+export function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string, zoom: number): void {
+  const unit = 1 / Math.max(0.1, Math.min(6, zoom));
+  ctx.font = `700 ${9 * unit}px ui-sans-serif, system-ui, sans-serif`;
+  const w = ctx.measureText(text).width + 10 * unit;
   ctx.fillStyle = "rgba(14,18,26,0.92)";
-  roundRect(ctx, x - w / 2, y - 7, w, 14, 7);
+  roundRect(ctx, x - w / 2, y - 8 * unit, w, 16 * unit, 7 * unit);
   ctx.fill();
-  ctx.lineWidth = 1;
+  ctx.lineWidth = unit;
   ctx.strokeStyle = color;
   ctx.stroke();
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, x, y + 0.5);
+  ctx.fillText(text, x, y + 0.5 * unit);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -216,4 +247,41 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 export function hexA(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+export interface LabelPlacement { x: number; y: number; height: number; lines: number }
+
+/** Prefer below, then above; reduce detail before omitting a crowded label. Body clearance
+ * applies even to selected labels and pinned nodes, which collision forces cannot separate. */
+export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null): Map<string, LabelPlacement> {
+  const placed = new Map<string, LabelPlacement>();
+  const fs = Math.min(13, 11 / Math.max(0.3, zoom));
+  const ordered = [...nodes].sort((a, b) => Number(b.id === focus) - Number(a.id === focus) || a.id.localeCompare(b.id));
+  const bodies = nodes.map(n => ({ id: n.id, ...nodePosition(n) }));
+  for (const n of ordered) {
+    if (zoom <= 0.55 && n.id !== focus) continue;
+    const p = nodePosition(n);
+    const maxLines = (zoom > 1.15 || n.id === focus) && n.task ? 3 : zoom > 0.75 || n.id === focus ? 2 : 1;
+    let found = false;
+    for (let lines = maxLines; lines >= 1 && !found; lines--) {
+      const height = fs * (lines * 1.3) + 4;
+      for (const y of [p.y + 31, p.y - 31 - height]) {
+        const rect = { x: p.x, y, height, lines };
+        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - rect.x) < 110 && b.y + 28 > y - 2 && b.y - 28 < y - 2 + height)) continue;
+        if ([...placed.values()].some(q => Math.abs(q.x - rect.x) < 164 && q.y + q.height + 2 > y && y + height + 2 > q.y)) continue;
+        placed.set(n.id, rect); found = true; break;
+      }
+    }
+  }
+  return placed;
+}
+
+/** The entire horizontal tag clears the link/arrow line, including diagonal edges. */
+export function linkCaptionPosition(s: GNode, t: GNode, width: number, height: number, zoom: number) {
+  const dx = (t.x ?? 0) - (s.x ?? 0), dy = (t.y ?? 0) - (s.y ?? 0);
+  const length = Math.hypot(dx, dy) || 1;
+  const sign = dx < 0 ? -1 : 1;
+  const offset = Math.abs(dy / length) * width / 2 + Math.abs(dx / length) * height / 2 + 12 / zoom;
+  return { x: ((s.x ?? 0) + (t.x ?? 0)) / 2 + dy / length * offset * sign,
+    y: ((s.y ?? 0) + (t.y ?? 0)) / 2 - dx / length * offset * sign };
 }
