@@ -31,6 +31,7 @@ export interface DrawState {
   /** Transient caption for an observed status change. */
   flash: { caption: string; age: number; color: string } | null;
   zoom: number;
+  label?: LabelPlacement | null;
 }
 
 function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
@@ -163,24 +164,25 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
   // Labels (level of detail by zoom).
   ctx.globalAlpha = s.alpha * (faded ? 0.8 : 1);
   const fs = Math.min(13, 11 / Math.max(0.3, s.zoom));
-  const labelY = y + NODE_R + 12 + 4 / Math.max(0.55, s.zoom);
-  const show = s.zoom > 0.55 || s.selected || s.hovered;
-  if (show) {
-    // Mask lineage lines behind labels. Their meaning remains in the arrow, never the text.
+  const label = s.label === undefined ? layoutLabels([n], s.zoom, s.selected || s.hovered ? n.id : null).get(n.id) : s.label;
+  if (label) {
+    const { x: lx, y: ly, lines } = label;
     ctx.fillStyle = "#10151e";
-    ctx.fillRect(x - 80, labelY - 2, 160, fs * (((s.zoom > 1.15 || s.selected || s.hovered) && n.task) ? 3.8 : 2.5));
+    ctx.fillRect(lx - 80, ly - 2, 160, label.height);
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillStyle = color;
-    ctx.fillText(fitText(ctx, n.providerName, 154), x, labelY);
-    ctx.font = `500 ${fs * 0.88}px ui-monospace, Menlo, monospace`;
-    ctx.fillStyle = "#c7cfdb";
-    ctx.fillText(fitText(ctx, n.model ?? "model not reported", 154), x, labelY + fs * 1.3);
-    if ((s.zoom > 1.15 || s.selected || s.hovered) && n.task) {
+    ctx.fillText(fitText(ctx, n.providerName, 154), lx, ly);
+    if (lines >= 2) {
+      ctx.font = `500 ${fs * 0.88}px ui-monospace, Menlo, monospace`;
+      ctx.fillStyle = "#c7cfdb";
+      ctx.fillText(fitText(ctx, n.model ?? "model not reported", 154), lx, ly + fs * 1.3);
+    }
+    if (lines >= 3 && n.task) {
       ctx.font = `600 ${fs * 0.95}px ui-sans-serif, system-ui, sans-serif`;
       ctx.fillStyle = "#eef2f8";
-      ctx.fillText(fitText(ctx, n.task, 154), x, labelY + fs * 2.6);
+      ctx.fillText(fitText(ctx, n.task, 154), lx, ly + fs * 2.6);
     }
   }
   ctx.restore();
@@ -244,4 +246,31 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 export function hexA(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+export interface LabelPlacement { x: number; y: number; height: number; lines: number }
+
+/** Prefer below, then above; reduce detail before omitting a crowded label. Body clearance
+ * applies even to selected labels and pinned nodes, which collision forces cannot separate. */
+export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null): Map<string, LabelPlacement> {
+  const placed = new Map<string, LabelPlacement>();
+  const fs = Math.min(13, 11 / Math.max(0.3, zoom));
+  const ordered = [...nodes].sort((a, b) => Number(b.id === focus) - Number(a.id === focus) || a.id.localeCompare(b.id));
+  const bodies = nodes.map(n => ({ id: n.id, ...nodePosition(n) }));
+  for (const n of ordered) {
+    if (zoom <= 0.55 && n.id !== focus) continue;
+    const p = nodePosition(n);
+    const maxLines = (zoom > 1.15 || n.id === focus) && n.task ? 3 : zoom > 0.75 || n.id === focus ? 2 : 1;
+    let found = false;
+    for (let lines = maxLines; lines >= 1 && !found; lines--) {
+      const height = fs * (lines * 1.3) + 4;
+      for (const y of [p.y + 31, p.y - 31 - height]) {
+        const rect = { x: p.x, y, height, lines };
+        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - rect.x) < 110 && b.y + 28 > y - 2 && b.y - 28 < y - 2 + height)) continue;
+        if ([...placed.values()].some(q => Math.abs(q.x - rect.x) < 164 && q.y + q.height + 2 > y && y + height + 2 > q.y)) continue;
+        placed.set(n.id, rect); found = true; break;
+      }
+    }
+  }
+  return placed;
 }

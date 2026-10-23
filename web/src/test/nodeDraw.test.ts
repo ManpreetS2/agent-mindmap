@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Status } from "@shared/types";
-import { drawNode, hexA, NODE_R, STATUS_COLOR, containsNode, fitText } from "../utils/nodeDraw";
+import { drawNode, hexA, NODE_R, STATUS_COLOR, containsNode, fitText, layoutLabels } from "../utils/nodeDraw";
 import type { GNode } from "../utils/networkModel";
 
 function ctx() {
@@ -22,6 +22,19 @@ const node = (over: Partial<GNode> = {}): GNode => ({
 const st = { t: 1000, selected: false, alpha: 1, hovered: false, flash: null, zoom: 1 };
 
 describe("drawNode", () => {
+  it("culls crowded labels at 85px spacing and never masks neighbouring bodies", () => {
+    const nodes = Array.from({ length: 30 }, (_, i) => node({ id: String(i), x: (i % 5) * 85, y: Math.floor(i / 5) * 85 }));
+    const labels = layoutLabels(nodes, 1.5, "12");
+    expect(labels.size).toBeGreaterThan(0);
+    expect(labels.size).toBeLessThan(30);
+    expect(labels.has("12")).toBe(true);
+    for (const [id, l] of labels) for (const n of nodes) {
+      if (id === n.id) continue;
+      expect(Math.abs(n.x! - l.x) >= 110 || n.y! + 28 <= l.y - 2 || n.y! - 28 >= l.y - 2 + l.height).toBe(true);
+    }
+    expect(layoutLabels(nodes, 0.4).size).toBe(0);
+    expect([...layoutLabels(nodes, 0.7).values()].every(l => l.lines === 1)).toBe(true);
+  });
   it("draws every status and provider without throwing and balances save/restore", () => {
     for (const status of Object.keys(STATUS_COLOR) as Status[]) {
       for (const provider of ["claude", "codex", "other", "unknown"] as const) {

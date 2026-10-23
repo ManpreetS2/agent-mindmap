@@ -16,7 +16,7 @@ import {
   type GLink,
   type GNode,
 } from "../utils/networkModel";
-import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA } from "../utils/nodeDraw";
+import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
 import { AgentRoster } from "./AgentRoster";
 
 const FLASH_MS = 2400;
@@ -157,8 +157,10 @@ export function AgentNetwork({
     return () => { delete (window as unknown as Record<string, unknown>).__mindmap; };
   }, [model]);
 
+  const labelLayout = useRef<Map<string, LabelPlacement> | null>(null);
   const anyActive = useMemo(() => data.nodes.some((n) => n.active), [data, redraw]); // eslint-disable-line react-hooks/exhaustive-deps
   const stepFrame = useCallback(() => {
+    labelLayout.current = null;
     const fg = fgRef.current;
     // The library may have auto-scaled while applying graphData. Restore before painting.
     const initialized = fg?.d3Force("link")?.links() === model.data.links;
@@ -238,6 +240,7 @@ export function AgentNetwork({
         alpha: !focusId || n.id === focusId || neighbors.has(n.id) ? 1 : 0.22,
         flash: f && now - f.start <= FLASH_MS ? { caption: f.caption, age: now - f.start, color: f.color } : null,
         zoom: scale,
+        label: (labelLayout.current ??= layoutLabels(model.data.nodes, scale, live.current.hovered ?? live.current.selected)).get(n.id) ?? null,
       });
     },
     // `redraw` forces a new identity => canvas repaint when facts change in place.
