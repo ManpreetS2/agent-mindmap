@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NetworkModel, AMBIENT_PX, stepAmbient, transitionCaption, endpointId } from "../utils/networkModel";
+import { NetworkModel, AMBIENT_PX, stepAmbient, nodePosition, transitionCaption, endpointId } from "../utils/networkModel";
 import { sessionNode, t3Activity } from "./helpers";
 
 const ids = ["a", "b", "c", "d"];
@@ -46,6 +46,19 @@ describe("NetworkModel", () => {
     m.sync(t3Activity(nodes, [["a", "d"]]));
     const d = m.node.get("d")!;
     expect(Math.hypot(d.x! - 500, d.y! - 500)).toBeLessThan(40);
+  });
+
+  it("detects changed endpoints on an existing link ID and visual revisions", () => {
+    const m = new NetworkModel();
+    const a = t3Activity(nodes, [["a", "b"]]); m.sync(a);
+    const rev = m.revision;
+    expect(m.sync(structuredClone(a)).visualChanged).toBe(false);
+    expect(m.revision).toBe(rev);
+    const b = structuredClone(a); b.edges[0].source = "c";
+    expect(m.sync(b).topologyChanged).toBe(true);
+    expect(endpointId(m.data.links[0].source)).toBe("c");
+    const c = structuredClone(b); c.nodes[0].session!.model = "new-model";
+    expect(m.sync(c)).toMatchObject({ topologyChanged: false, visualChanged: true });
   });
 
   it("reports observed status transitions but never on the baseline", () => {
@@ -99,9 +112,13 @@ describe("ambient motion", () => {
     let max = 0, sum = 0, count = 0;
     for (let t = 0; t < 60000; t += 16) {
       stepAmbient(m.node.values(), t);
-      max = Math.max(max, Math.abs(a.x! - 100), Math.abs(a.y! - 100));
-      sum += a.x! - 100; count++;
+      max = Math.max(max, Math.abs(nodePosition(a).x - 100), Math.abs(nodePosition(a).y - 100));
+      sum += nodePosition(a).x - 100; count++;
     }
+    expect([a.x, a.y]).toEqual([100, 100]);
+    expect(max).toBeGreaterThan(3);
+    a.active = false;
+    expect(nodePosition(a)).toEqual({ x: 100, y: 100 });
     expect(max).toBeLessThanOrEqual(AMBIENT_PX * 1.01);
     expect(Math.abs(sum / count)).toBeLessThan(AMBIENT_PX / 2);
     expect([b.x, b.y, c.x, c.y]).toEqual([100, 100, 100, 100]);

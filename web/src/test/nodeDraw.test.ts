@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Status } from "@shared/types";
-import { drawNode, hexA, NODE_R, STATUS_COLOR } from "../utils/nodeDraw";
+import { drawNode, hexA, NODE_R, STATUS_COLOR, containsNode, fitText } from "../utils/nodeDraw";
 import type { GNode } from "../utils/networkModel";
 
 function ctx() {
@@ -47,6 +47,30 @@ describe("drawNode", () => {
     const old = ctx();
     drawNode(old.c, node(), { ...st, zoom: 0.3, flash: { caption: "X", age: 5000, color: "#f00" } });
     expect(old.calls).not.toContain("fillText"); // zoomed-out labels hidden, stale flash ignored
+  });
+
+  it("hit tests the moving circle/hexagon and excludes hex corners", () => {
+    const circle = node({ x: 0, y: 0, ox: 3, oy: -2 });
+    expect(containsNode(circle, 3, -2)).toBe(true);
+    expect(containsNode(circle, -20, -2)).toBe(false);
+    const hex = node({ provider: "codex", x: 0, y: 0, active: false });
+    expect(containsNode(hex, 0, 21)).toBe(true);
+    expect(containsNode(hex, 19, 19)).toBe(false);
+    hex.x = 100;
+    expect(containsNode(hex, 0, 0)).toBe(false);
+    expect(containsNode(hex, 100, 0)).toBe(true);
+  });
+
+  it("bounds long text and caches measurements", () => {
+    const measureText = vi.fn((text: string) => ({ width: text.length * 7 }));
+    const c = { font: "unique-test-font", measureText } as unknown as CanvasRenderingContext2D;
+    const text = "A very long model or task that should never overlap its neighbour";
+    const clipped = fitText(c, text, 154);
+    expect(clipped.endsWith("…")).toBe(true);
+    expect(clipped.length * 7).toBeLessThanOrEqual(154);
+    const calls = measureText.mock.calls.length;
+    expect(fitText(c, text, 154)).toBe(clipped);
+    expect(measureText).toHaveBeenCalledTimes(calls);
   });
 
   it("helpers", () => {

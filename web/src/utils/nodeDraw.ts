@@ -1,5 +1,5 @@
 import type { Status } from "@shared/types";
-import type { GNode } from "./networkModel";
+import { nodePosition, type GNode } from "./networkModel";
 
 export const NODE_R = 15;
 
@@ -47,8 +47,7 @@ function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
 
 /** Body outline: Claude = circle, Codex = hexagon (shape, not just colour, tells them apart). */
 export function bodyPath(ctx: CanvasRenderingContext2D, n: GNode, r: number): void {
-  const x = n.x ?? 0;
-  const y = n.y ?? 0;
+  const { x, y } = nodePosition(n);
   if (n.provider === "codex") hexPath(ctx, x, y, r * 1.08);
   else {
     ctx.beginPath();
@@ -57,8 +56,7 @@ export function bodyPath(ctx: CanvasRenderingContext2D, n: GNode, r: number): vo
 }
 
 export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState): void {
-  const x = n.x ?? 0;
-  const y = n.y ?? 0;
+  const { x, y } = nodePosition(n);
   const color = PROVIDER_COLOR[n.provider];
   const sc = STATUS_COLOR[n.status];
   const faded = n.stale || n.status === "UNKNOWN";
@@ -164,28 +162,55 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
 
   // Labels (level of detail by zoom).
   ctx.globalAlpha = s.alpha * (faded ? 0.8 : 1);
-  const fs = Math.min(13, Math.max(3.2, 11 / s.zoom));
+  const fs = Math.min(13, 11 / Math.max(0.3, s.zoom));
+  const labelY = y + NODE_R + 12 + 4 / Math.max(0.55, s.zoom);
   const show = s.zoom > 0.55 || s.selected || s.hovered;
   if (show) {
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillStyle = color;
-    ctx.fillText(n.providerName, x, y + NODE_R + 9);
+    ctx.fillText(fitText(ctx, n.providerName, 154), x, labelY);
     ctx.font = `500 ${fs * 0.88}px ui-monospace, Menlo, monospace`;
     ctx.fillStyle = "#c7cfdb";
-    ctx.fillText(n.model ?? "model not reported", x, y + NODE_R + 9 + fs * 1.2);
+    ctx.fillText(fitText(ctx, n.model ?? "model not reported", 154), x, labelY + fs * 1.3);
     if ((s.zoom > 1.15 || s.selected || s.hovered) && n.task) {
       ctx.font = `600 ${fs * 0.95}px ui-sans-serif, system-ui, sans-serif`;
       ctx.fillStyle = "#eef2f8";
-      ctx.fillText(clip(n.task, 34), x, y + NODE_R + 9 + fs * 2.45);
+      ctx.fillText(fitText(ctx, n.task, 154), x, labelY + fs * 2.6);
     }
   }
   ctx.restore();
 }
 
-function clip(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1) + "…" : text;
+// Bounded shared cache: no measureText calls per animated frame for unchanged labels.
+const textCache = new Map<string, string>();
+export function fitText(ctx: CanvasRenderingContext2D, text: string, width: number): string {
+  const key = `${ctx.font}|${width}|${text}`;
+  const cached = textCache.get(key);
+  if (cached !== undefined) return cached;
+  let result = text;
+  if (ctx.measureText(text).width > width) {
+    let lo = 0, hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (ctx.measureText(text.slice(0, mid) + "…").width <= width) lo = mid;
+      else hi = mid - 1;
+    }
+    result = text.slice(0, lo) + "…";
+  }
+  if (textCache.size >= 2048) textCache.clear();
+  textCache.set(key, result);
+  return result;
+}
+
+/** Analytic hit testing uses the current visible position, not the library's 800 ms shadow cache. */
+export function containsNode(n: GNode, x: number, y: number): boolean {
+  const p = nodePosition(n), dx = Math.abs(x - p.x), dy = Math.abs(y - p.y);
+  const r = NODE_R + 6; // ring plus a one-unit pointer gutter
+  if (n.provider !== "codex") return dx * dx + dy * dy <= r * r;
+  const hr = r * 1.08;
+  return dx <= hr * Math.sqrt(3) / 2 && dy <= hr - dx / Math.sqrt(3);
 }
 
 function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string): void {

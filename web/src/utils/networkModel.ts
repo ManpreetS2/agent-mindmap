@@ -15,7 +15,8 @@ export interface GNode {
   stale: boolean;
   phase: number;
   pinned: boolean;
-  /** Ambient offset currently applied to x/y (bounded, zero-mean). */
+  dragging?: boolean;
+  /** Visual-only offset: never feeds back into the physics or pinned coordinates. */
   ox?: number;
   oy?: number;
   x?: number;
@@ -58,6 +59,7 @@ export class NetworkModel {
   private nodes = new Map<string, GNode>();
   private links = new Map<string, GLink>();
   private topo = "";
+  revision = 0;
   private baseline = true;
   data: { nodes: GNode[]; links: GLink[] } = { nodes: [], links: [] };
 
@@ -74,7 +76,7 @@ export class NetworkModel {
     return this.nodes;
   }
 
-  sync(activity: Activity): { topologyChanged: boolean; transitions: StatusTransition[]; baseline: boolean } {
+  sync(activity: Activity): { topologyChanged: boolean; visualChanged: boolean; transitions: StatusTransition[]; baseline: boolean } {
     const transitions: StatusTransition[] = [];
     const incoming = [...activity.nodes].filter((n) => n.session).sort((a, b) => a.id.localeCompare(b.id));
     const ids = new Set(incoming.map((n) => n.id));
@@ -84,6 +86,7 @@ export class NetworkModel {
     const parentOf = new Map(edges.map((e) => [e.target, e.source]));
     const wasBaseline = this.baseline;
     let changed = false;
+    let visualChanged = false;
 
     for (const id of [...this.nodes.keys()]) {
       if (!ids.has(id)) {
@@ -112,6 +115,7 @@ export class NetworkModel {
         if (existing.status !== facts.status) {
           transitions.push({ id: n.id, from: existing.status, to: facts.status });
         }
+        if (Object.entries(facts).some(([key, value]) => existing[key as keyof GNode] !== value)) visualChanged = true;
         Object.assign(existing, facts);
         continue;
       }
@@ -123,7 +127,7 @@ export class NetworkModel {
       if (this.nodes.size === 0 || (wasBaseline && !p)) {
         // Deterministic sunflower seed for the first arrangement.
         const i = linked.has(n.id) ? this.nodes.size : loose++ + this.nodes.size;
-        const r = 62 * Math.sqrt(i + 0.7);
+        const r = 130 * Math.sqrt(i + 0.7);
         x = r * Math.cos(i * 2.399963);
         y = r * Math.sin(i * 2.399963);
       } else if (p) {
@@ -149,7 +153,8 @@ export class NetworkModel {
       }
     }
     for (const e of edges) {
-      if (!this.links.has(e.id)) {
+      const old = this.links.get(e.id);
+      if (!old || endpointId(old.source) !== e.source || endpointId(old.target) !== e.target || old.type !== e.type) {
         this.links.set(e.id, { id: e.id, source: e.source, target: e.target, type: e.type });
         changed = true;
       }
@@ -166,7 +171,8 @@ export class NetworkModel {
         links: [...this.links.values()].sort((a, b) => a.id.localeCompare(b.id)),
       };
     }
-    return { topologyChanged: changed, transitions: wasBaseline ? [] : transitions, baseline: wasBaseline };
+    if (changed || visualChanged) this.revision++;
+    return { topologyChanged: changed, visualChanged: changed || visualChanged, transitions: wasBaseline ? [] : transitions, baseline: wasBaseline };
   }
 }
 
@@ -184,16 +190,20 @@ export function transitionCaption(t: StatusTransition): string {
 
 export const AMBIENT_PX = 3.2;
 
-/** Bounded, zero-mean wobble for active, unpinned agents. Independent of the physics engine. */
+/** Bounded visual motion; leaves simulation coordinates untouched, including on status changes. */
 export function stepAmbient(nodes: Iterable<GNode>, timeMs: number): void {
   const t = timeMs / 1000;
   for (const n of nodes) {
-    if (!n.active || n.fx !== undefined || n.x === undefined || n.y === undefined) continue;
-    const ox = AMBIENT_PX * Math.sin(t * 0.9 + n.phase * 6.28);
-    const oy = AMBIENT_PX * Math.cos(t * 0.7 + n.phase * 6.28);
-    n.x += ox - (n.ox ?? 0);
-    n.y += oy - (n.oy ?? 0);
-    n.ox = ox;
-    n.oy = oy;
+    if (!n.active || n.pinned || n.dragging || n.fx != null || n.fy != null) {
+      n.ox = 0; n.oy = 0;
+      continue;
+    }
+    n.ox = AMBIENT_PX * Math.sin(t * 0.9 + n.phase * 6.28);
+    n.oy = AMBIENT_PX * Math.cos(t * 0.7 + n.phase * 6.28);
   }
+}
+
+export function nodePosition(n: GNode): { x: number; y: number } {
+  const offset = n.active && !n.pinned && !n.dragging && n.fx == null && n.fy == null;
+  return { x: (n.x ?? 0) + (offset ? n.ox ?? 0 : 0), y: (n.y ?? 0) + (offset ? n.oy ?? 0 : 0) };
 }

@@ -15,12 +15,14 @@ export const fgMock = {
     emitParticle: vi.fn(),
     zoomToFit: vi.fn(),
     d3ReheatSimulation: vi.fn(),
-    centerAt: vi.fn(),
-    zoom: vi.fn(),
+    centerAt: vi.fn<(...args: number[]) => any>(() => ({ x: 0, y: 0 })),
+    zoom: vi.fn<(...args: number[]) => number>(() => 1),
   },
   reset() {
     this.props = {};
     this.renders = 0;
+    this.methods.centerAt.mockReturnValue({ x: 0, y: 0 });
+    this.methods.zoom.mockReturnValue(1);
     for (const m of Object.values(this.methods)) (m as ReturnType<typeof vi.fn>).mockClear();
   },
 };
