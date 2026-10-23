@@ -313,7 +313,7 @@ export function AgentNetwork({
   const linkColor = useCallback(
     (l: GLink) =>
       focusId === null
-        ? "rgba(143,180,255,0.62)"
+        ? "rgba(143,180,255,0.48)"
         : linkIncident(l)
           ? "rgba(190,214,255,0.98)"
           : "rgba(143,180,255,0.12)",
@@ -321,10 +321,11 @@ export function AgentNetwork({
     [focusId],
   );
   const linkWidth = useCallback(
-    (l: GLink) => (live.current.fresh.has(l.id) ? 3.2 : linkIncident(l) ? 2.4 : 1.5),
+    (l: GLink) => (live.current.fresh.has(l.id) ? 2.6 : linkIncident(l) ? 2 : 1.15),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [focusId, fresh],
   );
+  const arrowLength = useCallback(() => 7 / Math.max(0.2, fgRef.current?.zoom() ?? 1), []);
   const arrowPos = useCallback((l: GLink) => {
     const s = l.source as GNode;
     const t = l.target as GNode;
@@ -428,7 +429,7 @@ export function AgentNetwork({
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkCurvature={0}
-          linkDirectionalArrowLength={8}
+          linkDirectionalArrowLength={arrowLength}
           linkDirectionalArrowRelPos={arrowPos}
           linkDirectionalArrowColor={linkColor}
           linkDirectionalParticles={noContinuousParticles}

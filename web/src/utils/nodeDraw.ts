@@ -186,7 +186,7 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
   const label = s.label === undefined ? layoutLabels([n], s.zoom, s.selected || s.hovered ? n.id : null).get(n.id) : s.label;
   if (label) {
     const { x: lx, y: ly, lines } = label;
-    const maxW = 168;
+    const maxW = labelTextWidth(s.zoom);
     ctx.font = `600 ${fs}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
     const title = fitText(ctx, n.task ?? n.providerName, maxW);
     const w1 = ctx.measureText(title).width;
@@ -221,7 +221,6 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
       ctx.fillText(model, startX + wProvider + gap, ly + fs * 1.4);
       ctx.textAlign = "center";
     }
-    void w1;
   }
   ctx.restore();
 }
@@ -287,36 +286,41 @@ export function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-export interface LabelPlacement { x: number; y: number; height: number; lines: number }
+export interface LabelPlacement { x: number; y: number; width: number; height: number; lines: number }
 
 /** Primary label size in WORLD units so it lands at a readable SCREEN size (13px, easing down when zoomed out). */
 export function labelFont(zoom: number): number {
   const z = Math.max(0.2, zoom);
-  const px = z >= 0.8 ? 13 : z >= 0.55 ? 11.5 : 10;
+  const px = z >= 0.8 ? 13 : z >= 0.5 ? 12 : 11;
   return px / z;
 }
-const LABEL_GAP = NODE_R + 17;     // body centre -> label top (clears the status/selection ring)
-const BODY_CLEAR = NODE_R + 14;    // other bodies must stay this far from a label rectangle
+/** Text and collision envelopes share screen-space dimensions at every zoom. */
+function labelTextWidth(zoom: number): number {
+  return 168 / Math.max(0.2, zoom);
+}
+const BODY_CLEAR = NODE_R + 14;
 
-/** Prefer below, then above; reduce detail before omitting a crowded label. Body clearance
- * applies even to selected labels and pinned nodes, which collision forces cannot separate. */
+/** Selected/hovered agents get first choice, followed by agents needing attention. Labels
+ * simplify before being culled; the DOM roster always retains every full task and model. */
 export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null): Map<string, LabelPlacement> {
   const placed = new Map<string, LabelPlacement>();
   const fs = labelFont(zoom);
-  const ordered = [...nodes].sort((a, b) => Number(b.id === focus) - Number(a.id === focus) || a.id.localeCompare(b.id));
+  const priority = (n: GNode) => n.id === focus ? 4 : n.status === "FAILED" || n.status === "BLOCKED" ? 3 : n.active ? 2 : 1;
+  const ordered = [...nodes].sort((a, b) => priority(b) - priority(a) || a.id.localeCompare(b.id));
   const bodies = nodes.map(n => ({ id: n.id, ...nodePosition(n) }));
+  const width = labelTextWidth(zoom) + fs * 1.1;
+  const gap = NODE_R + 13 + 6 / Math.max(0.2, zoom);
   for (const n of ordered) {
-    if (zoom <= 0.4 && n.id !== focus) continue;
+    if (zoom <= 0.3 && n.id !== focus) continue;
     const p = nodePosition(n);
-    // Two lines (title + provider/model) when there is room; title only when zoomed out or crowded.
     const maxLines = zoom > 0.7 || n.id === focus ? 2 : 1;
     let found = false;
     for (let lines = maxLines; lines >= 1 && !found; lines--) {
       const height = fs * (lines === 2 ? 2.5 : 1.3) + 4;
-      for (const y of [p.y + LABEL_GAP, p.y - LABEL_GAP - height]) {
-        const rect = { x: p.x, y, height, lines };
-        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - rect.x) < 112 && b.y + BODY_CLEAR > y - 2 && b.y - BODY_CLEAR < y - 2 + height)) continue;
-        if ([...placed.values()].some(q => Math.abs(q.x - rect.x) < 172 && q.y + q.height + 2 > y && y + height + 2 > q.y)) continue;
+      for (const y of [p.y + gap, p.y - gap - height]) {
+        const rect = { x: p.x, y, width, height, lines };
+        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - rect.x) < width / 2 + BODY_CLEAR && b.y + BODY_CLEAR > y - 3 && b.y - BODY_CLEAR < y + height)) continue;
+        if ([...placed.values()].some(q => Math.abs(q.x - rect.x) < (q.width + width) / 2 + 4 / zoom && q.y + q.height + 3 > y - 3 && y + height + 3 > q.y - 3)) continue;
         placed.set(n.id, rect); found = true; break;
       }
     }

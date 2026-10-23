@@ -46,10 +46,31 @@ describe("drawNode", () => {
     expect(labels.has("12")).toBe(true);
     for (const [id, l] of labels) for (const n of nodes) {
       if (id === n.id) continue;
-      expect(Math.abs(n.x! - l.x) >= 110 || n.y! + 28 <= l.y - 2 || n.y! - 28 >= l.y - 2 + l.height).toBe(true);
+      expect(Math.abs(n.x! - l.x) >= l.width / 2 + NODE_R + 14 || n.y! + NODE_R + 14 <= l.y - 3 || n.y! - NODE_R - 14 >= l.y + l.height).toBe(true);
     }
-    expect(layoutLabels(nodes, 0.4).size).toBe(0);
+    expect(layoutLabels(nodes, 0.3).size).toBe(0);
     expect([...layoutLabels(nodes, 0.7).values()].every(l => l.lines === 1)).toBe(true);
+  });
+  it("keeps label widths readable at overview zoom and prevents label overlap", () => {
+    const nodes = Array.from({ length: 30 }, (_, i) => node({ id: String(i), x: (i % 5) * 172, y: Math.floor(i / 5) * 138 }));
+    for (const zoom of [0.35, 0.6, 1, 2.4]) {
+      const labels = [...layoutLabels(nodes, zoom).values()];
+      expect(labels.length).toBeGreaterThan(0);
+      for (const l of labels) {
+        expect(l.width * zoom).toBeGreaterThan(168);
+        expect(l.width * zoom).toBeLessThan(184);
+      }
+      for (let i = 0; i < labels.length; i++) for (const b of labels.slice(i + 1)) {
+        const a = labels[i];
+        expect(Math.abs(a.x - b.x) >= (a.width + b.width) / 2 || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
+      }
+    }
+  });
+  it("prioritizes attention and focus when labels compete for the same space", () => {
+    const nodes = [node({ id: "a", status: "DONE", active: false }), node({ id: "b", status: "FAILED", active: false }), node({ id: "c" })];
+    expect([...layoutLabels(nodes, 0.6).keys()][0]).toBe("b");
+    expect([...layoutLabels(nodes, 0.6, "c").keys()][0]).toBe("c");
+    expect(layoutLabels([node()], 0.2, "a").has("a")).toBe(true);
   });
   it("uses a circle for Claude and a six-sided polygon for Codex", () => {
     const arc = vi.fn(), lineTo = vi.fn(), moveTo = vi.fn();

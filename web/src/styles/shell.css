@@ -351,3 +351,33 @@ html, body, #root { background: var(--bg-app); }
 }
 .list-empty-row:hover { background: transparent !important; }
 .network-legend { max-width: min(420px, calc(100% - var(--roster-w) - 28px)); }
+
+/* Task names keep the full sidebar width, including at tablet sizes. */
+.roster-sub .status-pill { margin: 0; font-size: 9px; }
+.roster-sub .roster-model { flex-basis: 100%; }
+.roster-rel { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
+.list-view td { overflow-wrap: anywhere; }
+.list-th-sort::after { content: " ↕"; opacity: 0.45; }
+th[aria-sort="ascending"] .list-th-sort::after { content: " ↑"; opacity: 1; color: var(--focus-ring); }
+th[aria-sort="descending"] .list-th-sort::after { content: " ↓"; opacity: 1; color: var(--focus-ring); }
+.list-th-sort:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .network-view, .roster-item, .view-toggle, .list-view tbody tr { transition: none; }
+  .timeline-drawer { animation: none; }
+}
+
+.list-agent__identity { min-width: 0; }
+.list-agent__mobile-meta { display: none; }
+@media (max-width: 767px) {
+  .list-agent { align-items: flex-start; }
+  .list-agent__shape { margin-top: 2px; }
+  .list-agent__mobile-meta { display: block; margin-top: 5px; color: var(--text-muted); font-size: 10.5px; line-height: 1.4; }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .app-header { flex-wrap: wrap; padding: 8px 14px; gap: 8px 14px; }
+  .app-header__brand { order: 1; }
+  .app-header__actions { order: 2; margin-left: auto; }
+  .app-header__center { order: 3; flex-basis: 100%; flex-wrap: wrap; overflow: visible; gap: 8px 14px; }
+  .metric-list { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
+}

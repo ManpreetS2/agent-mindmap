@@ -7,9 +7,19 @@
 >
 > **Scope:** improve the **existing** read-only Agent Mind Map for real T3 Code activity. Do not create a replacement repository, rewrite the backend unnecessarily, merge PR #36 without explicit permission, or expand into a general-purpose workflow editor.
 
-## Visual overhaul — resumable handoff (latest)
+## Visual polish completion (2026-10-23 — current)
 
-Pushed on PR #36 (draft): premium app shell (`web/src/styles/shell.css`, header/roster/legend/inspector/list/timeline drawer) and premium canvas (`nodeDraw.ts`, `networkCamera.ts`, `AgentNetwork.tsx`, `styles/networkCanvas.css`); 212 vitest pass. **Not yet done:** visual inspection of the new canvas at 1/2/12/30 agents (fixtures: `python3 web/e2e/make_fixtures.py OUT`, serve with `web/e2e/serve_fixture.py`), dense-graph label LOD and edge polish, a full QA-harness run on the new UI, a cross-provider review. Codex delegations failed with `401 token_expired` (re-sign in to Codex in T3 → Providers; on this Mac the instance id is `codex_82ad8197-…`). Next step: re-run the Astra brief (finish + verify + fast-forward push).
+Continued from clean local branch `t3/d4fbf680` at `c281eac` (already pushed to draft PR #36), preserving the shell/canvas work committed after `157b3b5`. Work was done directly with Codex GPT-6.1 Sol; no Claude or other delegation was used.
+
+- Canvas labels now share a bounded screen-space text/collision envelope, retain readable overview text at tablet zoom, prioritize focused/attention agents and omit crowded details before overlapping neighbouring bodies. Delegation arrows retain a seven-pixel screen length; ordinary edges are quieter. Physics, camera preservation, event/particle semantics and backend protections are unchanged.
+- Sidebar task names use the full row; status/provider metadata sits below. The settled filter accurately includes done/idle/stale states. Tablet header wraps so source and state counts remain visible.
+- T3 list removes the duplicate Task column (the agent name is the task title), shows provider/model beneath names on phones, exposes current sort direction visually and keeps legacy ledger task columns. Reduced-motion styling disables panel/row transitions.
+- Verification: **214 frontend tests**, **285 Python tests**, TypeScript/production build and diff whitespace check pass. Vite retains its existing large-bundle warning; jsdom/axe retains the existing canvas-context warning.
+- Browser evidence: `/tmp/mmqa/codex/` contains final 1/2/12/30-agent demo screenshots at 1440×900, 768×1024 and 390×844, list screenshots and `matrix.log`. All 15 fixture/live viewport checks have no horizontal overflow or page errors. Live T3 at `127.0.0.1:8799` reported a connected source and 22 real agents at inspection time; no new auth flow or T3 write was exercised. Demo screenshots remain explicitly synthetic. The collaborative preview twice returned `Preview automation snapshot timed out after 15000ms.` so browser verification used the repository's documented Playwright/Chrome-for-Testing workflow.
+- Browser harness: final run **12/12**, including drag/pin, camera persistence, reduced motion, full replay cycle, real toolbar/legend/roster geometry, demo separation and the legacy ledger dashboard. Report/screenshots: `/tmp/mmqa/codex/harness/`. Updated its stale controls selector to `.network-toolbar`, require panel geometry before overlap checks, and bounded replay-cycle sampling.
+- PR #36 must remain **draft and unmerged**. The legacy daemon on 8787 was not touched. Account usage remains unavailable from the read-only MCP; no private API or credential access was added.
+
+Older handoffs below are retained as history and are superseded by this entry.
 
 ## Status update (2026-10-23, after the handoff below — read this first)
 

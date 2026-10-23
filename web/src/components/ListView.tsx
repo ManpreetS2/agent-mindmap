@@ -141,10 +141,10 @@ export function ListView({
         <a href="#list-edges">{titles.edges}<span>{edges.length}</span></a>
         <a href="#list-events">Events<span>{events.length}</span></a>
       </nav>
-      <section id="list-agents" aria-label="Bots">
+      <section id="list-agents" aria-label={titles.bots}>
         <h2>{titles.bots} <span className="list-count">{bots.length}</span></h2>
         <table>
-          <caption className="sr-only">Bots roster</caption>
+          <caption className="sr-only">{titles.bots} roster</caption>
           <thead>
             <tr>
               <SortableHeader
@@ -159,7 +159,7 @@ export function ListView({
                 direction={botSort.dir}
                 onSort={() => botSort.toggle("status")}
               />
-              <th scope="col">Task</th>
+              {!t3 && <th scope="col">Task</th>}
               {hasSessions && <th scope="col" className="col-hide-narrow">Provider · model</th>}
               {hasSessions && <th scope="col" className="col-hide-narrow">Project · branch</th>}
             </tr>
@@ -173,13 +173,14 @@ export function ListView({
                 <td>
                   <span className={`list-agent${n.session ? ` list-agent--${providerKey(n.session.provider)}` : ""}`}>
                     {n.session && <span className={`list-agent__shape list-agent__shape--${providerKey(n.session.provider)}`} aria-hidden="true" />}
-                    <button type="button" onClick={() => onSelectNode(n.id)}>
-                      {n.label}
-                    </button>
+                    <span className="list-agent__identity">
+                      <button type="button" onClick={() => onSelectNode(n.id)}>{n.label}</button>
+                      {t3 && n.session && <span className="list-agent__mobile-meta">{providerLabel(n.session.provider)} · {n.session.model ?? "model not reported"}</span>}
+                    </span>
                   </span>
                 </td>
                 <td><StatusPill status={n.status} /></td>
-                <td className="mono">{n.current_task ?? "—"}</td>
+                {!t3 && <td className="mono">{n.current_task ?? "—"}</td>}
                 {hasSessions && (
                   <td className="col-hide-narrow">
                     {n.session ? (<>{providerLabel(n.session.provider)} <span className="mono">· {n.session.model ?? "model not reported"}</span></>) : "—"}
@@ -192,7 +193,7 @@ export function ListView({
                 )}
               </tr>
             ))}
-            {bots.length === 0 && emptyRow(hasSessions ? 5 : 3, "No agents reported.")}
+            {bots.length === 0 && emptyRow((hasSessions ? 5 : 3) - (t3 ? 1 : 0), "No agents reported.")}
           </tbody>
         </table>
       </section>

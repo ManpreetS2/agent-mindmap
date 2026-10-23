@@ -80,7 +80,7 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
           data-testid="roster-filter"
         />
         <div className="roster-chips" role="group" aria-label="Show agents by state">
-          {([["all", "All", total], ["attention", "Attention", counts.attention], ["working", "Working", counts.working], ["settled", "Done", counts.settled]] as const).map(([k, label, n]) => (
+          {([["all", "All", total], ["attention", "Attention", counts.attention], ["working", "Working", counts.working], ["settled", "Settled", counts.settled]] as const).map(([k, label, n]) => (
             <button
               key={k}
               type="button"
@@ -133,9 +133,9 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                       <span className="roster-main">
                         <span className="roster-line">
                           <span className="roster-task">{task}</span>
-                          <StatusPill status={n.status} />
                         </span>
                         <span className="roster-sub">
+                          <StatusPill status={n.status} />
                           <strong>{providerLabel(s.provider)}</strong>
                           <span className="roster-model mono">{model}</span>
                           <span className="roster-updated">{updatedLabel(n.last_activity_ts, ago)}</span>

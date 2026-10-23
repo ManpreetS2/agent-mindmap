@@ -149,7 +149,9 @@ try {
     await page.waitForFunction(() => /Stage 1\/10/.test(document.querySelector(".demo-replay-banner")?.innerText ?? ""), null, { timeout: 55000 });
     let prev = null, maxStep = 0, minGap = Infinity, samples = 0, appearanceCount = 0, disappearanceCount = 0, lastEdge = false, stageSamples = new Map(), jumpCount = 0;
     const frames = []; let priorStage = 0, lastCapturedStage = 0;
+    const replayDeadline = Date.now() + 70000;
     while (true) {
+      check(Date.now() < replayDeadline, "replay did not complete a cycle within 70 seconds");
       const st = await stageOf(page); const ns = await getNodes(page);
       // Stage (banner DOM) and statuses (graph model) come from separate round-trips; a sample that
       // straddles a stage boundary would pair one stage's banner with the next stage's statuses.
@@ -197,8 +199,9 @@ try {
       if (width === 390) await snap(page, "narrow-390");
       const boxes = await page.evaluate(() => {
         const rect = (s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height }; };
-        return { controls: rect(".network-controls"), roster: rect(".agent-roster"), legend: rect(".network-legend"), canvas: rect(".network-canvas") };
+        return { controls: rect(".network-toolbar"), roster: rect(".agent-roster"), legend: rect(".network-legend"), canvas: rect(".network-canvas") };
       });
+      check(boxes.controls && boxes.roster && boxes.legend && boxes.canvas, `network controls or panels missing at ${width}px`);
       const controlsClear = !boxes.controls || !boxes.roster || boxes.controls.x >= boxes.roster.right || boxes.controls.right <= boxes.roster.x || boxes.controls.y >= boxes.roster.bottom || boxes.controls.bottom <= boxes.roster.y;
       const legendClear = !boxes.legend || !boxes.controls || boxes.legend.bottom <= boxes.controls.y || boxes.legend.y >= boxes.controls.bottom || boxes.legend.right <= boxes.controls.x || boxes.legend.x >= boxes.controls.right;
       reports.push({ width, defaultList: width === 390 ? defaultList === 1 : undefined, graph, controlsClearOfRoster: controlsClear, legendClearOfControls: legendClear, boxes });

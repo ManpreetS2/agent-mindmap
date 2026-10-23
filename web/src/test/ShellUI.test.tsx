@@ -112,6 +112,9 @@ describe("list view (T3)", () => {
   it("uses agent/relationship vocabulary, shows provider+model and honest empty states", () => {
     renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live")} initialListView />);
     expect(screen.getByRole("heading", { name: /^Agents/ })).toBeInTheDocument();
+    const agents = screen.getByRole("region", { name: "Agents" });
+    expect(within(agents).queryByRole("columnheader", { name: "Task" })).not.toBeInTheDocument();
+    expect(within(agents).getByRole("table", { name: "Agents roster" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Relationships/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /^Bots/ })).not.toBeInTheDocument();
     expect(screen.getByText("No delegation relationships reported.")).toBeInTheDocument();
