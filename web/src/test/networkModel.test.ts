@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NetworkModel, AMBIENT_PX, stepAmbient, nodePosition, transitionCaption, endpointId } from "../utils/networkModel";
+import { NetworkModel, AmbientClock, AMBIENT_MAX_STEP, AMBIENT_PX, stepAmbient, nodePosition, transitionCaption, endpointId } from "../utils/networkModel";
 import { sessionNode, t3Activity } from "./helpers";
 
 const ids = ["a", "b", "c", "d"];
@@ -104,6 +104,26 @@ describe("NetworkModel", () => {
 });
 
 describe("ambient motion", () => {
+  it("bounds each active frame, keeps idle/done/stale nodes exact, and freezes the pause clock", () => {
+    const m = new NetworkModel();
+    m.sync(t3Activity([sessionNode("active"), ...(["IDLE", "DONE", "STALE"] as const).map(status => sessionNode(status, { status }))], []));
+    const clock = new AmbientClock();
+    let last = m.data.nodes.map(nodePosition);
+    for (let frame = 0; frame < 1200; frame++) {
+      stepAmbient(m.data.nodes, clock.step(frame * 16, true));
+      m.data.nodes.forEach((n, i) => {
+        const p = nodePosition(n), distance = Math.hypot(p.x - last[i].x, p.y - last[i].y);
+        expect(distance).toBeLessThanOrEqual(n.active ? AMBIENT_MAX_STEP + 1e-10 : 0);
+      });
+      last = m.data.nodes.map(nodePosition);
+    }
+    const stopped = clock.step(20000, false);
+    expect(clock.step(60000, false)).toBe(stopped);
+    expect(m.data.nodes.map(nodePosition)).toEqual(last);
+    expect(clock.step(100000, true)).toBe(stopped);
+    expect(clock.step(100016, true)).toBe(stopped + 16);
+  });
+
   it("is bounded, zero-mean, skips pinned/inactive agents", () => {
     const m = new NetworkModel();
     m.sync(t3Activity([sessionNode("a"), sessionNode("b"), sessionNode("c", { status: "DONE" })], []));

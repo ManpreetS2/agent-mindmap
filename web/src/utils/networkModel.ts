@@ -16,6 +16,9 @@ export interface GNode {
   phase: number;
   pinned: boolean;
   dragging?: boolean;
+  /** Physics anchors after settle; separate from explicit user pins and ambient offsets. */
+  settledX?: number;
+  settledY?: number;
   /** Visual-only offset: never feeds back into the physics or pinned coordinates. */
   ox?: number;
   oy?: number;
@@ -139,27 +142,23 @@ export class NetworkModel {
         const r = 130 * Math.sqrt(i + 0.7);
         x = r * Math.cos(i * 2.399963);
         y = r * Math.sin(i * 2.399963);
-      } else if (p) {
+      } else {
+        const all = [...this.nodes.values()];
+        const anchor = p ?? { x: all.reduce((v, q) => v + (q.x ?? 0), 0) / all.length,
+          y: all.reduce((v, q) => v + (q.y ?? 0), 0) / all.length };
         // Pick a nearby free slot; never materialize a delegate on top of its parent.
         const start = hash(n.id) * Math.PI * 2;
-        let best = { x: p.x ?? 0, y: (p.y ?? 0) + 150, score: Infinity };
+        let best = { x: anchor.x ?? 0, y: (anchor.y ?? 0) + 150, score: Infinity };
         for (let ring = 1; ring <= 3; ring++) for (let i = 0; i < 24; i++) {
           const a = start + i * Math.PI / 12;
           const radius = Math.min(184 / Math.max(0.001, Math.abs(Math.cos(a))), 150 / Math.max(0.001, Math.abs(Math.sin(a)))) * ring;
-          const px = (p.x ?? 0) + Math.cos(a) * radius, py = (p.y ?? 0) + Math.sin(a) * radius;
+          const px = (anchor.x ?? 0) + Math.cos(a) * radius, py = (anchor.y ?? 0) + Math.sin(a) * radius;
           let overlaps = 0;
           for (const q of this.nodes.values()) if (Math.abs(px - q.x!) < 180 && Math.abs(py - q.y!) < 146) overlaps++;
           const score = overlaps * 10000 + radius;
           if (score < best.score) best = { x: px, y: py, score };
         }
         x = best.x; y = best.y;
-      } else {
-        const all = [...this.nodes.values()];
-        const cx = all.reduce((t, q) => t + (q.x ?? 0), 0) / all.length;
-        const cy = all.reduce((t, q) => t + (q.y ?? 0), 0) / all.length;
-        const a = hash(n.id) * Math.PI * 2;
-        x = cx + Math.cos(a) * 140;
-        y = cy + Math.sin(a) * 140;
       }
       this.nodes.set(n.id, { id: n.id, ...facts, phase: hash(n.id), pinned: false, x, y, vx: 0, vy: 0 });
     }
@@ -208,6 +207,19 @@ export function transitionCaption(t: StatusTransition): string {
 }
 
 export const AMBIENT_PX = 3.2;
+/** World units per painted frame, including active-status entry. At fit zoom <=1.8: <=0.216 px. */
+export const AMBIENT_MAX_STEP = 0.12;
+
+/** Accumulates only running time; clamping long frames prevents resume/background-tab jumps. */
+export class AmbientClock {
+  private last: number | null = null;
+  private elapsed = 0;
+  step(now: number, running: boolean): number {
+    if (running && this.last !== null) this.elapsed += Math.min(32, Math.max(0, now - this.last));
+    this.last = running ? now : null;
+    return this.elapsed;
+  }
+}
 
 /** Bounded visual motion; leaves simulation coordinates untouched, including on status changes. */
 export function stepAmbient(nodes: Iterable<GNode>, timeMs: number): void {
@@ -217,8 +229,11 @@ export function stepAmbient(nodes: Iterable<GNode>, timeMs: number): void {
       n.ox = 0; n.oy = 0;
       continue;
     }
-    n.ox = AMBIENT_PX * Math.sin(t * 0.9 + n.phase * 6.28);
-    n.oy = AMBIENT_PX * Math.cos(t * 0.7 + n.phase * 6.28);
+    const dx = AMBIENT_PX * Math.sin(t * 0.9 + n.phase * 6.28) - (n.ox ?? 0);
+    const dy = AMBIENT_PX * Math.cos(t * 0.7 + n.phase * 6.28) - (n.oy ?? 0);
+    const fraction = Math.min(1, AMBIENT_MAX_STEP / (Math.hypot(dx, dy) || 1));
+    n.ox = (n.ox ?? 0) + dx * fraction;
+    n.oy = (n.oy ?? 0) + dy * fraction;
   }
 }
 

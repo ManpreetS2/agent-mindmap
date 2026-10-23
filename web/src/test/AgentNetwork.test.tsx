@@ -147,6 +147,17 @@ describe("AgentNetwork", () => {
     expect(props().cooldownTicks).toBe(0); // pause also freezes physics
   });
 
+  it("pause freezes visible offsets and resume never reheats layout", () => {
+    render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    frame(); frame();
+    fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
+    const frozen = gdata().nodes.map(n => [n.x, n.y, n.ox, n.oy]);
+    act(() => vi.advanceTimersByTime(10000)); frame();
+    expect(gdata().nodes.map(n => [n.x, n.y, n.ox, n.oy])).toEqual(frozen);
+    fireEvent.click(screen.getByRole("button", { name: "Resume motion" }));
+    expect(fgMock.methods.d3ReheatSimulation).not.toHaveBeenCalled();
+  });
+
   it("idle networks do not run a render loop", () => {
     render(<AgentNetwork {...base} activity={t3Activity(nodes.map((n) => ({ ...n, status: "DONE" as const })), [])} />);
     expect(props().autoPauseRedraw).toBe(true);

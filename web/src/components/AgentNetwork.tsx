@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
-import { networkForces } from "../utils/networkPhysics";
+import { networkForces, releaseSettled, settleLayout, freezeLayout } from "../utils/networkPhysics";
 import { fittedCamera, readCamera, restoreCamera, type Camera } from "../utils/networkCamera";
 import { useNetworkPointer } from "../hooks/useNetworkPointer";
 import type { Activity } from "@shared/types";
@@ -9,6 +9,7 @@ import { useReducedMotionPreference } from "../hooks/useReducedMotion";
 import { sourceKey } from "../utils/edgeActivity";
 import {
   NetworkModel,
+  AmbientClock,
   endpointId,
   stepAmbient,
   nodePosition,
@@ -70,6 +71,7 @@ export function AgentNetwork({
   const hostRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<FG>();
   const model = useRef(new NetworkModel()).current;
+  const ambientClock = useRef(new AmbientClock()).current;
   const modelKey = useRef("");
   const [data, setData] = useState(() => model.data);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -114,6 +116,9 @@ export function AgentNetwork({
     }
     const saved = fgRef.current && (fitted.current || touched.current) ? readCamera(fgRef.current) : null;
     const r = model.sync(activity);
+    if (reduce && model.data.nodes.some(n => n.settledX == null && !n.pinned)) settleLayout(model.data.nodes, model.data.links);
+    if (reduce) for (const n of model.data.nodes) { n.ox = 0; n.oy = 0; }
+    if (paused) freezeLayout(model.node.values());
     const now = performance.now();
     for (const t of r.transitions) {
       flashes.current.set(t.id, {
@@ -137,7 +142,7 @@ export function AgentNetwork({
     }
     setPinCount([...model.node.values()].filter((n) => n.pinned).length);
     if (r.visualChanged) setRedraw((v) => v + 1);
-  }, [activity, model]);
+  }, [activity, model, reduce, paused]);
 
   useEffect(() => () => window.clearTimeout(flashTimer.current), []);
 
@@ -182,7 +187,8 @@ export function AgentNetwork({
       camera.current = saved;
     }
     if (fg && !fitted.current && !touched.current && fg.zoom() > 1.8) fg.zoom(1.8, 0);
-    if (live.current.motionOn) stepAmbient(model.node.values(), performance.now());
+    const time = ambientClock.step(performance.now(), live.current.motionOn);
+    if (live.current.motionOn) stepAmbient(model.node.values(), time);
     for (const id of queuedParticles.current) {
       const link = model.data.links.find(l => l.id === id);
       if (!link || !live.current.motionOn || live.current.fresh.get(id) !== "new-delegation") {
@@ -193,7 +199,7 @@ export function AgentNetwork({
         queuedParticles.current.delete(id);
       }
     }
-  }, [model]);
+  }, [model, ambientClock]);
 
   useEffect(() => {
     for (const [id, kind] of fresh) {
@@ -329,6 +335,7 @@ export function AgentNetwork({
   const releasePins = useCallback(() => {
     for (const n of model.node.values()) {
       if (n.pinned) {
+        releaseSettled(n);
         n.fx = undefined;
         n.fy = undefined;
         n.pinned = false;
@@ -338,7 +345,8 @@ export function AgentNetwork({
     fgRef.current?.d3ReheatSimulation();
   }, [model]);
 
-  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onUnpin: () => {
+  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onUnpin: (n) => {
+    releaseSettled(n);
     setPinCount([...model.node.values()].filter(n => n.pinned).length);
     if (motionOn) fgRef.current?.d3ReheatSimulation();
   }, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
@@ -424,7 +432,8 @@ export function AgentNetwork({
             disabled={reduce}
             title={reduce ? "Motion is off (reduced-motion preference)" : undefined}
             onClick={() => {
-              if (paused) fgRef.current?.d3ReheatSimulation();
+              freezeLayout(model.node.values());
+              ambientClock.step(performance.now(), false);
               setPaused((p) => !p);
             }}
           >
