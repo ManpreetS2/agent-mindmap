@@ -7,6 +7,10 @@
 >
 > **Scope:** improve the **existing** read-only Agent Mind Map for real T3 Code activity. Do not create a replacement repository, rewrite the backend unnecessarily, merge PR #36 without explicit permission, or expand into a general-purpose workflow editor.
 
+## Visual overhaul — resumable handoff (latest)
+
+Pushed on PR #36 (draft): premium app shell (`web/src/styles/shell.css`, header/roster/legend/inspector/list/timeline drawer) and premium canvas (`nodeDraw.ts`, `networkCamera.ts`, `AgentNetwork.tsx`, `styles/networkCanvas.css`); 212 vitest pass. **Not yet done:** visual inspection of the new canvas at 1/2/12/30 agents (fixtures: `python3 web/e2e/make_fixtures.py OUT`, serve with `web/e2e/serve_fixture.py`), dense-graph label LOD and edge polish, a full QA-harness run on the new UI, a cross-provider review. Codex delegations failed with `401 token_expired` (re-sign in to Codex in T3 → Providers; on this Mac the instance id is `codex_82ad8197-…`). Next step: re-run the Astra brief (finish + verify + fast-forward push).
+
 ## Status update (2026-10-23, after the handoff below — read this first)
 
 The three worker branches from the handoff **have been integrated** into PR #36 (`feat/t3-readonly-activity`, still **draft**, never merged) on the original MacBook, and the remaining defects are fixed:
