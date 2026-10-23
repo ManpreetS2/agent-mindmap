@@ -338,7 +338,10 @@ export function AgentNetwork({
     fgRef.current?.d3ReheatSimulation();
   }, [model]);
 
-  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
+  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onUnpin: () => {
+    setPinCount([...model.node.values()].filter(n => n.pinned).length);
+    if (motionOn) fgRef.current?.d3ReheatSimulation();
+  }, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
   const needsLoop = dragging || (motionOn && (anyActive || transient || fresh.size > 0));
   const hasNodes = data.nodes.length > 0;
 
@@ -355,6 +358,7 @@ export function AgentNetwork({
       <div
         className="network-canvas"
         ref={hostRef}
+        title="Drag to pin an agent. Double-click a pinned agent to release it."
         {...pointer}
         style={{ cursor: hoveredId ? "pointer" : undefined, touchAction: "none" }}
         onPointerDown={() => (touched.current = true)}

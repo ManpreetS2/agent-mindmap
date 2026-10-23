@@ -15,6 +15,15 @@ function setup(provider: GNode["provider"]) {
 }
 
 describe("network pointer", () => {
+  it("double-click releases a pin and consumes the camera zoom gesture", () => {
+    const { n, result, event } = setup("claude");
+    n.pinned = true; n.fx = 100; n.fy = 100;
+    const click = event(100, 100);
+    result.current.onDoubleClickCapture(click);
+    expect([n.pinned, n.fx, n.fy]).toEqual([false, undefined, undefined]);
+    expect(click.preventDefault).toHaveBeenCalled();
+    expect(click.stopPropagation).toHaveBeenCalled();
+  });
   it.each(["claude", "codex"] as const)("pins the visible %s position and does not click/pan after drag", provider => {
     const { n, result, event, select, end } = setup(provider);
     const down = event(103, 102);
@@ -38,6 +47,7 @@ describe("network pointer", () => {
     expect(end).not.toHaveBeenCalled();
     expect(n.fx).toBeUndefined();
     expect(n.dragging).toBe(false);
+    expect([n.x, n.y, n.ox, n.oy]).toEqual([100, 100, 3, 2]);
   });
 
   it("ignores controls and hexagon corner space", () => {
