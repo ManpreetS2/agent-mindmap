@@ -76,7 +76,7 @@ Startup binds the localhost port **before** the first poll or write, so a port c
 
 Default T3 polling is 15 seconds, followed by the existing 10-second browser polling. Each source poll has a 60-second total timeout; MCP requests have a 20-second timeout. Unchanged thread details are cached using the complete list record; all discovery remains paginated. Limits: 50 projects, 500 threads, 10 pages of 100 records. Exceeding limits or failing partway through a read preserves the last complete snapshot instead of publishing a misleading partial one.
 
-Snapshot fingerprints and HTTP ETags suppress duplicate writes/delivery. IDs derive from source URL identity plus thread ID. Graph slots are stable for the lifetime of the daemon; dragged positions survive feed refreshes. No delegation animation or periodic graph relayout is added.
+Snapshot fingerprints and HTTP ETags suppress duplicate writes/delivery. IDs derive from source URL identity plus thread ID. Graph slots are stable for the lifetime of the daemon; dragged positions survive feed refreshes. Positioning and animation are frontend-only (see *Network UI* below); the backend still publishes only its stable grid `layout`, which the T3 view ignores.
 
 ## Status semantics and limits
 
@@ -112,3 +112,12 @@ The daemon checks replay every 0.5 seconds; the existing browser transport detec
 Verification for this update: **147 Python tests passed, 1 skipped; 64 frontend tests passed; TypeScript and production build passed; replay adapter/test lint passed.** Injectable-clock tests cover every status transition, exact boundaries, multiple cycles, stable IDs/layouts, bounded events/edges, ETags, restart and source isolation. HTTP tests verify 304, updated snapshots and edge removal. React tests cover every stage through the real feed, cadence isolation, status pulses and graph reconciliation preserving dragged coordinates/selection. A spring-with-three-keyframes error exposed by the replay test was fixed by using a short tween for the existing status pulse; the reduced-motion branch remains unchanged.
 
 Full visual/browser testing remains **unverified**: the local Playwright Chromium executable is absent, and the available cloud browser returned `ERR_CONNECTION_REFUSED` for the actual local replay server. No public bind or tunnel was added. Existing jsdom canvas and bundle-size warnings remain. The original live T3/OAuth verification boundary is unchanged.
+
+## Network UI (physics graph)
+
+The T3 view is a living force-directed network rendered by the existing React Flow canvas with `d3-force` (ISC) driving coordinates (`web/src/utils/forceNetwork.ts`). `react-force-graph-2d` (MIT) was considered but not adopted: it draws nodes on a canvas, which would discard the accessible DOM cards, selection/inspector wiring and existing tests; d3-force gives the same physics while keeping them. Dagre (`networkLayout.ts`) now only seeds the first arrangement.
+
+- **Motion:** agents repel, delegations act as springs, and a weak flow force keeps children to the right of their parent. Rectangular collision keeps cards from overlapping. Positions persist between polls; only a topology change (agent added/removed, relationship added/removed) adds heat, so status polls never move anything. Active agents (`IN_PROGRESS`/`IN_REVIEW`, not stale) keep a few pixels of deterministic ambient drift; idle/finished agents settle completely and the loop stops. All physics is seeded and deterministic.
+- **Interaction:** drag pins a card where it is dropped ("Release N pinned" frees them); hover/selection highlights the neighbourhood and dims the rest; **Pause motion** freezes the physics; `prefers-reduced-motion` runs the simulation to rest synchronously and disables motion entirely.
+- **Event semantics:** every delegation edge has a static arrow (parent → child) and is described as *lineage*, never as traffic. A one-shot pulse and a "New" tag play only for a verified delegation (its evidence event is in the snapshot) first *observed* after the baseline load; first loads, mode/source switches and replay restarts establish a new baseline and animate nothing. The tag disappears after 6 s.
+- **Privacy:** unchanged. The inspector only renders fields already published by the read-only adapter; missing values read "Not reported by T3".

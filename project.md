@@ -106,4 +106,4 @@ Do **not** build a private WebSocket RPC client, scrape the T3 GUI, inspect Keyc
 - [ ] No disruptions to the legacy daemon, no leaked credentials, and no unauthorized T3 writes.
 - [ ] Tests, production build, and independent review are completed; PR remains unmerged until authorized.
 
-**Current decision:** no implementation prompt has been issued. This file documents research and a recommended direction only.
+**Decision update (2026-10-23):** the owner superseded the "no force physics" guidance. The T3 view now uses React Flow + `d3-force` (see docs/t3-integration.md → *Network UI*). `react-force-graph-2d` was evaluated on paper (canvas rendering would drop accessible DOM nodes and existing tests) and not prototyped. Account-usage integration remains an unimplemented plan (section above).

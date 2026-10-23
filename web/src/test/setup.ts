@@ -2,6 +2,10 @@ import "@testing-library/jest-dom/vitest";
 import "vitest-axe/extend-expect";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { physicsConfig } from "../utils/forceNetwork";
+
+// Component tests use synchronous settling; physics tests opt back into the animation loop.
+physicsConfig.loop = false;
 
 class ResizeObserverMock {
   observe() {}

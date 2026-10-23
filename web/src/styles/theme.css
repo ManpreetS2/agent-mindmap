@@ -30,6 +30,10 @@
   --status-unknown-fg: #c5cad3;
 
   --edge-handoff: #8b9cb8;
+  --edge-delegation: #8fb4ff;
+  --provider-claude: #e0946a;
+  --provider-codex: #4fc3b0;
+  --focus-ring: #9cc0ff;
   --edge-verdict: #c9a227;
   --edge-pr: #6b9fff;
   --edge-merge: #5ecf8a;

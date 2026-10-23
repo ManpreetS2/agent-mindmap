@@ -7,7 +7,7 @@ export interface EdgeVisual {
 }
 
 export const EDGE_VISUALS: Record<EdgeType, EdgeVisual> = {
-  delegation: { stroke: "var(--edge-handoff)", label: "Verified T3 delegation" },
+  delegation: { stroke: "var(--edge-delegation)", label: "Verified T3 delegation (parent → child)" },
   handoff: { stroke: "var(--edge-handoff)", label: "Handoff / assignment" },
   verdict: {
     stroke: "var(--edge-verdict)",

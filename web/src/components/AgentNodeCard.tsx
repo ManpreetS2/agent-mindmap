@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "motion/react";
 import type { Node as ActivityNode } from "@shared/types";
 import { formatRelativeAgo } from "../utils/format";
 import { StatusPill } from "./StatusPill";
+import { providerKey, providerLabel } from "../utils/provider";
 
 export interface AgentNodeData {
   node: ActivityNode;
@@ -11,6 +12,8 @@ export interface AgentNodeData {
   lifecycleHighlighted: boolean;
   statusPulse?: boolean;
   reduceMotion?: boolean;
+  /** Relationship to the hovered/selected node; null when nothing is focused. */
+  relation?: "focus" | "neighbor" | "dim" | null;
   onOpenDetail: (id: string) => void;
 }
 
@@ -18,7 +21,60 @@ interface AgentNodeCardProps {
   data: AgentNodeData;
 }
 
+function SessionNodeCard({ data }: AgentNodeCardProps) {
+  const { node, selected, statusPulse, relation, onOpenDetail } = data;
+  const session = node.session!;
+  const reduceMotion = useReducedMotion() ?? data.reduceMotion ?? false;
+  const key = providerKey(session.provider);
+  const task = node.current_task ?? "No task reported";
+  const model = session.model ?? "Model not reported";
+  const cls = [
+    "session-node nopan",
+    `session-node--${key}`,
+    `session-node--${node.status.toLowerCase().replace("_", "-")}`,
+    selected ? "is-selected" : "",
+    relation ? `is-${relation}` : "",
+    statusPulse && !reduceMotion ? "is-status-pulse" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <button
+      type="button"
+      data-testid={`agent-node-${node.id}`}
+      className={cls}
+      onClick={() => onOpenDetail(node.id)}
+      aria-pressed={selected}
+      aria-label={`${providerLabel(session.provider)}, ${model}, ${node.status}, ${task}`}
+    >
+      <span className="session-node__row">
+        <span className="session-node__provider">
+          <span className="session-node__dot" aria-hidden="true" />
+          {providerLabel(session.provider)}
+        </span>
+        <StatusPill status={node.status} />
+      </span>
+      <span className="session-node__model mono" title={model}>
+        {model}
+      </span>
+      <span className="session-node__task" title={task}>
+        {task}
+      </span>
+      <span className="session-node__meta" title={node.last_activity_ts}>
+        {node.last_activity_ts
+          ? `Updated ${formatRelativeAgo(node.last_activity_ts)}`
+          : "No update time reported"}
+      </span>
+    </button>
+  );
+}
+
 export function AgentNodeCard({ data }: AgentNodeCardProps) {
+  if (data.node.session) return <SessionNodeCard data={data} />;
+  return <LegacyNodeCard data={data} />;
+}
+
+function LegacyNodeCard({ data }: AgentNodeCardProps) {
   const {
     node,
     selected,

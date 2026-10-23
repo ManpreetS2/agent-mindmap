@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Position,
   Background,
   Controls,
   MarkerType,
   MiniMap,
+  Panel,
   ReactFlow,
   ViewportPortal,
   useEdgesState,
@@ -22,6 +24,14 @@ import {
   layoutNodesWithDagre,
 } from "../utils/graphLayout";
 import { buildGroupFrames } from "../utils/groupFrames";
+import {
+  NETWORK_NODE_HEIGHT,
+  NETWORK_NODE_WIDTH,
+  networkLayoutFor,
+  publishLivePositions,
+} from "../utils/networkLayout";
+import { ForceNetwork } from "../utils/forceNetwork";
+import { useFreshEdges } from "../hooks/useFreshEdges";
 import { AgentFlowNode } from "./AgentFlowNode";
 import { GroupFrameLayer } from "./GroupFrameLayer";
 import { HandoffEdge } from "./HandoffEdge";
@@ -74,27 +84,84 @@ export function AgentGraph({
   const reduceMotion = useReducedMotion() ?? false;
   const lifecycleActive = lifecycleNodeIds !== null;
 
+  const isT3 = Boolean(activity.meta.t3);
+  const freshEdgeIds = useFreshEdges(activity);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // Legacy (ledger) graph: user-dragged positions survive until "Re-layout".
+  const pinned = useRef(new Map<string, { x: number; y: number }>());
+  const [pinCount, setPinCount] = useState(0);
+
+  // T3 network: d3-force owns coordinates; React Flow renders them.
+  const engineRef = useRef<ForceNetwork | null>(null);
+  if (isT3 && !engineRef.current) engineRef.current = new ForceNetwork();
+  const engine = engineRef.current;
+  const [userPaused, setUserPaused] = useState(false);
+  const motionPaused = userPaused || reduceMotion;
+  const [enginePinned, setEnginePinned] = useState(0);
+
+  const enginePositions = useMemo(() => {
+    if (!isT3 || !engine) return null;
+    engine.setPaused(motionPaused);
+    engine.update(
+      activity.nodes.map((n) => ({
+        id: n.id,
+        active: (n.status === "IN_PROGRESS" || n.status === "IN_REVIEW") && !n.session?.stale,
+      })),
+      activity.edges,
+      networkLayoutFor(activity.nodes, activity.edges),
+    );
+    return engine.positions();
+  }, [isT3, engine, activity.nodes, activity.edges, motionPaused]);
+
+  useEffect(() => () => engineRef.current?.destroy(), []);
+
   const laidOutNodes = useMemo(() => {
-    if (activity.meta.t3) return activity.nodes;
+    if (isT3) {
+      return applyLayoutPositions(activity.nodes, enginePositions ?? new Map());
+    }
     const positions = layoutNodesWithDagre(activity.nodes, activity.edges);
     return applyLayoutPositions(activity.nodes, positions);
-  }, [activity.nodes, activity.edges, activity.meta.t3]);
+  }, [activity.nodes, activity.edges, isT3, enginePositions]);
 
   const frames = useMemo(
     () => buildGroupFrames(laidOutNodes),
     [laidOutNodes],
   );
 
+  const focusId = hoveredId ?? selectedNodeId;
+  const neighborIds = useMemo(() => {
+    const out = new Set<string>();
+    if (!focusId) return out;
+    for (const e of activity.edges) {
+      if (e.source === focusId) out.add(e.target);
+      if (e.target === focusId) out.add(e.source);
+    }
+    return out;
+  }, [activity.edges, focusId]);
+
   const builtNodes: FlowNode[] = useMemo(
     () =>
       laidOutNodes.map((n) => ({
         id: n.id,
         type: "agent",
-        position: { x: n.layout.x, y: n.layout.y },
+        position: (!isT3 && pinned.current.get(n.id)) || { x: n.layout.x, y: n.layout.y },
         draggable: true,
-        dragHandle: ".agent-node-drag-handle",
+        dragHandle: n.session ? undefined : ".agent-node-drag-handle",
         selectable: true,
         focusable: true,
+        selected: selectedNodeId === n.id,
+        // Session cards have a fixed size and floating edges, so declare handles up front:
+        // edges then never depend on React Flow's handle measurement surviving a controlled update.
+        ...(n.session
+          ? {
+              initialWidth: NETWORK_NODE_WIDTH,
+              initialHeight: NETWORK_NODE_HEIGHT,
+              handles: [
+                { type: "target" as const, position: Position.Left, x: 0, y: NETWORK_NODE_HEIGHT / 2, width: 1, height: 1 },
+                { type: "source" as const, position: Position.Right, x: NETWORK_NODE_WIDTH, y: NETWORK_NODE_HEIGHT / 2, width: 1, height: 1 },
+              ],
+            }
+          : {}),
         data: {
           node: n,
           selected: selectedNodeId === n.id,
@@ -104,10 +171,18 @@ export function AgentGraph({
             lifecycleActive && lifecycleNodeIds!.has(n.id),
           statusPulse: Boolean(statusPulseNodeIds?.has(n.id)),
           reduceMotion,
+          relation: !focusId
+            ? null
+            : n.id === focusId
+              ? "focus"
+              : neighborIds.has(n.id)
+                ? "neighbor"
+                : "dim",
           onOpenDetail: (id: string) => onOpenNodeDetail(id),
         },
       })),
     [
+      isT3,
       laidOutNodes,
       selectedNodeId,
       onOpenNodeDetail,
@@ -115,6 +190,8 @@ export function AgentGraph({
       lifecycleNodeIds,
       statusPulseNodeIds,
       reduceMotion,
+      focusId,
+      neighborIds,
     ],
   );
 
@@ -123,43 +200,63 @@ export function AgentGraph({
       activity.edges.map((e) => {
         const visual = EDGE_VISUALS[e.type];
         const dimmed = lifecycleActive && !lifecycleEdgeIds!.has(e.id);
-        const highlighted =
-          lifecycleActive && lifecycleEdgeIds!.has(e.id);
-        const tooltip = `${activity.meta.t3?.replay && e.type === "delegation" ? "Simulated delegation" : visual.label}: ${e.source} → ${e.target} (${e.count})`;
+        const lifecycleHi = lifecycleActive && lifecycleEdgeIds!.has(e.id);
+        const incident = focusId !== null && (e.source === focusId || e.target === focusId);
+        const focusDim = focusId !== null && !incident;
+        const highlighted = lifecycleHi || incident;
+        const fresh = freshEdgeIds.has(e.id);
+        const nameOf = (id: string) =>
+          activity.nodes.find((n) => n.id === id)?.label ?? id;
+        const kind =
+          activity.meta.t3?.replay && e.type === "delegation"
+            ? "Simulated delegation"
+            : visual.label;
+        const tooltip = `${kind}: ${e.source} → ${e.target} (${e.count})`;
         const recent = isRecentHandoff(e, activity.events, nowMs);
         return {
           id: e.id,
           source: e.source,
           target: e.target,
           type: "handoffEdge",
+          ariaLabel: `${kind}: ${nameOf(e.source)} to ${nameOf(e.target)}`,
           data: {
-            labelText: String(e.count),
+            labelText: isT3 ? "delegated" : String(e.count),
             tooltip,
             showParticles: recent && !reduceMotion,
             reduceMotion,
-            glow: highlighted && !reduceMotion,
+            glow: highlighted && !reduceMotion && !isT3,
+            curved: isT3,
+            fresh,
+            showLabel: isT3 ? incident || fresh : true,
           },
           animated: recent && !reduceMotion,
           style: {
             stroke: visual.stroke,
             strokeWidth:
-              strokeWidthForCount(e.count) + (highlighted ? 1.5 : 0),
+              (isT3 ? 2 : strokeWidthForCount(e.count)) + (highlighted ? 1.5 : 0),
             strokeDasharray: visual.strokeDasharray,
-            opacity: dimmed ? 0.2 : 1,
+            opacity: dimmed || focusDim ? 0.18 : 1,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             color: visual.stroke,
+            width: 18,
+            height: 18,
           },
         };
       }),
     [
       activity.edges,
       activity.events,
+      activity.nodes,
+      activity.meta.t3?.replay,
+      isT3,
       lifecycleActive,
       lifecycleEdgeIds,
       nowMs,
       reduceMotion,
+      focusId,
+      freshEdgeIds,
     ],
   );
 
@@ -167,16 +264,50 @@ export function AgentGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState(builtEdges);
 
   useEffect(() => {
-    // Re-apply layout positions when activity layout changes; drag is session-local
-    // until the next layout pass (poll with identical node set keeps dagre/grid coords).
+    // Drop pins for sessions that no longer exist, then merge: keep React Flow's measured
+    // size / drag state from the previous node so polling never remeasures or flickers.
+    if (!isT3) {
+      const live = new Set(builtNodes.map((n) => n.id));
+      for (const id of [...pinned.current.keys()]) {
+        if (!live.has(id)) pinned.current.delete(id);
+      }
+      setPinCount(pinned.current.size);
+    }
+    const live = engine?.positions();
     setNodes((prev) => {
-      const prevPos = new Map(prev.map((n) => [n.id, n.position]));
-      return builtNodes.map((next) => ({
-        ...next,
-        position: prevPos.get(next.id) ?? next.position,
-      }));
+      const before = new Map(prev.map((n) => [n.id, n]));
+      return builtNodes.map((next) => {
+        const old = before.get(next.id);
+        if (old?.dragging) return { ...old, ...next, position: old.position };
+        // Physics owns T3 coordinates: never let a stale memoised position win.
+        const merged = old ? { ...old, ...next } : next;
+        const p = live?.get(next.id);
+        return p ? { ...merged, position: p } : merged;
+      });
     });
-  }, [builtNodes, setNodes]);
+  }, [builtNodes, setNodes, isT3, engine]);
+
+  // Physics ticks move only positions; node data keeps identity so cards do not re-render.
+  useEffect(() => {
+    if (!engine) return;
+    return engine.onChange(() => {
+      const pos = engine.positions();
+      publishLivePositions(pos);
+      setEnginePinned(engine.pinned.size);
+      setNodes((prev) =>
+        prev.map((n) => {
+          const p = pos.get(n.id);
+          return p && !n.dragging ? { ...n, position: p } : n;
+        }),
+      );
+    });
+  }, [engine, setNodes]);
+
+  useEffect(() => {
+    if (!enginePositions) return;
+    publishLivePositions(enginePositions);
+    return () => publishLivePositions(null);
+  }, [enginePositions]);
 
   useEffect(() => {
     setEdges(builtEdges);
@@ -184,10 +315,38 @@ export function AgentGraph({
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      let pinnedNow = false;
+      for (const c of changes) {
+        if (c.type !== "position") continue;
+        if (engine) {
+          const at = c.position ?? engine.positions().get(c.id);
+          if (at) engine.drag(c.id, at, c.dragging === true);
+        } else if (c.position) {
+          pinned.current.set(c.id, c.position);
+          pinnedNow = true;
+        }
+      }
+      if (pinnedNow) setPinCount(pinned.current.size);
       onNodesChange(changes);
     },
-    [onNodesChange],
+    [onNodesChange, engine],
   );
+
+  const relayout = useCallback(() => {
+    if (engine) {
+      engine.unpinAll();
+      setEnginePinned(0);
+      return;
+    }
+    pinned.current.clear();
+    setPinCount(0);
+    setNodes((prev) =>
+      prev.map((n) => {
+        const laid = laidOutNodes.find((l) => l.id === n.id);
+        return laid ? { ...n, position: { x: laid.layout.x, y: laid.layout.y } } : n;
+      }),
+    );
+  }, [engine, laidOutNodes, setNodes]);
 
   const onPaneClick = useCallback(() => {
     onClearNodeDetail();
@@ -211,12 +370,14 @@ export function AgentGraph({
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={onPaneClick}
+        onNodeMouseEnter={(_, node) => setHoveredId(node.id)}
+        onNodeMouseLeave={() => setHoveredId(null)}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
-        minZoom={0.45}
+        minZoom={0.25}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
@@ -230,6 +391,25 @@ export function AgentGraph({
           maskColor="rgba(8, 12, 20, 0.65)"
           nodeColor={() => "hsl(var(--neon-cyan) / 0.55)"}
         />
+        <Panel position="top-left" className="graph-controls">
+          {isT3 && (
+            <button
+              type="button"
+              className="relayout-btn"
+              aria-pressed={userPaused}
+              disabled={reduceMotion}
+              title={reduceMotion ? "Motion is off (reduced-motion preference)" : undefined}
+              onClick={() => setUserPaused((p) => !p)}
+            >
+              {motionPaused ? "Resume motion" : "Pause motion"}
+            </button>
+          )}
+          {(isT3 ? enginePinned : pinCount) > 0 && (
+            <button type="button" className="relayout-btn" onClick={relayout}>
+              {isT3 ? `Release ${enginePinned} pinned` : `Re-layout (${pinCount} pinned)`}
+            </button>
+          )}
+        </Panel>
         <ViewportPortal>
           <GroupFrameLayer frames={frames} />
         </ViewportPortal>

@@ -16,11 +16,13 @@ import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { FactSourceLink } from "./FactSourceLink";
 import { StatusPill } from "./StatusPill";
 import { UnsourcedTag } from "./UnsourcedTag";
+import { SessionInspector } from "./SessionInspector";
 
 interface DetailPanelProps {
   node: Node;
   activity: Activity;
   onClose: () => void;
+  onSelectNode?: (id: string) => void;
 }
 
 function FactRow({
@@ -55,7 +57,7 @@ function AgentLinkChip({ id }: { id: string }) {
   );
 }
 
-export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
+export function DetailPanel({ node, activity, onClose, onSelectNode }: DetailPanelProps) {
   const task = taskForNode(node, activity.tasks);
   const ownedTasks = tasksOwnedByLabel(node.label, activity.tasks);
   const statusSource = resolveStatusSource(node, activity.tasks, activity.events);
@@ -66,26 +68,16 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
   );
   const lastActivity = resolveLastActivity(node, activity.events);
 
-  if (node.session) return (
-    <aside className="detail-panel" aria-label={`Details for ${node.label}`}>
-      <div className="detail-panel__header"><h2>{node.label}</h2>
-        <button type="button" className="detail-panel__close" onClick={onClose} aria-label="Close detail panel">×</button>
-      </div>
-      <FactRow label="Status"><StatusPill status={node.status} />
-        <div>Last reported: {node.session.reported_status}</div>
-      </FactRow>
-      <FactRow label="Provider / model">{node.session.provider ?? "Unknown provider"} / {node.session.model ?? "Unknown model"}</FactRow>
-      <FactRow label="Current task">{node.current_task ?? "Unknown task"}</FactRow>
-      <FactRow label="Project">{node.session.project}</FactRow>
-      <FactRow label="Branch">{node.session.branch ?? "Not reported"}</FactRow>
-      <FactRow label={activity.meta.t3?.replay ? "Simulated activity time" : "Last verified T3 activity"}>{node.last_activity_ts ? formatSourceTime(node.last_activity_ts) : "Not reported"}</FactRow>
-      <FactRow label="Source">{node.session.source}<div className="mono">Thread: {node.session.thread_id}</div></FactRow>
-      <FactRow label="Source links">{node.session.source_links.length ? node.session.source_links.filter(isHttpSourceUrl).map(url => (
-        <div key={url}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></div>
-      )) : "No external links reported"}</FactRow>
-      <p className="detail-muted">{activity.meta.t3?.replay ? "Synthetic replay metadata. These are simulated agents, models, tasks and delegation." : "Read-only metadata. Conversation text and tool output are not published."}</p>
-    </aside>
-  );
+  if (node.session) {
+    return (
+      <SessionInspector
+        node={node}
+        activity={activity}
+        onClose={onClose}
+        onSelectNode={onSelectNode}
+      />
+    );
+  }
 
   return (
     <aside className="detail-panel" aria-label={`Details for ${node.label}`}>

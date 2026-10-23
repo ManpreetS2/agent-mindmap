@@ -1,5 +1,4 @@
-import { act, renderHook, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, fireEvent, renderHook, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Activity } from "@shared/types";
 import { MindmapView } from "../views/MindmapView";
@@ -20,11 +19,13 @@ describe("T3 sessions", () => {
   it("renders dynamic providers, unknown models, demo label and details", async () => {
     renderMindmap(<MindmapView activity={sample} />);
     expect(screen.getByText(/DEMO — offline fixtures/)).toBeInTheDocument();
-    expect(screen.getByText(/Codex · reported-model/)).toBeInTheDocument();
-    expect(screen.getByText(/Claude Code · Unknown model/)).toBeInTheDocument();
-    expect(screen.getByText("Verified T3 delegation")).toBeInTheDocument();
+    const codex = screen.getByTestId("agent-node-codex");
+    expect(within(codex).getByText("Codex")).toBeInTheDocument();
+    expect(within(codex).getByText("reported-model")).toBeInTheDocument();
+    expect(screen.getAllByText("Model not reported").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Verified T3 delegation/)).toBeInTheDocument();
     expect(screen.queryByText(/showing ledger only/)).not.toBeInTheDocument();
-    await userEvent.setup().click(screen.getByTestId("agent-node-codex"));
+    fireEvent.click(screen.getByTestId("agent-node-codex")); // jsdom mouse events lack `view`, which d3-drag needs
     const panel = screen.getByRole("complementary");
     expect(within(panel).getByText("feat/t3")).toBeInTheDocument();
     expect(within(panel).getByRole("link")).toHaveAttribute("href", "https://github.com/example/repo/pull/1");

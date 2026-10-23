@@ -928,3 +928,114 @@
 }
 .demo-replay-banner strong { font-size: 15px; letter-spacing: 0.04em; }
 .demo-replay-banner span:last-child { flex-basis: 100%; }
+
+/* ───────── Network session nodes ───────── */
+.agent-flow-node--session { width: 236px; }
+.session-node {
+  --accent-provider: var(--text-muted);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-sizing: border-box;
+  width: 236px;
+  height: 96px;
+  padding: 8px 12px 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, var(--bg-card), var(--bg-panel));
+  color: var(--text-primary);
+  text-align: left;
+  cursor: grab;
+  overflow: hidden;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+}
+.session-node::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--accent-provider);
+}
+.session-node--claude { --accent-provider: var(--provider-claude); }
+.session-node--codex { --accent-provider: var(--provider-codex); }
+.session-node:hover { border-color: var(--text-muted); }
+.session-node:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.session-node.is-selected {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.session-node.is-neighbor { border-color: var(--edge-delegation); box-shadow: 0 0 0 1px var(--edge-delegation); }
+.session-node.is-dim { opacity: 0.4; }
+.session-node--failed { border-color: #a8414f; }
+.session-node--stale, .session-node--unknown { border-style: dashed; }
+.session-node__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.session-node__provider {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--accent-provider);
+}
+.session-node__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-provider); }
+.session-node__model { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-node__task {
+  font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--text-primary);
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.session-node__meta { font-size: 11px; color: var(--text-muted); margin-top: auto; }
+.session-node.is-status-pulse { animation: session-pulse 0.9s ease-out 1; }
+@keyframes session-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(143, 180, 255, 0.55); }
+  100% { box-shadow: 0 0 0 10px rgba(143, 180, 255, 0); }
+}
+
+/* ───────── Edges ───────── */
+.edge-fresh-dot { fill: var(--edge-delegation); filter: drop-shadow(0 0 4px var(--edge-delegation)); }
+.react-flow__edge .edge-is-fresh { stroke-width: 3.5px; }
+.relayout-btn {
+  font-size: 12px; padding: 6px 10px; border-radius: 6px;
+  background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);
+}
+.relayout-btn:hover { border-color: var(--focus-ring); }
+
+/* ───────── Session inspector ───────── */
+.inspector { --accent-provider: var(--text-muted); border-top: 3px solid var(--accent-provider); }
+.inspector--claude { --accent-provider: var(--provider-claude); }
+.inspector--codex { --accent-provider: var(--provider-codex); }
+.inspector__provider { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-provider); }
+.inspector__sim { margin-left: 8px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: #2c2414; color: #ffe2a3; border: 1px solid #f4c66b; }
+.inspector-facts { margin: 0 0 var(--space-4); display: grid; gap: 10px; }
+.inspector-fact dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.inspector-fact dd { margin: 2px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.inspector-section { border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); margin-bottom: var(--space-4); }
+.inspector-section__title { margin: 0 0 var(--space-2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.inspector-list, .inspector-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.inspector-timeline li { display: grid; gap: 1px; padding-left: 10px; border-left: 2px solid var(--border-subtle); font-size: 13px; }
+.inspector-timeline time { font-size: 11px; color: var(--text-muted); }
+.inspector-caveat { font-size: 12px; margin: var(--space-2) 0 0; }
+.inspector-link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.inspector-note { margin: 0 0 var(--space-3); padding: 8px 10px; border-radius: 6px; font-size: 13px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); }
+.inspector-note--warn { background: var(--banner-bg); border-color: var(--banner-border); color: var(--banner-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .session-node.is-status-pulse { animation: none; }
+  .session-node, .relayout-btn { transition: none; }
+}
+
+/* Themed React Flow controls (default is a white block on the dark canvas) */
+.agent-graph .react-flow__controls { box-shadow: none; border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; }
+.agent-graph .react-flow__controls-button { background: var(--bg-elevated); color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); }
+.agent-graph .react-flow__controls-button:hover { background: var(--bg-card); }
+.agent-graph .react-flow__controls-button svg { fill: currentColor; }
+
+/* Ambient life: active agents breathe; nothing animates for idle/finished ones. */
+.graph-controls { display: flex; gap: 8px; }
+.relayout-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.session-node--in-progress .session-node__dot,
+.session-node--in-review .session-node__dot { animation: dot-breathe 2.4s ease-in-out infinite; }
+@keyframes dot-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-provider) 35%, transparent); }
+}
+.react-flow__node { cursor: grab; }
+@media (prefers-reduced-motion: reduce) {
+  .session-node__dot { animation: none !important; }
+}

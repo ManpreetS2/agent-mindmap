@@ -21,6 +21,7 @@ import { NumberTicker } from "../components/magic/number-ticker";
 import { useResponsiveListDefault } from "../hooks/useResponsiveView";
 import { formatSourceTime } from "../utils/format";
 import { handoffEdgeCount } from "../utils/nodeFacts";
+import { networkLayoutFor } from "../utils/networkLayout";
 import {
   EMPTY_FILTERS,
   filterTimelineEvents,
@@ -73,6 +74,10 @@ export function MindmapView({
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
+  // The breakpoint is only known after mount: follow it unless a test forces a view.
+  useEffect(() => {
+    if (initialListView === undefined) setListView(defaultList);
+  }, [defaultList, initialListView]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   const [filters, setFilters] = useState<TimelineFilterState>(EMPTY_FILTERS);
@@ -88,6 +93,13 @@ export function MindmapView({
     () => activity.nodes.find((n) => n.id === selectedNodeId) ?? null,
     [activity.nodes, selectedNodeId],
   );
+
+  // Keyboard navigation must follow the on-screen network layout, not the adapter's grid slots.
+  const navNodes = useMemo(() => {
+    if (!activity.meta.t3) return activity.nodes;
+    const pos = networkLayoutFor(activity.nodes, activity.edges);
+    return activity.nodes.map((n) => ({ ...n, layout: pos.get(n.id) ?? n.layout }));
+  }, [activity.nodes, activity.edges, activity.meta.t3]);
 
   const handoffs = useMemo(() => handoffEdgeCount(activity), [activity]);
   const nodeIds = useMemo(
@@ -160,14 +172,14 @@ export function MindmapView({
       const dir = dirMap[e.key];
       if (dir) {
         e.preventDefault();
-        const order = hierarchyNodeOrder(activity.nodes);
+        const order = hierarchyNodeOrder(navNodes);
         const current =
           focusedNodeId ??
           focusGraphNodeIdFromActiveElement() ??
           order[0]?.id ??
           null;
         if (!current) return;
-        const next = nearestNodeInDirection(activity.nodes, current, dir);
+        const next = nearestNodeInDirection(navNodes, current, dir);
         if (next) {
           setFocusedNodeId(next);
           focusGraphNodeButton(next);
@@ -183,7 +195,7 @@ export function MindmapView({
         }
       }
     },
-    [activity.nodes, focusedNodeId],
+    [navNodes, focusedNodeId],
   );
 
   const handleTimelineKeyDown = useCallback(
@@ -324,6 +336,7 @@ export function MindmapView({
                 node={selectedNode}
                 activity={activity}
                 onClose={onClearNodeDetail}
+                onSelectNode={onOpenNodeDetail}
               />
             )}
           </div>
@@ -353,6 +366,7 @@ export function MindmapView({
                 node={selectedNode}
                 activity={activity}
                 onClose={onClearNodeDetail}
+                onSelectNode={onOpenNodeDetail}
               />
             )}
           </div>

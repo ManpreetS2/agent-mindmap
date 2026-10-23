@@ -16,12 +16,32 @@
 }
 
 @media (max-width: 767px) {
+  /* Graph stays available on phones (toggle); list is the default there. */
   .graph-region {
+    flex: none;
+    height: 62vh;
+    min-height: 420px;
+  }
+
+  .mindmap-main {
+    flex-direction: column;
+  }
+
+  .agent-minimap {
     display: none;
   }
 
-  .mindmap-main:not(.mindmap-main--list) .graph-region {
-    display: none;
+  .edge-legend {
+    top: auto;
+    bottom: 8px;
+    left: 56px;
+    right: 8px;
+  }
+
+  .detail-panel {
+    width: 100%;
+    border-left: 0;
+    border-top: 1px solid var(--border-subtle);
   }
 
   .mindmap-main--list .list-view {
