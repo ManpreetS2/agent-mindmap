@@ -80,7 +80,8 @@
 @media (min-width: 768px) and (max-width: 1279px) {
   .detail-panel { width: min(360px, 60vw); }
   .network-view { grid-template-columns: 200px minmax(0, 1fr); }
-  .network-legend { max-width: calc(100% - 24px); }
+  /* Legend lives over the canvas column only (roster column is 200px wide here). */
+  .network-legend { max-width: calc(100% - 236px); }
 }
 
 @media (max-width: 767px) {
