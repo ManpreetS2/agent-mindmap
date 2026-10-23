@@ -1,51 +1,46 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Activity } from "@shared/types";
-import {
-  FRESH_EDGE_MS,
-  newlyObservedEdgeIds,
-  sourceKey,
-} from "../utils/edgeActivity";
+import { FRESH_EDGE_MS, newlyObservedEdgeIds, sourceKey } from "../utils/edgeActivity";
 
-/**
- * Ids of verified edges first observed in the latest snapshot, held for a few seconds.
- * The first snapshot (and any change of source or mode) only establishes a baseline.
- */
+/** A source-scoped observation history. Disappearing/reappearing edges never replay old evidence. */
 export function useFreshEdges(activity: Activity): ReadonlySet<string> {
   const seen = useRef<Set<string> | null>(null);
-  const key = useRef<string>("");
+  const evidence = useRef(new Set<string>());
+  const key = useRef("");
   const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
   const timers = useRef(new Set<number>());
-
-  useEffect(() => {
-    const live = timers.current;
-    return () => {
-      for (const t of live) window.clearTimeout(t);
-      live.clear();
-    };
+  useEffect(() => () => {
+    for (const t of timers.current) window.clearTimeout(t);
+    timers.current.clear();
   }, []);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     const k = sourceKey(activity);
-    if (key.current !== k) {
+    const changed = key.current !== k;
+    if (changed) {
       key.current = k;
       seen.current = null;
-      setFresh(new Set());
+      evidence.current.clear();
+      for (const t of timers.current) window.clearTimeout(t);
+      timers.current.clear();
     }
     const added = newlyObservedEdgeIds(seen.current, activity);
-    seen.current = new Set(activity.edges.map((e) => e.id));
-    if (added.size === 0) return;
-    setFresh((prev) => new Set([...prev, ...added]));
-    // Not cleared on the next snapshot: rapid replay polling must not extend the highlight.
+    const events = new Set(activity.events.map(e => e.id));
+    for (const e of activity.edges) {
+      if (e.event_ids.some(id => evidence.current.has(id))) added.delete(e.id);
+      for (const id of e.event_ids) if (events.has(id)) evidence.current.add(id);
+    }
+    seen.current = new Set([...(seen.current ?? []), ...activity.edges.map(e => e.id)]);
+    const present = new Set(activity.edges.map(e => e.id));
+    setFresh(prev => {
+      const next = new Set([...(changed ? [] : [...prev].filter(id => present.has(id))), ...added]);
+      return next.size === prev.size && [...next].every(id => prev.has(id)) ? prev : next;
+    });
+    if (!added.size) return;
     const t = window.setTimeout(() => {
       timers.current.delete(t);
-      setFresh((prev) => {
-        const next = new Set(prev);
-        for (const id of added) next.delete(id);
-        return next;
-      });
+      setFresh(prev => new Set([...prev].filter(id => !added.has(id))));
     }, FRESH_EDGE_MS);
     timers.current.add(t);
   }, [activity]);
-
   return fresh;
 }

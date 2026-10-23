@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
-import { forceCollide, forceX, forceY } from "d3-force";
+import { networkForces } from "../utils/networkPhysics";
+import { fittedCamera, readCamera, restoreCamera, type Camera } from "../utils/networkCamera";
+import { useNetworkPointer } from "../hooks/useNetworkPointer";
 import type { Activity } from "@shared/types";
 import { useFreshEdges } from "../hooks/useFreshEdges";
 import { useReducedMotionPreference } from "../hooks/useReducedMotion";
@@ -9,6 +11,7 @@ import {
   NetworkModel,
   endpointId,
   stepAmbient,
+  nodePosition,
   transitionCaption,
   type GLink,
   type GNode,
@@ -18,6 +21,10 @@ import { AgentRoster } from "./AgentRoster";
 
 const FLASH_MS = 2400;
 const FRESH_LINK_COLOR = "#8fb4ff";
+const replaceCanvas = () => "replace" as const;
+const afterCanvas = () => "after" as const;
+const noLabel = () => "";
+const particleColor = () => "#e8f0ff";
 
 export interface AgentNetworkProps {
   activity: Activity;
@@ -64,10 +71,17 @@ export function AgentNetwork({
   const [pinCount, setPinCount] = useState(0);
   const [redraw, setRedraw] = useState(0);
   const [transient, setTransient] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const flashTimer = useRef<number>();
   const flashes = useRef(new Map<string, { caption: string; start: number; color: string }>());
   const fresh = useFreshEdges(activity);
   const emitted = useRef(new Set<string>());
-  const center = useRef<{ x: number; y: number } | null>(null);
+  const camera = useRef<Camera | null>(null);
+  const pendingCamera = useRef<Camera | null>(null);
+  const queuedParticles = useRef(new Set<string>());
+  const forces = useMemo(networkForces, []);
+  // A changed zero accessor clears in-flight photons on pause/reduced-motion without reheating.
+  const noContinuousParticles = useMemo(() => () => 0, [motionOn]);
   const fitted = useRef(false);
   const touched = useRef(false);
   const live = useRef({ selected: selectedNodeId, hovered: hoveredId, motionOn, fresh });
@@ -82,7 +96,12 @@ export function AgentNetwork({
       flashes.current.clear();
       emitted.current.clear();
       fitted.current = false;
+      touched.current = false;
+      camera.current = null;
+      pendingCamera.current = null;
+      queuedParticles.current.clear();
     }
+    const saved = fgRef.current && (fitted.current || touched.current) ? readCamera(fgRef.current) : null;
     const r = model.sync(activity);
     const now = performance.now();
     for (const t of r.transitions) {
@@ -94,24 +113,32 @@ export function AgentNetwork({
     }
     if (r.transitions.length) {
       setTransient(true);
-      window.setTimeout(() => setTransient(false), FLASH_MS + 100);
+      window.clearTimeout(flashTimer.current);
+      flashTimer.current = window.setTimeout(() => {
+        flashes.current.clear();
+        setTransient(false);
+        setRedraw(v => v + 1);
+      }, FLASH_MS + 100);
     }
-    if (r.topologyChanged) setData(model.data);
+    if (r.topologyChanged) {
+      pendingCamera.current = saved;
+      setData(model.data);
+    }
     setPinCount([...model.node.values()].filter((n) => n.pinned).length);
-    setRedraw((v) => v + 1);
+    if (r.visualChanged) setRedraw((v) => v + 1);
   }, [activity, model]);
 
-  // --- forces (registered once; tuned for ~3–40 circular nodes with labels) ---
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+
+  // Stable, named forces replace themselves on StrictMode setup; never accumulate.
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
-    fg.d3Force("charge")?.strength(-230).distanceMax(380);
-    fg.d3Force("link")?.distance(96).strength(0.55);
+    fg.d3Force("charge")?.strength(-180).distanceMax(500);
+    fg.d3Force("link")?.distance(154).strength(0.16);
     fg.d3Force("center", null as never);
-    fg.d3Force("x", forceX(0).strength(0.045) as never);
-    fg.d3Force("y", forceY(0).strength(0.045) as never);
-    fg.d3Force("collide", forceCollide(NODE_R + 24).strength(0.9).iterations(2) as never);
-  }, [model]);
+    for (const [name, force] of Object.entries(forces)) fg.d3Force(name, force as never);
+  }, [forces]);
 
   // Opt-in debug/QA hook (localStorage.mindmapDebug = "1"): node screen positions for browser tests.
   useEffect(() => {
@@ -119,58 +146,70 @@ export function AgentNetwork({
     (window as unknown as Record<string, unknown>).__mindmap = {
       nodes: () =>
         [...model.node.values()].map((n) => {
-          const p = fgRef.current?.graph2ScreenCoords(n.x ?? 0, n.y ?? 0);
-          return { id: n.id, status: n.status, pinned: n.pinned, x: n.x, y: n.y, sx: p?.x, sy: p?.y };
+          const v = nodePosition(n);
+          const p = fgRef.current?.graph2ScreenCoords(v.x, v.y);
+          return { id: n.id, status: n.status, provider: n.provider, pinned: n.pinned, x: v.x, y: v.y, layoutX: n.x, layoutY: n.y, sx: p?.x, sy: p?.y };
         }),
       zoom: () => fgRef.current?.zoom(),
+      camera: () => fgRef.current && readCamera(fgRef.current),
+      revision: () => model.revision,
     };
+    return () => { delete (window as unknown as Record<string, unknown>).__mindmap; };
   }, [model]);
 
   const anyActive = useMemo(() => data.nodes.some((n) => n.active), [data, redraw]); // eslint-disable-line react-hooks/exhaustive-deps
   const stepFrame = useCallback(() => {
+    const fg = fgRef.current;
+    // The library may have auto-scaled while applying graphData. Restore before painting.
+    const initialized = fg?.d3Force("link")?.links() === model.data.links;
+    if (fg && pendingCamera.current && initialized) {
+      const saved = pendingCamera.current;
+      pendingCamera.current = null;
+      restoreCamera(fg, saved);
+      camera.current = saved;
+    }
+    if (fg && !fitted.current && !touched.current && fg.zoom() > 1.8) fg.zoom(1.8, 0);
     if (live.current.motionOn) stepAmbient(model.node.values(), performance.now());
+    for (const id of queuedParticles.current) {
+      const link = model.data.links.find(l => l.id === id);
+      if (!link || !live.current.motionOn || !live.current.fresh.has(id)) {
+        queuedParticles.current.delete(id);
+      } else if (fg && initialized && typeof link.source === "object" && typeof link.target === "object") {
+        // Object endpoints prove the library has initialized the link (which clears photons).
+        fg.emitParticle(link);
+        queuedParticles.current.delete(id);
+      }
+    }
   }, [model]);
 
-  // --- one-shot particle for newly observed, evidence-backed delegations ---
   useEffect(() => {
-    const fg = fgRef.current;
-    for (const id of [...emitted.current]) if (!fresh.has(id)) emitted.current.delete(id);
-    if (!fg) return;
     for (const id of fresh) {
       if (emitted.current.has(id)) continue;
       emitted.current.add(id);
-      const link = model.data.links.find((l) => l.id === id);
-      if (!link) continue;
-      setTransient(true);
-      window.setTimeout(() => setTransient(false), 6200);
-      if (live.current.motionOn || !reduce) {
-        if (!reduce) {
-          fg.emitParticle(link);
-          window.setTimeout(() => fgRef.current?.emitParticle(link), 420);
-        }
-      }
+      if (motionOn) queuedParticles.current.add(id);
     }
-  }, [fresh, model, reduce, data]);
+  }, [fresh, motionOn, data]);
 
-  // Opening the inspector resizes the canvas: keep the same world point at the view centre.
+  // Remember centre AND zoom before the child processes a resized canvas.
   useLayoutEffect(() => {
-    if (center.current && fitted.current) fgRef.current?.centerAt(center.current.x, center.current.y, 0);
+    if (camera.current && (fitted.current || touched.current)) pendingCamera.current = camera.current;
   }, [w, h]);
 
-  // --- camera: fit once, never on polls; stop auto-fit once the user touches the view ---
-  const fit = useCallback(() => fgRef.current?.zoomToFit(450, 70), []);
+  const fit = useCallback(() => {
+    const fg = fgRef.current, next = fittedCamera(model.data.nodes, w, h);
+    if (!fg || !next) return;
+    fitted.current = true;
+    pendingCamera.current = null;
+    // No camera tween: it cannot fight a user pan or animate under reduced motion.
+    restoreCamera(fg, next);
+    camera.current = next;
+  }, [model, w, h]);
   useEffect(() => {
-    if (fitted.current || data.nodes.length === 0) return;
-    const t = window.setTimeout(
-      () => {
-        if (!touched.current && !fitted.current) {
-          fitted.current = true;
-          fit();
-        }
-      },
-      reduce ? 80 : 1100,
-    );
-    return () => window.clearTimeout(t);
+    if (fitted.current || !data.nodes.length) return;
+    const timer = window.setTimeout(() => {
+      if (!touched.current && !fitted.current) fit();
+    }, reduce ? 80 : 1100);
+    return () => window.clearTimeout(timer);
   }, [data, reduce, fit]);
 
   // --- drawing ---
@@ -203,12 +242,12 @@ export function AgentNetwork({
     },
     // `redraw` forces a new identity => canvas repaint when facts change in place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusId, neighbors, redraw],
+    [focusId, neighbors, redraw, motionOn, transient, selectedNodeId, hoveredId],
   );
 
   const pointerArea = useCallback((n: GNode, color: string, ctx: CanvasRenderingContext2D) => {
     ctx.fillStyle = color;
-    bodyPath(ctx, n, NODE_R + 8);
+    bodyPath(ctx, n, NODE_R + 6);
     ctx.fill();
   }, []);
 
@@ -244,19 +283,22 @@ export function AgentNetwork({
       const s = l.source as GNode;
       const t = l.target as GNode;
       if (typeof s !== "object" || typeof t !== "object") return;
-      const mx = ((s.x ?? 0) + (t.x ?? 0)) / 2;
-      const my = ((s.y ?? 0) + (t.y ?? 0)) / 2;
+      const dx = (t.x ?? 0) - (s.x ?? 0), dy = (t.y ?? 0) - (s.y ?? 0);
+      const length = Math.hypot(dx, dy) || 1;
+      const sign = dx < 0 ? -1 : 1;
+      const mx = ((s.x ?? 0) + (t.x ?? 0)) / 2 + dy / length * 16 / scale * sign;
+      const my = ((s.y ?? 0) + (t.y ?? 0)) / 2 - dx / length * 16 / scale * sign;
       ctx.save();
       ctx.strokeStyle = hexA(FRESH_LINK_COLOR, 0.35);
-      ctx.lineWidth = 7;
+      ctx.lineWidth = 5 / scale;
       ctx.beginPath();
       ctx.moveTo(s.x ?? 0, s.y ?? 0);
       ctx.lineTo(t.x ?? 0, t.y ?? 0);
       ctx.stroke();
-      const fs = Math.max(3, 8 / Math.max(scale, 0.6));
+      const fs = 9 / scale;
       ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
       const label = "NEW DELEGATION";
-      const tw = ctx.measureText(label).width + 8;
+      const tw = ctx.measureText(label).width + 8 / scale;
       ctx.fillStyle = "rgba(14,18,26,0.92)";
       ctx.fillRect(mx - tw / 2, my - fs * 0.9, tw, fs * 1.8);
       ctx.fillStyle = FRESH_LINK_COLOR;
@@ -265,7 +307,7 @@ export function AgentNetwork({
       ctx.fillText(label, mx, my);
       ctx.restore();
     },
-    [],
+    [fresh],
   );
 
   const onDragEnd = useCallback(
@@ -273,6 +315,7 @@ export function AgentNetwork({
       n.fx = n.x;
       n.fy = n.y;
       n.pinned = true;
+      n.ox = 0; n.oy = 0; n.vx = 0; n.vy = 0;
       setPinCount([...model.node.values()].filter((q) => q.pinned).length);
     },
     [model],
@@ -290,7 +333,8 @@ export function AgentNetwork({
     fgRef.current?.d3ReheatSimulation();
   }, [model]);
 
-  const needsLoop = motionOn && (anyActive || transient);
+  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
+  const needsLoop = dragging || (motionOn && (anyActive || transient || fresh.size > 0));
   const hasNodes = data.nodes.length > 0;
 
   return (
@@ -306,6 +350,8 @@ export function AgentNetwork({
       <div
         className="network-canvas"
         ref={hostRef}
+        {...pointer}
+        style={{ cursor: hoveredId ? "pointer" : undefined }}
         onPointerDown={() => (touched.current = true)}
         onWheel={() => (touched.current = true)}
       >
@@ -317,34 +363,36 @@ export function AgentNetwork({
           backgroundColor="rgba(0,0,0,0)"
           nodeId="id"
           nodeRelSize={NODE_R}
-          nodeCanvasObjectMode={() => "replace"}
+          nodeCanvasObjectMode={replaceCanvas}
           nodeCanvasObject={nodeCanvas}
           nodePointerAreaPaint={pointerArea}
-          nodeLabel={() => ""}
+          nodeLabel={noLabel}
           linkColor={linkColor}
           linkWidth={linkWidth}
-          linkCurvature={0.08}
+          linkCurvature={0}
           linkDirectionalArrowLength={8}
           linkDirectionalArrowRelPos={arrowPos}
           linkDirectionalArrowColor={linkColor}
+          linkDirectionalParticles={noContinuousParticles}
           linkDirectionalParticleSpeed={0.011}
           linkDirectionalParticleWidth={4.5}
-          linkDirectionalParticleColor={() => "#e8f0ff"}
-          linkCanvasObjectMode={() => "after"}
+          linkDirectionalParticleColor={particleColor}
+          linkCanvasObjectMode={afterCanvas}
           linkCanvasObject={linkCanvas}
-          d3AlphaMin={0.004}
+          d3AlphaMin={0.0002}
           onRenderFramePre={stepFrame}
-          d3AlphaDecay={0.026}
-          d3VelocityDecay={0.4}
+          d3AlphaDecay={0.035}
+          d3VelocityDecay={0.55}
           cooldownTime={Infinity}
-          cooldownTicks={reduce ? 0 : Infinity}
+          cooldownTicks={!motionOn ? 0 : Infinity}
           warmupTicks={reduce ? 420 : 0}
           autoPauseRedraw={!needsLoop}
-          minZoom={0.3}
+          minZoom={0.1}
+          enablePointerInteraction={false}
+          enableNodeDrag={false}
           maxZoom={6}
           onZoom={() => {
-            const c = fgRef.current?.centerAt();
-            if (c && Number.isFinite(c.x) && Number.isFinite(c.y)) center.current = c;
+            if (!pendingCamera.current && fgRef.current) camera.current = readCamera(fgRef.current);
           }}
           onNodeClick={(n) => onOpenNodeDetail(n.id)}
           onBackgroundClick={onClearNodeDetail}
@@ -364,7 +412,10 @@ export function AgentNetwork({
             aria-pressed={paused}
             disabled={reduce}
             title={reduce ? "Motion is off (reduced-motion preference)" : undefined}
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => {
+              if (paused) fgRef.current?.d3ReheatSimulation();
+              setPaused((p) => !p);
+            }}
           >
             {reduce || paused ? "Resume motion" : "Pause motion"}
           </button>
