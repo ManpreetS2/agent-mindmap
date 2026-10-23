@@ -12,7 +12,7 @@
 
   --text-primary: #e8ecf1;
   --text-secondary: #a8b0bd;
-  --text-muted: #7a8494;
+  --text-muted: #8e98a9; /* >=4.5:1 on panel, card and elevated surfaces */
 
   --accent: #6b9fff;
 
