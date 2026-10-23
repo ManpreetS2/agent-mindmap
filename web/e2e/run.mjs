@@ -37,6 +37,16 @@ const minDistance = (nodes) => {
   return d;
 };
 const maxDrift = (a, b) => Math.max(0, ...a.map((n) => { const m = b.find((v) => v.id === n.id); return m ? Math.hypot(n.x - m.x, n.y - m.y) : 0; }));
+// The intro layout eases agents into place for a few seconds (tens of px/s); "idle drift" is only
+// meaningful once that has finished, so wait until two consecutive 700 ms samples move < 4 px.
+async function waitSettled(page, maxMs = 20000) {
+  const start = Date.now(); let prev = await getNodes(page), calm = 0;
+  while (Date.now() - start < maxMs) {
+    await wait(700); const cur = await getNodes(page);
+    calm = maxDrift(prev, cur) < 4 ? calm + 1 : 0; prev = cur; if (calm >= 2) return Date.now() - start;
+  }
+  return -1;
+}
 const snap = async (page, name) => page.screenshot({ path: path.join(outDir, `${name}.png`) });
 const stageOf = (page) => page.locator(".demo-replay-banner").innerText().then((s) => Number(s.match(/Stage (\d+)/)?.[1] ?? 0));
 const safeClose = async (ctx) => ctx?.close().catch(() => {});
@@ -48,12 +58,12 @@ try {
   await scenario("desktop render, spacing, drift, console", async () => {
     const { context, page } = await open();
     await page.waitForFunction(() => window.__mindmap?.nodes()?.length === 5, null, { timeout: 20000 });
-    await wait(4500);
+    const settledAfterMs = await waitSettled(page); check(settledAfterMs >= 0, "layout did not settle within 20 s");
     const a = await getNodes(page); await wait(2000); const b = await getNodes(page);
     const d = minDistance(b), drift = maxDrift(a, b);
     desktopErrors = [...page.errors];
     await snap(page, "desktop");
-    measurements.desktop = { count: b.length, minPairDistance: +d.toFixed(2), ambientDrift2s: +drift.toFixed(2), errors: desktopErrors };
+    measurements.desktop = { settledAfterMs, count: b.length, minPairDistance: +d.toFixed(2), ambientDrift2s: +drift.toFixed(2), errors: desktopErrors };
     await safeClose(context);
     check(b.length === 5, `expected five agents, got ${b.length}`);
     // 14px node radius + 30px label allowance on each side.
