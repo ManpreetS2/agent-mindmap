@@ -158,7 +158,7 @@ describe("ambient motion", () => {
       sum += nodePosition(a).x - 100; count++;
     }
     expect([a.x, a.y]).toEqual([100, 100]);
-    expect(max).toBeGreaterThan(3);
+    expect(max).toBeGreaterThan(AMBIENT_PX * 0.9); // active agents really do sway, up to the configured amplitude
     a.active = false;
     expect(nodePosition(a)).toEqual({ x: 100, y: 100 });
     expect(max).toBeLessThanOrEqual(AMBIENT_PX * 1.01);
