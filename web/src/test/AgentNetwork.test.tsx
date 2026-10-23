@@ -186,6 +186,11 @@ describe("AgentNetwork", () => {
     fgMock.methods.zoom.mockReturnValue(1);
     props().onZoom();
     view.rerender(<AgentNetwork {...base} activity={t3Activity([...nodes, sessionNode("z")], [])} />);
+    // A canvas frame can run before the debounced library topology initialization.
+    fgMock.initialized = false;
+    frame();
+    expect(fgMock.methods.zoom).not.toHaveBeenCalledWith(1, 0);
+    fgMock.initialized = true;
     // Simulate the library's topology-triggered auto zoom before the next canvas frame.
     fgMock.methods.zoom.mockReturnValue(2.9);
     props().onZoom();

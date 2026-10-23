@@ -40,6 +40,7 @@ export function useNetworkPointer({ fg, nodes, onHover, onSelect, onDragEnd, onD
       const n = hit(e), p = point(e);
       if (!n || !p) return;
       e.stopPropagation();
+      e.preventDefault(); // suppress the compatibility mousedown that would start d3 pan
       const pos = nodePosition(n);
       drag.current = { n, px: e.clientX, py: e.clientY, x: p.x - pos.x, y: p.y - pos.y, moved: false, fx: n.fx, fy: n.fy };
       // Freeze exactly where drawn, including an active agent's ambient displacement.

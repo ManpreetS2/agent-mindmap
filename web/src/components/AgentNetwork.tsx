@@ -21,6 +21,10 @@ import { AgentRoster } from "./AgentRoster";
 
 const FLASH_MS = 2400;
 const FRESH_LINK_COLOR = "#8fb4ff";
+const replaceCanvas = () => "replace" as const;
+const afterCanvas = () => "after" as const;
+const noLabel = () => "";
+const particleColor = () => "#e8f0ff";
 
 export interface AgentNetworkProps {
   activity: Activity;
@@ -157,7 +161,8 @@ export function AgentNetwork({
   const stepFrame = useCallback(() => {
     const fg = fgRef.current;
     // The library may have auto-scaled while applying graphData. Restore before painting.
-    if (fg && pendingCamera.current) {
+    const initialized = fg?.d3Force("link")?.links() === model.data.links;
+    if (fg && pendingCamera.current && initialized) {
       const saved = pendingCamera.current;
       pendingCamera.current = null;
       restoreCamera(fg, saved);
@@ -169,7 +174,7 @@ export function AgentNetwork({
       const link = model.data.links.find(l => l.id === id);
       if (!link || !live.current.motionOn || !live.current.fresh.has(id)) {
         queuedParticles.current.delete(id);
-      } else if (fg && typeof link.source === "object" && typeof link.target === "object") {
+      } else if (fg && initialized && typeof link.source === "object" && typeof link.target === "object") {
         // Object endpoints prove the library has initialized the link (which clears photons).
         fg.emitParticle(link);
         queuedParticles.current.delete(id);
@@ -237,7 +242,7 @@ export function AgentNetwork({
     },
     // `redraw` forces a new identity => canvas repaint when facts change in place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusId, neighbors, redraw, motionOn, transient],
+    [focusId, neighbors, redraw, motionOn, transient, selectedNodeId, hoveredId],
   );
 
   const pointerArea = useCallback((n: GNode, color: string, ctx: CanvasRenderingContext2D) => {
@@ -328,7 +333,7 @@ export function AgentNetwork({
     fgRef.current?.d3ReheatSimulation();
   }, [model]);
 
-  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onDragging: setDragging });
+  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
   const needsLoop = dragging || (motionOn && (anyActive || transient || fresh.size > 0));
   const hasNodes = data.nodes.length > 0;
 
@@ -358,10 +363,10 @@ export function AgentNetwork({
           backgroundColor="rgba(0,0,0,0)"
           nodeId="id"
           nodeRelSize={NODE_R}
-          nodeCanvasObjectMode={() => "replace"}
+          nodeCanvasObjectMode={replaceCanvas}
           nodeCanvasObject={nodeCanvas}
           nodePointerAreaPaint={pointerArea}
-          nodeLabel={() => ""}
+          nodeLabel={noLabel}
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkCurvature={0}
@@ -371,8 +376,8 @@ export function AgentNetwork({
           linkDirectionalParticles={noContinuousParticles}
           linkDirectionalParticleSpeed={0.011}
           linkDirectionalParticleWidth={4.5}
-          linkDirectionalParticleColor={() => "#e8f0ff"}
-          linkCanvasObjectMode={() => "after"}
+          linkDirectionalParticleColor={particleColor}
+          linkCanvasObjectMode={afterCanvas}
           linkCanvasObject={linkCanvas}
           d3AlphaMin={0.0002}
           onRenderFramePre={stepFrame}

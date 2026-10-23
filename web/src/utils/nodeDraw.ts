@@ -166,6 +166,9 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
   const labelY = y + NODE_R + 12 + 4 / Math.max(0.55, s.zoom);
   const show = s.zoom > 0.55 || s.selected || s.hovered;
   if (show) {
+    // Mask lineage lines behind labels. Their meaning remains in the arrow, never the text.
+    ctx.fillStyle = "#10151e";
+    ctx.fillRect(x - 80, labelY - 2, 160, fs * (((s.zoom > 1.15 || s.selected || s.hovered) && n.task) ? 3.8 : 2.5));
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;

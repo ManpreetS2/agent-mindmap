@@ -95,9 +95,18 @@ export class NetworkModel {
       }
     }
 
-    let loose = 0;
-    const linked = new Set(edges.flatMap((e) => [e.source, e.target]));
-    for (const n of incoming) {
+    // Visit parents before new children even when IDs sort in the opposite order.
+    const byId = new Map(incoming.map(n => [n.id, n]));
+    const ordered: typeof incoming = [], visited = new Set<string>();
+    const visit = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      const parent = parentOf.get(id);
+      if (parent && byId.has(parent)) visit(parent);
+      ordered.push(byId.get(id)!);
+    };
+    for (const n of incoming) visit(n.id);
+    for (const n of ordered) {
       const s = n.session!;
       const facts = {
         label: n.label,
@@ -124,16 +133,26 @@ export class NetworkModel {
       let y: number;
       const parent = parentOf.get(n.id);
       const p = parent ? this.nodes.get(parent) : undefined;
-      if (this.nodes.size === 0 || (wasBaseline && !p)) {
+      if (this.nodes.size === 0 || wasBaseline) {
         // Deterministic sunflower seed for the first arrangement.
-        const i = linked.has(n.id) ? this.nodes.size : loose++ + this.nodes.size;
+        const i = this.nodes.size;
         const r = 130 * Math.sqrt(i + 0.7);
         x = r * Math.cos(i * 2.399963);
         y = r * Math.sin(i * 2.399963);
       } else if (p) {
-        const a = hash(n.id) * Math.PI * 2;
-        x = (p.x ?? 0) + Math.cos(a) * 24;
-        y = (p.y ?? 0) + Math.sin(a) * 24;
+        // Pick a nearby free slot; never materialize a delegate on top of its parent.
+        const start = hash(n.id) * Math.PI * 2;
+        let best = { x: p.x ?? 0, y: (p.y ?? 0) + 150, score: Infinity };
+        for (let ring = 1; ring <= 3; ring++) for (let i = 0; i < 24; i++) {
+          const a = start + i * Math.PI / 12;
+          const radius = Math.min(184 / Math.max(0.001, Math.abs(Math.cos(a))), 150 / Math.max(0.001, Math.abs(Math.sin(a)))) * ring;
+          const px = (p.x ?? 0) + Math.cos(a) * radius, py = (p.y ?? 0) + Math.sin(a) * radius;
+          let overlaps = 0;
+          for (const q of this.nodes.values()) if (Math.abs(px - q.x!) < 180 && Math.abs(py - q.y!) < 146) overlaps++;
+          const score = overlaps * 10000 + radius;
+          if (score < best.score) best = { x: px, y: py, score };
+        }
+        x = best.x; y = best.y;
       } else {
         const all = [...this.nodes.values()];
         const cx = all.reduce((t, q) => t + (q.x ?? 0), 0) / all.length;

@@ -3,7 +3,7 @@ import type { GLink, GNode } from "./networkModel";
 
 // Includes the outer ring, three bounded label lines, ambient displacement and a gutter.
 // Use a stable envelope: changing status or zoom must never reheat the simulation.
-export const NODE_BOUNDS = { left: -86, right: 86, top: -34, bottom: 82 } as const;
+export const NODE_BOUNDS = { left: -86, right: 86, top: -44, bottom: 94 } as const;
 export const MAX_SPEED = 5;
 
 /** Sweep-and-prune rectangle collision, respecting fixed axes. Registered after other forces. */
@@ -19,13 +19,13 @@ export function labelCollision(): Force<GNode, GLink> {
           const dx = b.x! + (b.vx ?? 0) - a.x! - (a.vx ?? 0);
           if (dx >= 172) continue;
           const dy = b.y! + (b.vy ?? 0) - a.y! - (a.vy ?? 0);
-          const px = 172 - Math.abs(dx), py = 116 - Math.abs(dy);
+          const px = 172 - Math.abs(dx), py = 138 - Math.abs(dy);
           if (px <= 0 || py <= 0) continue;
           // Push along the centre-to-centre ray. Minimum-axis-only correction makes
           // wide labels collapse small networks into a tall, narrow column.
           const rx = Math.abs(dx) < 0.01 ? 0.01 : dx;
           const ry = Math.abs(dy) < 0.01 ? 0.01 : dy;
-          const factor = (Math.min(172 / Math.abs(rx), 116 / Math.abs(ry)) - 1) * 0.8;
+          const factor = (Math.min(172 / Math.abs(rx), 138 / Math.abs(ry)) - 1) * 0.8;
           for (const axis of ["x", "y"] as const) {
             const v = axis === "x" ? "vx" : "vy", f = axis === "x" ? "fx" : "fy";
             const am = a[f] == null, bm = b[f] == null;

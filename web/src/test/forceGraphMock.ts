@@ -3,6 +3,7 @@ import { vi } from "vitest";
 const chain = (): Record<string, unknown> => {
   const f: Record<string, unknown> = {};
   for (const k of ["strength", "distance", "distanceMax", "iterations"]) f[k] = () => f;
+  f.links = () => fgMock.initialized ? (fgMock.props.graphData as { links?: unknown[] })?.links : [];
   return f;
 };
 
@@ -10,6 +11,7 @@ const chain = (): Record<string, unknown> => {
 export const fgMock = {
   props: {} as Record<string, unknown>,
   renders: 0,
+  initialized: true,
   methods: {
     d3Force: vi.fn(() => chain()),
     emitParticle: vi.fn(),
@@ -21,6 +23,7 @@ export const fgMock = {
   reset() {
     this.props = {};
     this.renders = 0;
+    this.initialized = true;
     this.methods.centerAt.mockReturnValue({ x: 0, y: 0 });
     this.methods.zoom.mockReturnValue(1);
     for (const m of Object.values(this.methods)) (m as ReturnType<typeof vi.fn>).mockClear();

@@ -26,7 +26,7 @@ describe("network physics", () => {
     expect(maxStep).toBeLessThanOrEqual(2.251); // cap 5 × velocity retention .45
     for (const a of m.data.nodes) for (const b of m.data.nodes) {
       if (a.id === b.id) continue;
-      expect(Math.abs(a.x! - b.x!) >= 171 || Math.abs(a.y! - b.y!) >= 115).toBe(true);
+      expect(Math.abs(a.x! - b.x!) >= 171 || Math.abs(a.y! - b.y!) >= 137).toBe(true);
     }
     const before = m.data.nodes.map(n => [n.x!, n.y!]); sim.tick(60);
     m.data.nodes.forEach((n, j) => expect(Math.hypot(n.x! - before[j][0], n.y! - before[j][1])).toBeLessThan(0.1));

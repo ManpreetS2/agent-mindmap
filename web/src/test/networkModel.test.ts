@@ -45,7 +45,8 @@ describe("NetworkModel", () => {
     const p = m.node.get("a")!; p.x = 500; p.y = 500;
     m.sync(t3Activity(nodes, [["a", "d"]]));
     const d = m.node.get("d")!;
-    expect(Math.hypot(d.x! - 500, d.y! - 500)).toBeLessThan(40);
+    expect(Math.hypot(d.x! - 500, d.y! - 500)).toBeLessThan(220);
+    expect(Math.abs(d.x! - 500) >= 172 || Math.abs(d.y! - 500) >= 116).toBe(true);
   });
 
   it("detects changed endpoints on an existing link ID and visual revisions", () => {
