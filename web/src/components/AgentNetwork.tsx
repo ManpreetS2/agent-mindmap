@@ -16,7 +16,7 @@ import {
   type GLink,
   type GNode,
 } from "../utils/networkModel";
-import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
+import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA, linkCaptionPosition, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
 import { AgentRoster } from "./AgentRoster";
 
 const FLASH_MS = 2400;
@@ -286,11 +286,6 @@ export function AgentNetwork({
       const s = l.source as GNode;
       const t = l.target as GNode;
       if (typeof s !== "object" || typeof t !== "object") return;
-      const dx = (t.x ?? 0) - (s.x ?? 0), dy = (t.y ?? 0) - (s.y ?? 0);
-      const length = Math.hypot(dx, dy) || 1;
-      const sign = dx < 0 ? -1 : 1;
-      const mx = ((s.x ?? 0) + (t.x ?? 0)) / 2 + dy / length * 16 / scale * sign;
-      const my = ((s.y ?? 0) + (t.y ?? 0)) / 2 - dx / length * 16 / scale * sign;
       ctx.save();
       ctx.strokeStyle = hexA(FRESH_LINK_COLOR, 0.35);
       ctx.lineWidth = 5 / scale;
@@ -302,6 +297,7 @@ export function AgentNetwork({
       ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
       const label = "NEW DELEGATION";
       const tw = ctx.measureText(label).width + 8 / scale;
+      const { x: mx, y: my } = linkCaptionPosition(s, t, tw, fs * 1.8, scale);
       ctx.fillStyle = "rgba(14,18,26,0.92)";
       ctx.fillRect(mx - tw / 2, my - fs * 0.9, tw, fs * 1.8);
       ctx.fillStyle = FRESH_LINK_COLOR;

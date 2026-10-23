@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Status } from "@shared/types";
-import { drawNode, hexA, NODE_R, STATUS_COLOR, containsNode, fitText, layoutLabels } from "../utils/nodeDraw";
+import { drawNode, drawTag, linkCaptionPosition, hexA, NODE_R, STATUS_COLOR, containsNode, fitText, layoutLabels } from "../utils/nodeDraw";
 import type { GNode } from "../utils/networkModel";
 
 function ctx() {
@@ -22,6 +22,22 @@ const node = (over: Partial<GNode> = {}): GNode => ({
 const st = { t: 1000, selected: false, alpha: 1, hovered: false, flash: null, zoom: 1 };
 
 describe("drawNode", () => {
+  it.each([0.1, 0.6, 1, 1.8, 6])("keeps captions at nine screen pixels at zoom %s", zoom => {
+    const { c, calls } = ctx();
+    drawTag(c, "RESUMED", 0, 0, "#fff", zoom);
+    const font = calls.find(v => v.startsWith("set:font="))!;
+    expect(Number(font.match(/700 ([\d.]+)px/)![1]) * zoom).toBeCloseTo(9);
+    for (const [x, y] of [[150, 0], [0, 150], [100, 100], [-100, 100]]) {
+      const s = node({ x: 0, y: 0 }), t = node({ x, y });
+      const w = 100 / zoom, h = 16 / zoom;
+      const pos = linkCaptionPosition(s, t, w, h, zoom);
+      // All four corners lie on the same side of the arrow line, with 12px clearance.
+      const distances = [-1, 1].flatMap(sx => [-1, 1].map(sy =>
+        ((pos.x + sx * w / 2) * y - (pos.y + sy * h / 2) * x) / Math.hypot(x, y)));
+      expect(Math.min(...distances.map(Math.abs)) * zoom).toBeCloseTo(12);
+      expect(distances.every(d => Math.sign(d) === Math.sign(distances[0]))).toBe(true);
+    }
+  });
   it("culls crowded labels at 85px spacing and never masks neighbouring bodies", () => {
     const nodes = Array.from({ length: 30 }, (_, i) => node({ id: String(i), x: (i % 5) * 85, y: Math.floor(i / 5) * 85 }));
     const labels = layoutLabels(nodes, 1.5, "12");

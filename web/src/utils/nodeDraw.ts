@@ -157,8 +157,8 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
       ctx.strokeStyle = hexA(s.flash.color, 0.9 * (1 - k));
       ctx.stroke();
     }
-    ctx.globalAlpha = Math.min(1, 2.2 * (1 - k)) * s.alpha;
-    drawTag(ctx, s.flash.caption, x, y - NODE_R - 18, s.flash.color);
+    ctx.globalAlpha = (s.t === null ? 1 : Math.min(1, 2.2 * (1 - k))) * s.alpha;
+    drawTag(ctx, s.flash.caption, x, y - NODE_R - 18 / s.zoom, s.flash.color, s.zoom);
   }
 
   // Labels (level of detail by zoom).
@@ -218,19 +218,20 @@ export function containsNode(n: GNode, x: number, y: number): boolean {
   return dx <= hr * Math.sqrt(3) / 2 && dy <= hr - dx / Math.sqrt(3);
 }
 
-function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string): void {
-  ctx.font = "700 8px ui-sans-serif, system-ui, sans-serif";
-  const w = ctx.measureText(text).width + 10;
+export function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string, zoom: number): void {
+  const unit = 1 / Math.max(0.1, Math.min(6, zoom));
+  ctx.font = `700 ${9 * unit}px ui-sans-serif, system-ui, sans-serif`;
+  const w = ctx.measureText(text).width + 10 * unit;
   ctx.fillStyle = "rgba(14,18,26,0.92)";
-  roundRect(ctx, x - w / 2, y - 7, w, 14, 7);
+  roundRect(ctx, x - w / 2, y - 8 * unit, w, 16 * unit, 7 * unit);
   ctx.fill();
-  ctx.lineWidth = 1;
+  ctx.lineWidth = unit;
   ctx.strokeStyle = color;
   ctx.stroke();
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, x, y + 0.5);
+  ctx.fillText(text, x, y + 0.5 * unit);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -273,4 +274,14 @@ export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null 
     }
   }
   return placed;
+}
+
+/** The entire horizontal tag clears the link/arrow line, including diagonal edges. */
+export function linkCaptionPosition(s: GNode, t: GNode, width: number, height: number, zoom: number) {
+  const dx = (t.x ?? 0) - (s.x ?? 0), dy = (t.y ?? 0) - (s.y ?? 0);
+  const length = Math.hypot(dx, dy) || 1;
+  const sign = dx < 0 ? -1 : 1;
+  const offset = Math.abs(dy / length) * width / 2 + Math.abs(dx / length) * height / 2 + 12 / zoom;
+  return { x: ((s.x ?? 0) + (t.x ?? 0)) / 2 + dy / length * offset * sign,
+    y: ((s.y ?? 0) + (t.y ?? 0)) / 2 - dx / length * offset * sign };
 }
