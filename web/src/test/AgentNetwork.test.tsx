@@ -28,6 +28,29 @@ beforeEach(() => { fgMock.reset(); vi.useFakeTimers(); setReduced(false); });
 afterEach(() => { vi.useRealTimers(); setReduced(false); });
 
 describe("AgentNetwork", () => {
+  it("restores centre and zoom after inspector-sized shrink and expand", () => {
+    const callbacks: (() => void)[] = [];
+    const original = window.ResizeObserver;
+    window.ResizeObserver = class { constructor(cb: () => void) { callbacks.push(cb); } observe() {} disconnect() {} unobserve() {} } as never;
+    try {
+      const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+      fireEvent.click(screen.getByRole("button", { name: "Fit view" }));
+      const host = view.container.querySelector(".network-canvas")!;
+      for (const width of [550, 1100]) {
+        fgMock.methods.centerAt.mockReturnValue({ x: 78, y: -92 });
+        fgMock.methods.zoom.mockReturnValue(1.3);
+        props().onZoom();
+        vi.spyOn(host, "getBoundingClientRect").mockReturnValue({ width, height: 650 } as DOMRect);
+        act(() => callbacks.forEach(cb => cb()));
+        fgMock.methods.centerAt.mockReturnValue({ x: 0, y: 0 });
+        fgMock.methods.zoom.mockReturnValue(3);
+        props().onZoom(); // library resize callback must not overwrite the saved camera
+        frame();
+        expect(fgMock.methods.centerAt).toHaveBeenLastCalledWith(78, -92, 0);
+        expect(fgMock.methods.zoom).toHaveBeenLastCalledWith(1.3, 0);
+      }
+    } finally { window.ResizeObserver = original; }
+  });
   it("passes stable graph data and keeps identity and positions across status polls", () => {
     const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
     const data = gdata();

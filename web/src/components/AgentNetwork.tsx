@@ -35,20 +35,26 @@ export interface AgentNetworkProps {
 
 type FG = ForceGraphMethods<GNode, GLink>;
 
-function useSize(ref: React.RefObject<HTMLElement>): { w: number; h: number } {
+function useSize(ref: React.RefObject<HTMLElement>, beforeResize: () => void): { w: number; h: number } {
   const [size, setSize] = useState({ w: 800, h: 520 });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let last = "";
     const measure = () => {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+      const next = `${Math.round(r.width)}:${Math.round(r.height)}`;
+      if (r.width > 0 && r.height > 0 && next !== last) {
+        beforeResize();
+        last = next;
+        setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+      }
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [ref]);
+  }, [ref, beforeResize]);
   return size;
 }
 
@@ -62,7 +68,6 @@ export function AgentNetwork({
   const [paused, setPaused] = useState(false);
   const motionOn = !reduce && !paused;
   const hostRef = useRef<HTMLDivElement>(null);
-  const { w, h } = useSize(hostRef);
   const fgRef = useRef<FG>();
   const model = useRef(new NetworkModel()).current;
   const modelKey = useRef("");
@@ -84,6 +89,12 @@ export function AgentNetwork({
   const noContinuousParticles = useMemo(() => () => 0, [motionOn]);
   const fitted = useRef(false);
   const touched = useRef(false);
+  const beforeResize = useCallback(() => {
+    if (fgRef.current && (fitted.current || touched.current)) {
+      pendingCamera.current ??= readCamera(fgRef.current);
+    }
+  }, []);
+  const { w, h } = useSize(hostRef, beforeResize);
   const live = useRef({ selected: selectedNodeId, hovered: hoveredId, motionOn, fresh });
   live.current = { selected: selectedNodeId, hovered: hoveredId, motionOn, fresh };
 
@@ -121,7 +132,7 @@ export function AgentNetwork({
       }, FLASH_MS + 100);
     }
     if (r.topologyChanged) {
-      pendingCamera.current = saved;
+      pendingCamera.current ??= saved;
       setData(model.data);
     }
     setPinCount([...model.node.values()].filter((n) => n.pinned).length);
@@ -191,11 +202,6 @@ export function AgentNetwork({
       if (motionOn) queuedParticles.current.add(id);
     }
   }, [fresh, motionOn, data]);
-
-  // Remember centre AND zoom before the child processes a resized canvas.
-  useLayoutEffect(() => {
-    if (camera.current && (fitted.current || touched.current)) pendingCamera.current = camera.current;
-  }, [w, h]);
 
   const fit = useCallback(() => {
     const fg = fgRef.current, next = fittedCamera(model.data.nodes, w, h);
@@ -350,7 +356,7 @@ export function AgentNetwork({
         className="network-canvas"
         ref={hostRef}
         {...pointer}
-        style={{ cursor: hoveredId ? "pointer" : undefined }}
+        style={{ cursor: hoveredId ? "pointer" : undefined, touchAction: "none" }}
         onPointerDown={() => (touched.current = true)}
         onWheel={() => (touched.current = true)}
       >
@@ -389,6 +395,8 @@ export function AgentNetwork({
           minZoom={0.1}
           enablePointerInteraction={false}
           enableNodeDrag={false}
+          enableZoomInteraction={!dragging}
+          enablePanInteraction={!dragging}
           maxZoom={6}
           onZoom={() => {
             if (!pendingCamera.current && fgRef.current) camera.current = readCamera(fgRef.current);
