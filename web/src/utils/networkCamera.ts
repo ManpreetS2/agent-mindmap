@@ -10,7 +10,7 @@ export interface CameraApi {
 }
 export function readCamera(api: CameraApi): Camera | null {
   const c = api.centerAt(), zoom = api.zoom();
-  return c && Number.isFinite(c.x) && Number.isFinite(c.y) && zoom > 0 ? { ...c, zoom } : null;
+  return c && Number.isFinite(c.x) && Number.isFinite(c.y) && Number.isFinite(zoom) && zoom > 0 ? { ...c, zoom } : null;
 }
 export function restoreCamera(api: CameraApi, camera: Camera): void {
   api.zoom(camera.zoom, 0);
@@ -19,7 +19,7 @@ export function restoreCamera(api: CameraApi, camera: Camera): void {
 
 /** Fit the full label envelope in a safe rectangle clear of controls/legend; cap automatic zoom. */
 export function fittedCamera(nodes: GNode[], width: number, height: number): Camera | null {
-  if (!nodes.length) return null;
+  if (!nodes.length || width <= 0 || height <= 0) return null;
   const xs = nodes.map(n => n.x ?? 0), ys = nodes.map(n => n.y ?? 0);
   const x0 = Math.min(...xs) + NODE_BOUNDS.left, x1 = Math.max(...xs) + NODE_BOUNDS.right;
   const y0 = Math.min(...ys) + NODE_BOUNDS.top, y1 = Math.max(...ys) + NODE_BOUNDS.bottom;

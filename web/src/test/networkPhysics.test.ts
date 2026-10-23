@@ -39,11 +39,13 @@ describe("network physics", () => {
     expect([n.x, n.y]).toEqual([0, 0]);
   });
 
-  it("caps fit and includes label bounds plus controls/legend padding", () => {
-    const { m, sim } = layout(3); sim.tick(420);
+  it.each([1, 2, 5, 30])("caps fit and includes label bounds plus padding for %i agents", count => {
+    const { m, sim } = layout(count); sim.tick(420);
     const c = fittedCamera(m.data.nodes, 1100, 700)!;
     expect(c.zoom).toBeLessThanOrEqual(1.8);
     for (const n of m.data.nodes) {
+      expect((n.x! + NODE_BOUNDS.left - c.x) * c.zoom + 550).toBeGreaterThanOrEqual(69.999);
+      expect((n.x! + NODE_BOUNDS.right - c.x) * c.zoom + 550).toBeLessThanOrEqual(1010.001);
       expect((n.y! + NODE_BOUNDS.bottom - c.y) * c.zoom + 350).toBeLessThanOrEqual(550.001);
       expect((n.y! + NODE_BOUNDS.top - c.y) * c.zoom + 350).toBeGreaterThanOrEqual(79.999);
     }
