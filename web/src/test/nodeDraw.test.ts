@@ -78,7 +78,7 @@ describe("drawNode", () => {
     drawNode(early.c, node(), { ...st, t: null, flash: { caption: "STARTED", age: 100, color: "#ffffff" } });
     drawNode(later.c, node(), { ...st, t: null, flash: { caption: "STARTED", age: 1800, color: "#ffffff" } });
     expect(later.calls).toEqual(early.calls);
-    expect(early.calls).toContain("set:lineWidth=1.6");
+    expect(early.calls).toContain("set:lineWidth=2");
     expect(early.calls).toContain("fillText");
   });
 
@@ -112,7 +112,7 @@ describe("drawNode", () => {
   it("hit tests the moving circle/hexagon and excludes hex corners", () => {
     const circle = node({ x: 0, y: 0, ox: 3, oy: -2 });
     expect(containsNode(circle, 3, -2)).toBe(true);
-    expect(containsNode(circle, -20, -2)).toBe(false);
+    expect(containsNode(circle, -3 - (NODE_R + 8), -2)).toBe(false); // just outside ring + gutter
     const hex = node({ provider: "codex", x: 0, y: 0, active: false });
     expect(containsNode(hex, 0, 21)).toBe(true);
     expect(containsNode(hex, 19, 19)).toBe(false);

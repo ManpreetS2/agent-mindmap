@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
 import { networkForces, releaseSettled, settleLayout, freezeLayout } from "../utils/networkPhysics";
-import { fittedCamera, readCamera, restoreCamera, type Camera } from "../utils/networkCamera";
+import { fittedCamera, maxFitZoom, readCamera, restoreCamera, type Camera } from "../utils/networkCamera";
 import { useNetworkPointer } from "../hooks/useNetworkPointer";
 import type { Activity } from "@shared/types";
 import { useFreshEdges } from "../hooks/useFreshEdges";
@@ -19,6 +19,7 @@ import {
 } from "../utils/networkModel";
 import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA, linkCaptionPosition, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
 import { AgentRoster } from "./AgentRoster";
+import "../styles/networkCanvas.css";
 
 const FLASH_MS = 2400;
 const FRESH_LINK_COLOR = "#8fb4ff";
@@ -79,6 +80,20 @@ export function AgentNetwork({
   const [redraw, setRedraw] = useState(0);
   const [transient, setTransient] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // First-time visitors see the help popover once; dismissing it is remembered.
+  const [helpOpen, setHelpOpen] = useState(() => {
+    try { return window.localStorage?.getItem("mindmapHintSeen") !== "1"; } catch { return false; }
+  });
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    try { window.localStorage?.setItem("mindmapHintSeen", "1"); } catch { /* storage unavailable */ }
+  }, []);
+  useEffect(() => {
+    if (!helpOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeHelp(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [helpOpen, closeHelp]);
   const flashTimer = useRef<number>();
   const flashes = useRef(new Map<string, { caption: string; start: number; color: string }>());
   const scheduleFlashExpiry = useCallback(() => {
@@ -192,7 +207,8 @@ export function AgentNetwork({
       restoreCamera(fg, saved);
       camera.current = saved;
     }
-    if (fg && !fitted.current && !touched.current && fg.zoom() > 1.8) fg.zoom(1.8, 0);
+    const zoomCap = maxFitZoom(model.data.nodes.length);
+    if (fg && !fitted.current && !touched.current && fg.zoom() > zoomCap) fg.zoom(zoomCap, 0);
     const time = ambientClock.step(performance.now(), live.current.motionOn);
     if (live.current.motionOn) stepAmbient(model.node.values(), time);
     for (const id of queuedParticles.current) {
@@ -227,6 +243,13 @@ export function AgentNetwork({
       }
     }
   }, [fresh, motionOn, data, model, scheduleFlashExpiry]);
+
+  const zoomBy = useCallback((factor: number) => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    touched.current = true;
+    fg.zoom(Math.min(6, Math.max(0.1, fg.zoom() * factor)), reduce ? 0 : 180);
+  }, [reduce]);
 
   const fit = useCallback(() => {
     const fg = fgRef.current, next = fittedCamera(model.data.nodes, w, h);
@@ -385,7 +408,6 @@ export function AgentNetwork({
       <div
         className="network-canvas"
         ref={hostRef}
-        title="Drag to pin an agent. Double-click a pinned agent to release it."
         {...pointer}
         style={{ cursor: hoveredId ? "pointer" : undefined, touchAction: "none" }}
         onPointerDown={() => (touched.current = true)}
@@ -443,30 +465,68 @@ export function AgentNetwork({
             }
           }}
         />
-        <div className="graph-controls network-controls">
-          <button
-            type="button"
-            className="relayout-btn"
-            aria-pressed={paused}
-            disabled={reduce}
-            title={reduce ? "Motion is off (reduced-motion preference)" : undefined}
-            onClick={() => {
-              freezeLayout(model.node.values());
-              ambientClock.step(performance.now(), false);
-              setPaused((p) => !p);
-            }}
-          >
-            {reduce || paused ? "Resume motion" : "Pause motion"}
-          </button>
-          <button type="button" className="relayout-btn" onClick={fit}>
-            Fit view
-          </button>
+        <div className="network-toolbar" role="toolbar" aria-label="Graph controls">
           {pinCount > 0 && (
-            <button type="button" className="relayout-btn" onClick={releasePins}>
+            <button type="button" className="nt-pill" onClick={releasePins}>
               Release {pinCount} pinned
             </button>
           )}
+          <div className="nt-group">
+            <button
+              type="button"
+              className="nt-btn"
+              aria-pressed={paused}
+              disabled={reduce}
+              title={reduce ? "Motion is off (reduced-motion preference)" : reduce || paused ? "Resume motion" : "Pause motion"}
+              onClick={() => {
+                freezeLayout(model.node.values());
+                ambientClock.step(performance.now(), false);
+                setPaused((p) => !p);
+              }}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                {reduce || paused ? <path d="M6 4.5v11l9-5.5z" fill="currentColor" /> : <path d="M6 4.5h2.8v11H6zM11.2 4.5H14v11h-2.8z" fill="currentColor" />}
+              </svg>
+              <span className="sr-only">{reduce || paused ? "Resume motion" : "Pause motion"}</span>
+            </button>
+            <button type="button" className="nt-btn" title="Fit view" onClick={fit}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span className="sr-only">Fit view</span>
+            </button>
+          </div>
+          <div className="nt-group">
+            <button type="button" className="nt-btn" title="Zoom out" onClick={() => zoomBy(1 / 1.35)}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10h11" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>
+              <span className="sr-only">Zoom out</span>
+            </button>
+            <button type="button" className="nt-btn" title="Zoom in" onClick={() => zoomBy(1.35)}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10h11M10 4.5v11" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>
+              <span className="sr-only">Zoom in</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            className="nt-btn nt-btn--solo"
+            aria-expanded={helpOpen}
+            aria-controls="network-help"
+            title="How to use the graph"
+            onClick={() => (helpOpen ? closeHelp() : setHelpOpen(true))}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8.2 8a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.4M10 13.6v.1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+            <span className="sr-only">Help</span>
+          </button>
         </div>
+        {helpOpen && (
+          <div id="network-help" className="network-help" role="dialog" aria-label="How to use the graph">
+            <p className="network-help__title">Exploring the network</p>
+            <ul>
+              <li><strong>Drag</strong> an agent to pin it · <strong>double-click</strong> to release</li>
+              <li><strong>Scroll</strong> or pinch to zoom · drag the background to pan</li>
+              <li><strong>Click</strong> an agent to open its details</li>
+            </ul>
+            <button type="button" className="network-help__ok" onClick={closeHelp}>Got it</button>
+          </div>
+        )}
         {!hasNodes && <p className="network-empty">No agent sessions observed yet.</p>}
       </div>
     </div>

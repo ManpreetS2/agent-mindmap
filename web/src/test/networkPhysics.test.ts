@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forceSimulation, forceManyBody, forceLink } from "d3-force";
 import { NetworkModel, type GNode, type GLink } from "../utils/networkModel";
 import { networkForces, NODE_BOUNDS, settleLayout } from "../utils/networkPhysics";
-import { fittedCamera } from "../utils/networkCamera";
+import { fittedCamera, maxFitZoom } from "../utils/networkCamera";
 import { sessionNode, t3Activity } from "./helpers";
 
 function layout(count: number) {
@@ -72,15 +72,31 @@ describe("network physics", () => {
     expect([n.x, n.y]).toEqual([0, 0]);
   });
 
-  it.each([1, 2, 5, 30])("caps fit and includes label bounds plus padding for %i agents", count => {
+  it.each([1, 2, 5, 30])("caps fit by agent count and keeps label bounds inside the reserved margins for %i agents", count => {
     const { m, sim } = layout(count); sim.tick(420);
     const c = fittedCamera(m.data.nodes, 1100, 700)!;
-    expect(c.zoom).toBeLessThanOrEqual(1.8);
+    expect(c.zoom).toBeLessThanOrEqual(maxFitZoom(count));
+    // margins: left 56, right 72 (toolbar), top 64, bottom 84 (legend chip)
     for (const n of m.data.nodes) {
-      expect((n.x! + NODE_BOUNDS.left - c.x) * c.zoom + 550).toBeGreaterThanOrEqual(69.999);
-      expect((n.x! + NODE_BOUNDS.right - c.x) * c.zoom + 550).toBeLessThanOrEqual(1010.001);
-      expect((n.y! + NODE_BOUNDS.bottom - c.y) * c.zoom + 350).toBeLessThanOrEqual(550.001);
-      expect((n.y! + NODE_BOUNDS.top - c.y) * c.zoom + 350).toBeGreaterThanOrEqual(79.999);
+      expect((n.x! + NODE_BOUNDS.left - c.x) * c.zoom + 550).toBeGreaterThanOrEqual(55.999);
+      expect((n.x! + NODE_BOUNDS.right - c.x) * c.zoom + 550).toBeLessThanOrEqual(1028.001);
+      expect((n.y! + NODE_BOUNDS.bottom - c.y) * c.zoom + 350).toBeLessThanOrEqual(616.001);
+      expect((n.y! + NODE_BOUNDS.top - c.y) * c.zoom + 350).toBeGreaterThanOrEqual(63.999);
     }
+  });
+
+  it("small networks use far more of the canvas than the old 1.8 cap allowed", () => {
+    const widths: Record<number, number> = {};
+    for (const count of [1, 2, 5]) {
+      const { m, sim } = layout(count); sim.tick(420);
+      const c = fittedCamera(m.data.nodes, 1100, 700)!;
+      const xs = m.data.nodes.map((n) => n.x!);
+      widths[count] = (((Math.max(...xs) + NODE_BOUNDS.right) - (Math.min(...xs) + NODE_BOUNDS.left)) * c.zoom) / 1100;
+    }
+    expect(maxFitZoom(1)).toBeGreaterThan(1.8);
+    expect(maxFitZoom(2)).toBeGreaterThan(1.8);
+    expect(maxFitZoom(30)).toBe(1.8);
+    expect(widths[5]).toBeGreaterThan(0.5); // a five-agent cluster spans over half the canvas width
+    expect(widths[2]).toBeGreaterThan(0.3);
   });
 });
