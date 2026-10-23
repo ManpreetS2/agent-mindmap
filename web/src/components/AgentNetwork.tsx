@@ -297,6 +297,7 @@ export function AgentNetwork({
     <div className="network-view">
       <AgentRoster
         nodes={activity.nodes.filter((n) => n.session)}
+        edges={activity.edges}
         selectedId={selectedNodeId}
         hoveredId={hoveredId}
         onSelect={onOpenNodeDetail}

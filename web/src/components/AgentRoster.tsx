@@ -1,9 +1,10 @@
-import type { Node } from "@shared/types";
+import type { Edge, Node } from "@shared/types";
 import { providerKey, providerLabel } from "../utils/provider";
 import { StatusPill } from "./StatusPill";
 
 interface Props {
   nodes: Node[];
+  edges?: Edge[];
   selectedId: string | null;
   hoveredId: string | null;
   onSelect: (id: string) => void;
@@ -11,8 +12,16 @@ interface Props {
 }
 
 /** Keyboard / screen-reader entry point to the canvas network (canvas itself is not focusable). */
-export function AgentRoster({ nodes, selectedId, hoveredId, onSelect, onHover }: Props) {
+export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect, onHover }: Props) {
   const sorted = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  // Delegation lineage as text, so keyboard / screen-reader users get the network's structure too.
+  const relation = (id: string): string | null => {
+    const by = edges.filter((e) => e.target === id && byId.has(e.source)).map((e) => byId.get(e.source)!.label);
+    const to = edges.filter((e) => e.source === id && byId.has(e.target)).length;
+    const parts = [by.length ? `delegated by ${by.join(", ")}` : "", to ? `delegated ${to} agent${to > 1 ? "s" : ""}` : ""].filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  };
   const move = (e: React.KeyboardEvent<HTMLUListElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
@@ -33,6 +42,7 @@ export function AgentRoster({ nodes, selectedId, hoveredId, onSelect, onHover }:
           const key = providerKey(s.provider);
           const model = s.model ?? "Model not reported";
           const task = n.current_task ?? "No task reported";
+          const rel = relation(n.id);
           return (
             <li key={n.id}>
               <button
@@ -41,6 +51,7 @@ export function AgentRoster({ nodes, selectedId, hoveredId, onSelect, onHover }:
                 className={`roster-item roster-item--${key}${selectedId === n.id ? " is-selected" : ""}${hoveredId === n.id ? " is-hovered" : ""}`}
                 aria-pressed={selectedId === n.id}
                 aria-label={`${providerLabel(s.provider)}, ${model}, ${n.status}, ${task}`}
+                aria-description={rel ?? undefined}
                 onClick={() => onSelect(n.id)}
                 onMouseEnter={() => onHover(n.id)}
                 onMouseLeave={() => onHover(null)}
@@ -55,6 +66,7 @@ export function AgentRoster({ nodes, selectedId, hoveredId, onSelect, onHover }:
                   </span>
                   <span className="roster-model mono">{model}</span>
                   <span className="roster-task">{task}</span>
+                  {rel && <span className="roster-rel">{rel}</span>}
                 </span>
               </button>
             </li>
