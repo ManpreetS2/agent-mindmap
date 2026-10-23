@@ -16,7 +16,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.split("?")[0] == "/activity.json":
-            body = open(FIXTURE, "rb").read()
+            with open(FIXTURE, "rb") as fh:
+                body = fh.read()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
