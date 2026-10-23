@@ -41,7 +41,7 @@ export function NetworkLegend({ simulated = false }: { simulated?: boolean }) {
         ))}
       </div>
       <div className="network-legend__note">
-        Arrows show lineage only. A pulse appears once when a new delegation is observed — never as proof of ongoing messages.
+        Arrows show lineage, never ongoing messages. With motion enabled, a recent delegation seen during uninterrupted observation gets one travelling particle. “Newly observed” uses a static glow: the relationship was just discovered, and its creation time may be earlier.
       </div>
       </div>
     </div>
