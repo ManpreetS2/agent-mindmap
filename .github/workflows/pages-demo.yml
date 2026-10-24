@@ -25,8 +25,6 @@ jobs:
     steps:
       - name: Checkout preview branch
         uses: actions/checkout@v4
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -75,6 +73,8 @@ jobs:
           assert Path("web/dist/index.html").exists()
           assert "/agent-mindmap/assets/" in Path("web/dist/index.html").read_text()
           PY
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
