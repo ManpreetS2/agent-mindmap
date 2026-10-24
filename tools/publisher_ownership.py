@@ -58,14 +58,17 @@ class Decision:
     superseded_by: dict | None = field(default=None, compare=False)
 
 
+MAX_EPOCH = 2**31  # a feed claiming a larger epoch is malformed (an absurd int would eventually break json read/write)
+
+
 def parse_time(value) -> datetime | None:
     if not isinstance(value, str):
         return None
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError:
+        return parsed.astimezone(UTC) if parsed.utcoffset() is not None else None
+    except (ValueError, OverflowError):  # e.g. "9999-12-31T23:59:59-23:59" overflows on conversion
         return None
-    return parsed.astimezone(UTC) if parsed.utcoffset() is not None else None
 
 
 def publisher_object(identity: mi.MachineIdentity, epoch: int, now: datetime, state: str = "active") -> dict:
@@ -82,7 +85,7 @@ def validate_publisher(pub, now: datetime) -> dict | None:
     epoch, lease = pub.get("epoch"), parse_time(pub.get("lease_expires_at"))
     if (not isinstance(pub.get("machine_id"), str) or not ID_RE.match(pub["machine_id"])
             or not isinstance(pub.get("label"), str) or isinstance(epoch, bool) or not isinstance(epoch, int)
-            or epoch < 1 or pub.get("state") not in STATES or lease is None
+            or not 1 <= epoch < MAX_EPOCH or pub.get("state") not in STATES or lease is None
             or lease > now + timedelta(seconds=2 * LEASE_TTL_SEC)):
         return None
     return pub
@@ -134,13 +137,20 @@ def decide(remote_feed: dict | None, identity: mi.MachineIdentity | None, now: d
     mine = pub["machine_id"] == identity.id
     lease = parse_time(pub["lease_expires_at"])
     expired = lease <= now  # type: ignore[operator]
-    superseded = (owner_summary(pub) if (not mine and local_epoch is not None and pub["epoch"] >= local_epoch)
-                  else None)
+    superseded = (
+        owner_summary(pub)
+        if not mine and (
+            (local_epoch is not None and pub["epoch"] >= local_epoch)
+            or (local_epoch is None and identity.role == "publisher")  # claimed an empty repo, another Mac wrote first
+        )
+        else None
+    )
+    base_epoch = max(pub["epoch"], local_epoch or 0)  # a claim must outrank this Mac's own record too
     who = f"{pub['label']} (epoch {pub['epoch']})"
 
     if pub["state"] == "released":
         if claiming:
-            return Decision("publish", f"Feed was released by {who}", "claim_released", epoch=pub["epoch"] + 1)
+            return Decision("publish", f"Feed was released by {who}", "claim_released", epoch=base_epoch + 1)
         return Decision("claim_required", f"Feed was released by {who}; an operator must `claim` it",
                         "released", superseded_by=superseded)
     if mine:
@@ -148,19 +158,22 @@ def decide(remote_feed: dict | None, identity: mi.MachineIdentity | None, now: d
             return Decision("refuse", "Remote epoch is lower than this Mac's own record (feed rolled back); investigate",
                             "rollback")
         return Decision("publish", "This Mac owns the feed", "owner", epoch=pub["epoch"])
+    if not claiming and local_epoch is not None and pub["epoch"] < local_epoch:
+        return Decision("refuse", "Remote owner's epoch is lower than this Mac's own record (feed rolled back); investigate",
+                        "rollback")
     if expired:
         if claiming:
-            return Decision("publish", f"Lease of {who} has expired", "claim_expired", epoch=pub["epoch"] + 1)
+            return Decision("publish", f"Lease of {who} has expired", "claim_expired", epoch=base_epoch + 1)
         return Decision("claim_required", f"Lease of {who} has expired; an operator must `claim`", "expired",
                         superseded_by=superseded)
     if claiming:
-        return forced(pub["machine_id"], pub["epoch"] + 1, f"{who} holds an unexpired lease")
+        return forced(pub["machine_id"], base_epoch + 1, f"{who} holds an unexpired lease")
     return Decision("refuse", f"Feed is owned by {who} with an unexpired lease", "foreign_active", superseded_by=superseded)
 
 
 def _corrupt(claiming: bool, force: bool, remote_feed: dict) -> Decision:
     prior = (remote_feed.get("publisher") or {}).get("epoch") if isinstance(remote_feed.get("publisher"), dict) else None
-    epoch = prior + 1 if isinstance(prior, int) and not isinstance(prior, bool) and prior >= 0 else 1
+    epoch = prior + 1 if isinstance(prior, int) and not isinstance(prior, bool) and 0 <= prior < MAX_EPOCH - 1 else 1
     if claiming and force:
         return Decision("publish", "Overriding a malformed owner record", "takeover", epoch=epoch, takeover=True,
                         confirm_token=CORRUPT_TOKEN)
@@ -267,7 +280,7 @@ def fetch_remote_feed(repo: str, runner=None) -> tuple[str, dict | None]:
         return ("missing", None) if "not found" in (out + err).lower() or "404" in (out + err) else ("error", None)
     try:
         data = json.loads(out)
-    except ValueError:
+    except (ValueError, RecursionError):
         return "malformed", None
     return ("ok", data) if isinstance(data, dict) else ("malformed", None)
 
@@ -437,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
                         pass
             out["feed_health"] = feed_health(args.state_dir, now, args.config_dir)
             print(_fmt(out))
-    except (OwnershipError, mi.IdentityError, pub.PublishError, OSError, ValueError) as exc:
+    except (OwnershipError, mi.IdentityError, pub.PublishError, OSError, ValueError, OverflowError) as exc:
         print(f"publisher ownership: {str(exc)[:300]}")
         return 1
     return 0

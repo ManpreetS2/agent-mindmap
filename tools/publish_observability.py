@@ -127,8 +127,11 @@ def should_publish(previous: dict | None, current: dict, *, now: datetime) -> bo
         prev = datetime.fromisoformat(old)
         if prev.utcoffset() is None:
             return True
-        return (now - prev).total_seconds() >= HEARTBEAT_SEC
-    except ValueError:
+        age = (now - prev).total_seconds()
+        if age < -60:  # a stamp from the future (clock skew or a crafted feed) must never suppress the heartbeat
+            return True
+        return age >= HEARTBEAT_SEC
+    except (ValueError, OverflowError):
         return True
 
 
@@ -284,7 +287,7 @@ def due(state: dict, now: datetime) -> str | None:
     def age(key: str) -> float | None:
         try:
             return (now - datetime.fromisoformat(state[key])).total_seconds()
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, OverflowError):
             return None
     since_success = age("last_success_at")
     if since_success is not None and 0 <= since_success < MIN_INTERVAL_SEC:  # a future stamp is ignored, not obeyed
@@ -421,7 +424,7 @@ def publish(input_path: Path | None, repo: str, *, for_real: bool, collector_url
                 raise PublishError("Destination is not the approved PRIVATE repository")
             result = push_snapshot(repo, env, feed, body, summary, now, identity=identity,
                                    local_epoch=own.local_epoch(state), outcome=outcome)
-        except (PublishError, ValueError) as exc:
+        except (PublishError, ValueError, OverflowError) as exc:
             if isinstance(exc, OwnershipRefusal) and exc.decision.superseded_by:
                 own.record_superseded(state, exc.decision.superseded_by, now)
             state["consecutive_failures"] = failure_count(state) + 1
@@ -460,7 +463,7 @@ def main() -> int:
         print(publish(args.input, args.repo, for_real=args.for_real, collector_url=args.collector_url,
                       state_dir=args.state_dir, review_dir=args.review_dir))
         return 0
-    except (PublishError, ValueError, OSError) as exc:
+    except (PublishError, ValueError, OverflowError, OSError) as exc:
         print(f"Private publisher stopped: {str(exc)[:180]}")
         return 1
 
