@@ -381,3 +381,62 @@ th[aria-sort="descending"] .list-th-sort::after { content: " ↓"; opacity: 1; c
   .app-header__center { order: 3; flex-basis: 100%; flex-wrap: wrap; overflow: visible; gap: 8px 14px; }
   .metric-list { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
 }
+
+/* ── Loading / error / empty states: one calm centred panel ───────────────────────────────── */
+.mindmap-loading, .app-error { align-items: center; justify-content: center; }
+.mindmap-loading { display: flex; flex: 1; min-height: 60vh; }
+.state-panel {
+  position: relative; width: min(440px, calc(100% - 32px)); margin: 12vh auto 0; padding: 30px 28px 26px; text-align: center;
+  border-radius: 18px; background: linear-gradient(180deg, rgba(17, 23, 35, 0.92), rgba(10, 14, 22, 0.92));
+  border: 1px solid var(--line-strong); box-shadow: var(--shadow-pop); animation: drawer-in 0.3s var(--ease);
+}
+.state-panel h1 { margin: 12px 0 6px; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.state-title { margin: 14px 0 4px; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.state-sub { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
+.state-path { margin: 0 0 18px; padding: 6px 10px; border-radius: 8px; font-size: 12px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+.state-mark { position: relative; display: inline-block; width: 46px; height: 46px; }
+.state-mark i { position: absolute; width: 13px; height: 13px; border-radius: 50%; animation: state-pulse 1.6s ease-in-out infinite; }
+.state-mark i:nth-child(1) { left: 0; top: 17px; background: var(--provider-codex); }
+.state-mark i:nth-child(2) { right: 0; top: 0; background: var(--accent); animation-delay: 0.25s; }
+.state-mark i:nth-child(3) { right: 4px; bottom: 0; background: var(--provider-claude); animation-delay: 0.5s; }
+@keyframes state-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.08); } }
+.state-skeleton { display: grid; gap: 8px; margin-top: 18px; }
+.state-skeleton span { height: 10px; border-radius: 999px; }
+.state-skeleton span:nth-child(2) { width: 78%; justify-self: center; }
+.state-skeleton span:nth-child(3) { width: 52%; justify-self: center; }
+.state-icon {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; font-weight: 800;
+  color: #ffb1ba; background: rgba(240, 89, 107, 0.14); border: 1px solid rgba(240, 89, 107, 0.45);
+}
+.state-button {
+  padding: 8px 20px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: #cfe0ff;
+  background: rgba(91, 140, 255, 0.16); border: 1px solid rgba(91, 140, 255, 0.5); transition: background 0.15s var(--ease);
+}
+.state-button:hover { background: rgba(91, 140, 255, 0.28); }
+.state-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.app-error { color: inherit; background: transparent; height: auto; }
+.empty-activity-banner {
+  margin: 14px 16px 0; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--line-strong);
+}
+
+/* ── Roster density: calm rows, detail on demand ──────────────────────────────────────────── */
+.roster-item { padding: 8px 10px; }
+.roster-sub { gap: 2px 7px; }
+.roster-meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-muted); }
+.roster-meta .roster-model { flex: 0 1 auto; }
+.roster-meta .roster-updated { flex-basis: auto; opacity: 0.85; }
+.roster-meta .roster-updated::before { content: "·"; margin-right: 6px; }
+/* lineage text is for the focused/selected row (it stays in the DOM and in aria-description) */
+.roster-rel { display: none; }
+.roster-item.is-selected .roster-rel, .roster-item:hover .roster-rel, .roster-item:focus-visible .roster-rel { display: block; }
+.agent-roster.is-dense .roster-task { -webkit-line-clamp: 1; }
+.agent-roster.is-dense .roster-item { padding: 6px 10px; }
+.agent-roster.is-dense .roster-updated { display: none; }
+
+/* ── List view on narrow screens: tables scroll inside their card instead of being clipped ── */
+.list-view section { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+@media (max-width: 767px) {
+  .list-view section > table { min-width: 540px; }
+  .list-view section:first-of-type > table { min-width: 0; }
+}

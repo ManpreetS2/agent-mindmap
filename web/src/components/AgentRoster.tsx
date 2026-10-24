@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@shared/types";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { formatRelativeAgo } from "../utils/format";
 import { groupRoster, rosterGroupOf, updatedLabel, type RosterGroupKey } from "../utils/rosterOrder";
 import { providerKey, providerLabel } from "../utils/provider";
@@ -20,12 +20,20 @@ interface Props {
 export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect, onHover, now }: Props) {
   const [query, setQuery] = useState("");
   const [only, setOnly] = useState<RosterGroupKey | "all">("all");
+  // Saved choice wins; otherwise tablets and phones start as a compact rail so the graph keeps the space.
   const [collapsed, setCollapsed] = useState(() => {
-    try { return window.localStorage?.getItem("mindmapRosterCollapsed") === "1"; } catch { return false; }
+    try {
+      const saved = window.localStorage?.getItem("mindmapRosterCollapsed");
+      if (saved === "1" || saved === "0") return saved === "1";
+      return Boolean(window.matchMedia?.("(max-width: 1099px)").matches);
+    } catch { return false; }
   });
-  useEffect(() => {
-    try { window.localStorage?.setItem("mindmapRosterCollapsed", collapsed ? "1" : "0"); } catch { /* storage unavailable */ }
-  }, [collapsed]);
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      try { window.localStorage?.setItem("mindmapRosterCollapsed", c ? "0" : "1"); } catch { /* storage unavailable */ }
+      return !c;
+    });
+  };
   const counts = { attention: 0, working: 0, settled: 0 } as Record<RosterGroupKey, number>;
   for (const n of nodes) counts[rosterGroupOf(n.status)]++;
   const groups = groupRoster(nodes, query).filter((g) => only === "all" || g.key === only);
@@ -53,7 +61,7 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
   const ago = (iso: string) => formatRelativeAgo(iso, now);
   const total = nodes.length;
   return (
-    <nav className={`agent-roster${collapsed ? " is-collapsed" : ""}`} aria-label="Agents" onKeyDown={move}>
+    <nav className={`agent-roster${collapsed ? " is-collapsed" : ""}${nodes.length > 8 ? " is-dense" : ""}`} aria-label="Agents" onKeyDown={move}>
       <div className="agent-roster__head">
         <h2 className="agent-roster__title">
           Agents <span>{shown === total ? total : `${shown} of ${total}`}</span>
@@ -64,7 +72,7 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand agents panel" : "Collapse agents panel"}
           title={collapsed ? "Expand agents panel" : "Collapse agents panel"}
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={toggleCollapsed}
         >
           <span aria-hidden="true">{collapsed ? "»" : "«"}</span>
         </button>
@@ -137,6 +145,8 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                         <span className="roster-sub">
                           <StatusPill status={n.status} />
                           <strong>{providerLabel(s.provider)}</strong>
+                        </span>
+                        <span className="roster-meta">
                           <span className="roster-model mono">{model}</span>
                           <span className="roster-updated">{updatedLabel(n.last_activity_ts, ago)}</span>
                         </span>

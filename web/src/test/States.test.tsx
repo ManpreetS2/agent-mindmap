@@ -17,10 +17,11 @@ import { renderMindmap } from "./renderMindmap";
 const STALE_NOW = new Date("2026-10-20T12:00:00-07:00").getTime();
 
 describe("UI states (MM-007)", () => {
-  it("loading view shows ledger + GitHub message and skeletons", () => {
+  it("loading view shows a source-neutral message and a skeleton", () => {
     render(<MindmapLoadingView />);
-    expect(screen.getByText(/Reading ledger and GitHub/i)).toBeInTheDocument();
-    expect(document.querySelectorAll(".skeleton-node").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Loading agent activity/i)).toBeInTheDocument();
+    expect(screen.queryByText(/ledger|GitHub/i)).not.toBeInTheDocument(); // the source is unknown until data arrives
+    expect(document.querySelectorAll(".state-skeleton .shimmer").length).toBeGreaterThan(0);
   });
 
   it("empty fixture shows no-activity banner with idle graph nodes", () => {

@@ -34,9 +34,11 @@ export function App() {
     return (
       <CommandCenterShell>
         <SkipLink />
-        <div className="app-error" role="alert">
-          {error.message}
-          <button type="button" onClick={reload}>
+        <div className="app-error state-panel state-panel--error" role="alert">
+          <span className="state-icon" aria-hidden="true">!</span>
+          <h1>Couldn&apos;t load activity</h1>
+          <p className="state-sub">{error.message}</p>
+          <button type="button" className="state-button" onClick={reload}>
             Retry
           </button>
         </div>
