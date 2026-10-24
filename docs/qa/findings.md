@@ -84,3 +84,40 @@ Repro: `test_five_ids_without_evidence_degrade_to_valid_unknown`: stub `api.pool
 because every pool lacks required evidence/status/source fields. Expected: valid UNKNOWN placeholders,
 as for other malformed optional sources. Suggested fix: validate returned pools against the contract,
 including required fields, before trusting them; otherwise use `unknown_pools` and a fixed diagnostic note.
+
+## Phase 2 runtime — `1449153`
+
+Runtime is reviewed in detached scratch worktree `/tmp/qa-runtime-m003`; it is not merged into the QA branch.
+`test_runtime_adversarial.py` uses `pytest.importorskip` and skips until the runtime modules are integrated.
+The engineer's five runtime suites passed **109 tests**. Independent runtime attacks: **23 passed, 4 strict xfailed**.
+
+| ID | Severity | Location | Verified status | Cases |
+|---|---|---|---|---|
+| QA-011 | High | tools/publisher_ownership.py:147 | OPEN @ 1449153 | 1 |
+| QA-012 | Medium | tools/machine_doctor.py:36 | OPEN @ 1449153 | 3 |
+
+### QA-011 — old generation adopts a higher epoch for the same machine identity
+
+Repro: `test_resurrected_generation_of_same_machine_is_fenced`, using a real local bare git remote.
+Mac A publishes at epoch 1; seed a valid epoch-3 owner record for the same stable machine ID (the state
+following intervening handovers). Keep the old process's local epoch 1 and publish a changed task.
+Actual: `decide` accepts any higher remote epoch when the machine ID matches; the process overwrites
+the feed and adopts epoch 3. Expected: epoch 1 cannot write under epoch 3 without an explicit reclaim.
+Suggested fix: fence both directions of local/remote epoch mismatch for an ordinary publish; reserve
+adopting a newer epoch for the explicit claim path. This is distinct from a foreign-machine takeover,
+which the rejected-push/re-clone attack correctly refuses.
+
+### QA-012 — doctor prints credential forms embedded in remote owner labels
+
+Repro: `test_doctor_does_not_print_other_credential_forms`: inject a synthetic remote owner label
+containing `password=syntheticsecret`, a Slack `xoxb-...` token, or `Authorization: Basic ...` into the
+fake `gh api` response; run `check_feed` and render text/JSON. All three strings survive verbatim.
+Expected: credentials absent from both formats even when external metadata contains them.
+Suggested fix: use the shared normalization/credential sanitizer for diagnostic text and hints,
+including encoded credentials; the current doctor regex covers only GitHub/OpenAI/Bearer examples.
+No real `gh` command or remote is accessed by these tests.
+
+Runtime note for QA-004: `load_previous` now rejects non-object JSON (null/list/number/string), and
+ownership rejects `{}` as corrupt. The original non-feed-shape cases are **FIXED on runtime `1449153`**
+by `test_runtime_rejects_all_original_qa004_remote_shapes` (all five original payloads, real local remote); they remain OPEN on the current integrated QA base.
+QA-005's unbounded remote file read remains at runtime `tools/publish_observability.py:311`.
