@@ -586,3 +586,13 @@ input:focus-visible { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .quota-meter__fill { transition: none; }
 }
+
+.workload-recs { margin: 14px 0 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.workload-recs__title { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+.workload-recs__demo, .workload-recs__status { margin: 0 0 8px; font-size: 12px; color: #f3d48f; }
+.workload-recs__reasons, .workload-recs__candidates, .workload-recs__evidence, .workload-recs__limits, .workload-recs__blockers ul {
+  margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary);
+}
+.workload-recs__candidates > li { margin-bottom: 10px; }
+.workload-recs__blockers h3 { margin: 12px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.workload-recs__limits { color: var(--text-muted); font-style: italic; }

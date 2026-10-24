@@ -57,6 +57,7 @@ import {
 } from "../utils/viewState";
 import { SourceHealthBar } from "../components/SourceHealthBar";
 import { QuotaPanel } from "../components/QuotaPanel";
+import { WorkloadRecommendations } from "../components/WorkloadRecommendations";
 import type { ObservabilityState } from "../hooks/useObservability";
 
 export interface MindmapViewProps {
@@ -406,6 +407,11 @@ export function MindmapView({
         </button>
         <div id="ops-drawer-panel" className="ops-drawer__body" hidden={!opsOpen}>
           <QuotaPanel state={observability} nowMs={nowMs} />
+          <WorkloadRecommendations
+            activity={activity}
+            observability={observability}
+            nowMs={nowMs}
+          />
         </div>
       </div>
 
