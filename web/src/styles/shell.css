@@ -566,6 +566,8 @@ input:focus-visible { outline: none; }
 }
 .quota-badge--verified { color: #8fe3b5; border-color: rgba(70, 201, 138, 0.45); background: rgba(70, 201, 138, 0.1); }
 .quota-badge--manual { color: #b3cbff; border-color: rgba(91, 140, 255, 0.45); background: rgba(91, 140, 255, 0.1); }
+.quota-badge--demo { color: #f3d48f; border-style: dashed; border-color: rgba(245, 185, 66, 0.45); background: rgba(245, 185, 66, 0.1); }
+.quota-card--demo-value { opacity: 0.92; }
 .quota-badge--stale { color: #aab3c5; border-style: dashed; border-color: rgba(123, 132, 153, 0.55); background: rgba(123, 132, 153, 0.1); }
 .quota-badge--unknown, .quota-badge--unsupported { color: #aab3c5; border-style: dashed; }
 .quota-badge--error { color: #ffa3ae; border-color: rgba(240, 89, 107, 0.45); background: rgba(240, 89, 107, 0.1); }

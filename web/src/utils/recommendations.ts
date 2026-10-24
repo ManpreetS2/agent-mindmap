@@ -3,13 +3,16 @@ import type { Observability, QuotaPoolId } from "@shared/observability";
 import { QUOTA_POOL_ORDER } from "@shared/observability";
 import {
   evaluateObservability,
+  OBSERVABILITY_STALE_MS,
   type EvaluatedQuotaPool,
 } from "./observabilityEval";
-import { isActivityStale } from "./viewState";
+import { isActivityStale, STALE_THRESHOLD_MS } from "./viewState";
 import { formatRelativeAgo } from "./format";
 
 /** Pools at or above this used% on any numeric window are ineligible. */
 export const QUOTA_USED_PCT_LIMIT = 85;
+/** Clock skew tolerance for future timestamps. */
+export const FUTURE_EVIDENCE_SKEW_MS = 60_000;
 
 export interface RecommendationCandidate {
   poolId: QuotaPoolId;
@@ -51,15 +54,31 @@ function collectorPollFresh(doc: Observability, nowMs: number): boolean {
   if (doc.collector.status !== "connected") return false;
   const poll = parseMs(doc.collector.last_t3_poll);
   if (poll === null) return false;
+  if (poll > nowMs + FUTURE_EVIDENCE_SKEW_MS) return false;
   const staleAfter =
     (doc.collector.stale_after_sec ?? 300) * 1000;
   return nowMs - poll <= staleAfter;
 }
 
+function activityEvidenceOk(activity: Activity, nowMs: number): string | null {
+  const generated = parseMs(activity.generated_at);
+  if (generated === null) return "Activity generated_at is missing or invalid";
+  if (generated > nowMs + FUTURE_EVIDENCE_SKEW_MS) {
+    return "Activity generated_at is in the future";
+  }
+  if (nowMs - generated > STALE_THRESHOLD_MS) {
+    return "Activity generated_at is stale";
+  }
+  if (isActivityStale(activity, nowMs)) {
+    return "Activity is stale or T3 connection unavailable";
+  }
+  return null;
+}
+
 function maxUsedPct(pool: EvaluatedQuotaPool): number | null {
   let max: number | null = null;
   for (const w of pool.windows) {
-    if (typeof w.used_pct === "number") {
+    if (typeof w.used_pct === "number" && Number.isFinite(w.used_pct)) {
       max = max === null ? w.used_pct : Math.max(max, w.used_pct);
     }
   }
@@ -73,15 +92,31 @@ function poolIneligibilityReason(pool: EvaluatedQuotaPool, nowMs: number): strin
   if (pool.effectiveStatus !== "VERIFIED" && pool.effectiveStatus !== "MANUAL") {
     return `${pool.id}: status ${pool.effectiveStatus}${pool.reason ? ` (${pool.reason})` : ""}`;
   }
+  if (!pool.observed_at || parseMs(pool.observed_at) === null) {
+    return `${pool.id}: observed_at missing`;
+  }
+  const observed = parseMs(pool.observed_at)!;
+  if (observed > nowMs + FUTURE_EVIDENCE_SKEW_MS) {
+    return `${pool.id}: observed_at is in the future`;
+  }
+  if (!pool.expires_at || parseMs(pool.expires_at) === null) {
+    return `${pool.id}: expires_at missing`;
+  }
+  if (parseMs(pool.expires_at)! <= nowMs) {
+    return `${pool.id}: expires_at has passed`;
+  }
   if (pool.windows.length < 1) {
     return `${pool.id}: no windows reported`;
   }
   for (const w of pool.windows) {
+    if (typeof w.used_pct !== "number" || !Number.isFinite(w.used_pct)) {
+      return `${pool.id}: window "${w.label}" used_pct is null or not finite`;
+    }
     const r = parseMs(w.resets_at);
     if (r !== null && r <= nowMs) {
       return `${pool.id}: window "${w.label}" resets_at ${w.resets_at} has passed`;
     }
-    if (typeof w.used_pct === "number" && w.used_pct >= QUOTA_USED_PCT_LIMIT) {
+    if (w.used_pct >= QUOTA_USED_PCT_LIMIT) {
       return `${pool.id}: window "${w.label}" used_pct=${w.used_pct} >= ${QUOTA_USED_PCT_LIMIT}`;
     }
   }
@@ -93,13 +128,17 @@ function isPoolEligible(pool: EvaluatedQuotaPool, nowMs: number): boolean {
     return false;
   }
   if (pool.clientExpired) return false;
+  if (!pool.observed_at || parseMs(pool.observed_at) === null) return false;
+  const observed = parseMs(pool.observed_at)!;
+  if (observed > nowMs + FUTURE_EVIDENCE_SKEW_MS) return false;
+  if (!pool.expires_at || parseMs(pool.expires_at) === null) return false;
+  if (parseMs(pool.expires_at)! <= nowMs) return false;
   if (pool.windows.length < 1) return false;
   for (const w of pool.windows) {
+    if (typeof w.used_pct !== "number" || !Number.isFinite(w.used_pct)) return false;
     const r = parseMs(w.resets_at);
     if (r !== null && r <= nowMs) return false;
-    if (typeof w.used_pct === "number" && w.used_pct >= QUOTA_USED_PCT_LIMIT) {
-      return false;
-    }
+    if (w.used_pct >= QUOTA_USED_PCT_LIMIT) return false;
   }
   return true;
 }
@@ -185,11 +224,12 @@ export function recommend(
     };
   }
 
-  if (isActivityStale(activity, nowMs)) {
+  const activityBad = activityEvidenceOk(activity, nowMs);
+  if (activityBad) {
     return {
       status: "INSUFFICIENT_DATA",
       candidates: [],
-      reasons: ["Activity is stale or T3 connection unavailable"],
+      reasons: [activityBad],
       blockers,
     };
   }
@@ -206,6 +246,16 @@ export function recommend(
   }
 
   const evaluated = evaluateObservability(observability, nowMs);
+  if (evaluated.documentStale) {
+    return {
+      status: "INSUFFICIENT_DATA",
+      candidates: [],
+      reasons: [
+        `Observability document is stale (generated_at older than ${OBSERVABILITY_STALE_MS / 60000}m)`,
+      ],
+      blockers,
+    };
+  }
   const eligible = evaluated.pools.filter((p) => isPoolEligible(p, nowMs));
 
   if (eligible.length === 0) {

@@ -13,6 +13,8 @@ export type EvaluatedQuotaPool = QuotaPool & {
   effectiveStatus: QuotaStatus;
   /** True when the client downgraded VERIFIED/MANUAL to STALE. */
   clientExpired: boolean;
+  /** Demo mode: pool must not claim VERIFIED; show as illustrative. */
+  demoValue?: boolean;
 };
 
 export type EvaluatedObservability = Observability & {
@@ -65,6 +67,7 @@ export function evaluateObservability(
   const documentStale =
     generated === null || nowMs - generated > OBSERVABILITY_STALE_MS;
   const byId = new Map(doc.quota.pools.map((p) => [p.id, p]));
+  const demo = doc.mode === "demo";
   const pools = QUOTA_POOL_ORDER.map((id) => {
     const pool = byId.get(id);
     if (!pool) {
@@ -95,7 +98,17 @@ export function evaluateObservability(
         nowMs,
       );
     }
-    return evaluatePool(pool, nowMs);
+    const evaluated = evaluatePool(pool, nowMs);
+    // Demo must never surface VERIFIED (forged or otherwise).
+    if (demo && evaluated.effectiveStatus === "VERIFIED") {
+      return {
+        ...evaluated,
+        effectiveStatus: "MANUAL" as const,
+        reason: evaluated.reason ?? "DEMO value — not a verified reading",
+        demoValue: true,
+      };
+    }
+    return { ...evaluated, demoValue: false };
   });
   return { ...doc, documentStale, pools };
 }
@@ -136,9 +149,39 @@ export function isObservabilityShape(value: unknown): value is Observability {
     const statuses = ["VERIFIED", "MANUAL", "STALE", "UNKNOWN", "UNSUPPORTED", "ERROR"];
     if (!statuses.includes(pool.status as string)) return false;
     if (!Array.isArray(pool.windows)) return false;
+    for (const w of pool.windows) {
+      if (!isValidWindow(w)) return false;
+    }
     if (!pool.source || typeof pool.source !== "object") return false;
   }
   if (!Array.isArray(o.notes)) return false;
+  return true;
+}
+
+const WINDOW_TYPES = new Set(["session", "weekly", "monthly", "other"]);
+
+function isValidPct(v: unknown): boolean {
+  if (v === null) return true;
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100;
+}
+
+function isValidWindow(w: unknown): boolean {
+  if (!w || typeof w !== "object") return false;
+  const o = w as Record<string, unknown>;
+  if (typeof o.type !== "string" || !WINDOW_TYPES.has(o.type)) return false;
+  if (typeof o.label !== "string") return false;
+  if (
+    !(
+      o.window_minutes === null ||
+      (typeof o.window_minutes === "number" &&
+        Number.isFinite(o.window_minutes) &&
+        o.window_minutes >= 1)
+    )
+  ) {
+    return false;
+  }
+  if (!isValidPct(o.used_pct) || !isValidPct(o.remaining_pct)) return false;
+  if (!(o.resets_at === null || typeof o.resets_at === "string")) return false;
   return true;
 }
 

@@ -83,7 +83,7 @@ describe.skipIf(!quota || !recommendations || !transport)("independent observabi
     expect(recommendations!.recommend(activity(), d, NOW).status).toBe("INSUFFICIENT_DATA");
   });
 
-  it.fails("QA-013: demo flag must override a forged VERIFIED pool", () => {
+  it("QA-013: demo flag must override a forged VERIFIED pool", () => {
     const d = doc(); d.mode = "demo";
     const { container } = render(<Panel state={{ status: "ok", data: d }} nowMs={NOW} />);
     expect(container.querySelector('[data-status="VERIFIED"]')).toBeNull();
@@ -99,7 +99,7 @@ describe.skipIf(!quota || !recommendations || !transport)("independent observabi
     },
   );
 
-  it.fails.each(["missing-percentages", "missing-expiry", "missing-observation", "future-observation", "future-poll", "old-document"])(
+  it.each(["missing-percentages", "missing-expiry", "missing-observation", "future-observation", "future-poll", "old-document"])(
     "QA-014: %s must return INSUFFICIENT_DATA", (attack) => {
       const d = onlyCodex(); const p = d.quota.pools[4];
       if (attack === "missing-percentages") for (const w of p.windows) { w.used_pct = null; w.remaining_pct = null; }
@@ -114,7 +114,7 @@ describe.skipIf(!quota || !recommendations || !transport)("independent observabi
     },
   );
 
-  it.fails.each(["/Users/qa/private", "qa@example.invalid", "Bearer syntheticcredential123"])(
+  it.each(["/Users/qa/private", "qa@example.invalid", "Bearer syntheticcredential123"])(
     "QA-015: transport-to-DOM boundary must exclude private metadata: %s", async (privateValue) => {
       const d = onlyCodex();
       d.quota.pools[4].source.method = privateValue;
@@ -126,7 +126,7 @@ describe.skipIf(!quota || !recommendations || !transport)("independent observabi
     },
   );
 
-  it.fails("QA-016: null quota window must be rejected before rendering can crash", async () => {
+  it("QA-016: null quota window must be rejected before rendering can crash", async () => {
     const d = onlyCodex();
     d.quota.pools[4].windows = [null] as unknown as Observability["quota"]["pools"][number]["windows"];
     expect((await receive(d)).kind).toBe("rejected");

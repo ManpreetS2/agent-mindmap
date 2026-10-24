@@ -1,5 +1,6 @@
 import type { Observability } from "@shared/observability";
 import { isObservabilityShape } from "../utils/observabilityEval";
+import { sanitizeObservability } from "../utils/observabilitySanitize";
 
 export type ObservabilityFetchResult =
   | { kind: "ok"; data: Observability; etag: string | null }
@@ -68,13 +69,14 @@ export function createObservabilityPollTransport(
           reason: "Payload does not match observability v1 shape",
         };
       }
+      const data = sanitizeObservability(raw);
       if (seq < applied && last) {
         return { kind: "ok", data: last, etag };
       }
       applied = seq;
       etag = res.headers?.get("ETag") ?? null;
-      last = raw;
-      return { kind: "ok", data: raw, etag };
+      last = data;
+      return { kind: "ok", data, etag };
     } catch {
       // Network / abort: absent, not a hard app error.
       return { kind: "absent" };
