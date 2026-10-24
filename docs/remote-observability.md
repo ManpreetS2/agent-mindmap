@@ -65,3 +65,50 @@ For a future approved publisher, prefer up to one state-change snapshot every 3â
 6. Only after owner review, enable timed private publishing.
 
 The public site and private feed have separate disclosure rules. Do not describe the DEMO site as live T3 activity.
+
+
+## Private publisher (implemented)
+
+Destination: `ManpreetS2/agent-observability-private` (PRIVATE, no Pages, issues/wiki/projects off). Only
+`latest.json` and `summary.md` are ever written, to `main`, through your own `gh` login (never Agent Control tokens).
+
+    # review exactly what would be uploaded (no network writes); files land in ~/.local/share/agent-mindmap-review
+    python -m tools.publish_observability --collector-url http://127.0.0.1:8799/activity.json \
+      --review-dir ~/.local/share/agent-mindmap-review
+    # one upload (after you approve the review)
+    python -m tools.publish_observability --collector-url http://127.0.0.1:8799/activity.json --for-real
+
+Guarantees, each covered by `tests/test_publish_observability.py` against a real local git remote:
+the destination must be exactly that repo and PRIVATE; demo, empty or invalid sources never publish; a second,
+independent secret/path scan blocks the upload; the staged files must be inside the two-file allowlist; remote
+symlinks or malformed feeds abort; no git hooks or templates run; a rejected push re-clones and retries once;
+one publisher at a time (flock); at least 3 min between uploads; exponential backoff after failures; an unchanged
+snapshot is not committed again (a 15 min heartbeat re-stamps it); if the collector disappears after a success,
+an explicit `connection: unavailable` feed with no sessions is published once (UNKNOWN, never idle).
+Diagnostics (`last_success_at`, `last_error`, failure count) live in `~/.local/state/agent-mindmap-publisher/state.json`
+and never contain feed content.
+
+### Quota pools
+
+`quota.pools` always lists `claude-1`, `claude-2`, `cursor-premium`, `devin-free`, `codex` separately. They are
+`UNKNOWN` unless you create `~/.config/agent-mindmap/quota-snapshots.json`:
+
+    {"pools": {"claude-1": {"source": "manual: claude.ai usage page", "observed_at": "2026-10-23T19:00:00Z",
+                            "five_hour_used_pct": 40, "weekly_used_pct": 12}}}
+
+Entries need a source and timestamp; they become `STALE_MANUAL` after 24 h; out-of-range or future-dated entries
+are ignored. No credential store or undocumented endpoint is read, and pools are never added together.
+
+### Background publishing (off until you approve)
+
+    python -m tools.publisher_launchd install    # writes the LaunchAgent plist, does not load it
+    python -m tools.publisher_launchd enable --yes-i-approved-live-publishing
+    python -m tools.publisher_launchd status     # last success / last error, no feed content
+    python -m tools.publisher_launchd disable
+
+### Remote access to the real dashboard
+
+Not public. Options in order of preference: (1) ask ChatGPT, which reads the private feed; (2) T3 Connect's own
+authenticated remote access to T3 itself; (3) `ssh -L 8799:127.0.0.1:8799 <your-mac>` from another machine. Never
+tunnel or expose port 3773 (the MCP endpoint) or 8799 publicly, and do not copy the collector's activity.json into
+any Pages build.

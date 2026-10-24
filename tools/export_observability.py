@@ -9,16 +9,62 @@ import json
 import os
 import tempfile
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from ingest.t3 import safe_ident, safe_text, timestamp
 
 ROOT = Path(__file__).resolve().parents[1]
+# Each subscription is its own resource pool. They are never merged, and nothing is guessed.
+QUOTA_POOLS = ("claude-1", "claude-2", "cursor-premium", "devin-free", "codex")
+QUOTA_FILE = Path.home() / ".config" / "agent-mindmap" / "quota-snapshots.json"
+QUOTA_MAX_AGE_SEC = 24 * 3600
+TRUST_WINDOW_SEC = 20 * 60  # a reader must treat the feed as stale once exported_at is older than this
 VALID_STATES = {"IDLE", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE", "UNKNOWN", "FAILED", "STALE"}
 
 
-def make_feed(activity: dict, *, now: datetime | None = None) -> tuple[dict, str]:
+def load_quota_pools(path: Path | None = QUOTA_FILE, *, now: datetime | None = None) -> dict:
+    """Manually entered, explicitly sourced and timestamped quota snapshots. No file or a bad entry = UNKNOWN.
+
+    Expected file: {"pools": {"claude-1": {"source": "...", "observed_at": "<ISO>",
+    "five_hour_used_pct": 0-100, "weekly_used_pct": 0-100}}}. Never read from credential stores.
+    """
+    current = now or datetime.now(UTC)
+    pools = {name: {"status": "UNKNOWN", "note": "No sourced, timestamped snapshot available"} for name in QUOTA_POOLS}
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8")) if path else {}
+        entries = raw.get("pools") if isinstance(raw, dict) else None
+    except (OSError, ValueError):
+        return pools
+    if not isinstance(entries, dict):
+        return pools
+    for name in QUOTA_POOLS:
+        entry = entries.get(name)
+        if not isinstance(entry, dict):
+            continue
+        source = safe_text(entry.get("source"), 80)
+        observed = timestamp(entry.get("observed_at"))
+        if not source or source.startswith("[") or observed is None:
+            continue
+        age = (current - datetime.fromisoformat(observed)).total_seconds()
+        if age < -60:
+            continue  # a timestamp from the future is not evidence
+        values = {}
+        for key in ("five_hour_used_pct", "weekly_used_pct"):
+            v = entry.get(key)
+            if isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 100:
+                values[key] = float(v)
+        if not values:
+            continue
+        pools[name] = {
+            "status": "MANUAL" if age <= QUOTA_MAX_AGE_SEC else "STALE_MANUAL",
+            "source": source, "observed_at": observed, **values,
+            "note": "Manually entered; not a live provider reading",
+        }
+    return pools
+
+
+def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict | None = None) -> tuple[dict, str]:
     """Allowlist fields, validate source, and label incomplete or stale observations."""
     from jsonschema import validate
 
@@ -44,11 +90,12 @@ def make_feed(activity: dict, *, now: datetime | None = None) -> tuple[dict, str
             continue
         sessions.append({
             "id": ident,
-            "provider": safe_text(session.get("provider")) or "Unknown",
-            "model": safe_text(session.get("model")) or "Unknown",
-            "project": safe_text(session.get("project")) or "Unknown",
-            "task": safe_text(node.get("current_task")) or "Unknown",
-            "branch": safe_text(session.get("branch")),
+            "provider": safe_text(session.get("provider")) or "UNKNOWN",
+            "model": safe_text(session.get("model")) or "UNKNOWN",
+            "project": safe_text(session.get("project")) or "UNKNOWN",
+            "task": safe_text(node.get("current_task")) or "UNKNOWN",
+            "branch": safe_text(session.get("branch")) or "UNKNOWN",
+            "pull_request": "UNKNOWN",
             "status": node["status"] if node.get("status") in VALID_STATES else "UNKNOWN",
             "last_activity_at": timestamp(node.get("last_activity_ts")),
             "stale": bool(session.get("stale")) or not connected,
@@ -67,18 +114,27 @@ def make_feed(activity: dict, *, now: datetime | None = None) -> tuple[dict, str
         "exported_at": current.isoformat(),
         "freshness": freshness,
         "connection": "connected" if connected else "unavailable",
-        "quota": {"status": "unsupported", "note": "T3 read-only MCP does not expose subscription usage"},
+        "trusted_until": (current + timedelta(seconds=TRUST_WINDOW_SEC)).isoformat(),
+        "reader_guidance": "Compare the current time with exported_at: past trusted_until, treat every session as "
+                           "UNVERIFIED. Absence of a session is not evidence of idleness.",
+        "quota": {
+            "status": "unsupported",
+            "note": "T3 read-only MCP does not expose subscription usage; pools below are manual snapshots or UNKNOWN",
+            "pools": quota_pools if quota_pools is not None else load_quota_pools(now=current),
+        },
         "limitations": [
             "T3 thread updates are not proof of actual tool execution",
             "Unseen external Cursor/Devin sessions cannot be inferred as idle",
             "The provider label does not uniquely identify two memberships",
+            "Pull-request links are not exposed by T3 metadata (UNKNOWN)",
+            "Each quota pool is separate; one account's quota is never the combined allowance",
         ],
         "status_counts": counts,
         "sessions": sessions,
         "delegations": delegations,
     }
     def cell(value: str | None) -> str:
-        return (value or "Unknown").replace("|", "\\|")
+        return (value or "UNKNOWN").replace("|", "\\|")
     lines = [
         "# Agent Mindmap — PRIVATE read-only snapshot",
         "",
@@ -86,14 +142,26 @@ def make_feed(activity: dict, *, now: datetime | None = None) -> tuple[dict, str
         f"Connection: {feed['connection']} | Freshness: **{freshness}** ({age:.0f}s at export)",
         f"Sessions: {len(sessions)} | Verified lineage edges: {len(delegations)}",
         "",
-        "**Quota: UNSUPPORTED.** No current per-account percentages are available from the T3 MCP interface.",
+        f"Trusted until: {feed['trusted_until']} (older than this = treat as stale)",
+        "",
+        "**Quota:** T3 exposes no usage. Per-pool state (manual snapshots only, never combined):",
+        *[
+            f"- {name}: {pool['status']}"
+            + (f" — {pool.get('five_hour_used_pct', '?')}% 5h / {pool.get('weekly_used_pct', '?')}% weekly used,"
+               f" source {pool['source']}, observed {pool['observed_at']}" if pool["status"] != "UNKNOWN" else "")
+            for name, pool in feed["quota"]["pools"].items()
+        ],
         "**Limits:** Missing agents are not necessarily idle. Status updates are not proof that code ran.",
         "",
-        "| Provider | Status | Task | Project | Last update |",
-        "|---|---|---|---|---|",
+        "| Provider | Model | Status | Task | Project | Branch | Last update |",
+        "|---|---|---|---|---|---|---|",
     ]
     for s in sessions:
-        lines.append(f"| {cell(s['provider'])} | {cell(s['status'])} | {cell(s['task'])} | {cell(s['project'])} | {cell(s['last_activity_at'])} |")
+        lines.append(f"| {cell(s['provider'])} | {cell(s['model'])} | {cell(s['status'])} | {cell(s['task'])} | "
+                     f"{cell(s['project'])} | {cell(s['branch'])} | {cell(s['last_activity_at'])} |")
+    if delegations:
+        lines += ["", "Verified delegations (parent → child, by session id):"]
+        lines += [f"- {cell(d['from'])} → {cell(d['to'])}" for d in delegations]
     return feed, "\n".join(lines) + "\n"
 
 
