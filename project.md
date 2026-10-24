@@ -1,5 +1,42 @@
 # Agent Mind Map — Project Plan & UI Research
 
+## CURRENT STATE — Mission 003 handoff (2026-10-24)
+
+**Read this section first.** Earlier 2026-10-23 integration notes and previous handoffs below are historical checkpoints, not current instructions. The current continuation document is [docs/handoffs/2026-10-24-mission003.md](docs/handoffs/2026-10-24-mission003.md).
+
+**Scope and safety:** This is the EXISTING \`ManpreetS2/agent-mindmap\`, not a rebuild. Keep [PR #36](https://github.com/ManpreetS2/agent-mindmap/pull/36) (\`feat/t3-readonly-activity\`) and [PR #38](https://github.com/ManpreetS2/agent-mindmap/pull/38) (\`feat/pages-observability-preview\`, stacked onto #36) **draft and unmerged**. Baseline inspected on GitHub: PR #38 commit \`fe7a770\`; subsequent documentation-only commits may change its head. Do not change the older Mac's processes, activate LaunchAgents, claim private-publisher ownership, alter Claude settings, or transfer credentials without owner approval. Public GitHub Pages must remain synthetic-only.
+
+### What actually shipped
+
+- **Multi-Mac foundation (in code):** \`tools/machine_doctor.py\`, \`tools/bootstrap_mac.py\`, machine identity, publisher lease/epoch fencing, reader-by-default, stable runtime staging, and approval-gated handover. Actual simultaneous two-Mac publishing was **not** tested against the private GitHub remote.
+- **Usage evidence:** \`tools.quota\` distinguishes \`claude-1\`, \`claude-2\`, \`cursor-premium\`, \`devin-free\`, \`codex\`. On this Mac, the team reported a real read-only Codex app-server quota response (5-hour + weekly), which expires to STALE after 15 minutes. Claude 1/2 status-line taps are coded but not installed; Cursor usage unsupported (plan only), Devin manual/UNKNOWN. No fabricated data or hidden combined account pool.
+- **UI:** existing canvas/roster extended with observability health, five quota cards, delegation details and an evidence-gated recommendations panel. Demo records are never allowed to claim VERIFIED real usage.
+- **Team report:** 761 Python passing + 1 expected xfail, 321 frontend passing, TypeScript/build clean; Chromium visual checks at 1440/768/390, with no reported console errors or mobile overflow. These local results were **reported by the T3 workers**, not re-executed in this documentation update.
+
+### Independently checked on GitHub (2026-10-24)
+
+- PR #36 head \`d0f08ba\`, PR #38 head \`fe7a770\` before this documentation update; both still open/draft.
+- Latest PR-triggered Python and web CI jobs on \`fe7a770\` **passed**.
+- **IMPORTANT: full-history Gitleaks workflow on \`fe7a770\` FAILED.** It detected **six** patterns: four previously reviewed findings plus **two unreviewed** matches at \`tests/test_machine_doctor.py:36\` (commit \`d50d337e3b85\`) and \`tests/test_publish_observability.py:155\` (commit \`bb8943888bf0\`), both reported as \`generic-api-key\`. These appear to be testing fixtures but MUST be inspected, classified and fixed/precisely reviewed without exposing token-like strings; then rerun the history audit. A passing Python/web suite does not cancel this failure.
+- \`docs/qa/findings.md\` retains historical OPEN statuses for QA-013 through QA-016 / QA-015 even though the team reports these as fixed; verify at final head and reconcile the summary table with actual regression tests.
+- \`.github/workflows/pages-demo.yml\` still packages synthetic \`activity.json\` only; \`docs/evidence/pages-observability-demo.patch\` is committed but **not applied**. The owner-reported GitHub CLI \`workflow\` permission limitation must be resolved before editing that workflow.
+- The dedicated \`ManpreetS2/agent-observability-private\` repository was accessible as **PRIVATE** and contained exactly \`latest.json\` and \`summary.md\`. The last checked snapshot still had the **legacy/no-owner** format, so do not assume two-Mac lease fencing is live remotely.
+
+### Priorities for the next engineering session
+
+1. **Fix red CI first.** Investigate the two unreviewed Gitleaks test matches without printing potential secrets, ensure any allowlisting is exact and justified, rerun the full-history audit. Confirm/reconcile QA finding statuses. This is a security review, not an excuse to globally disable secret scanning.
+2. **Finish the public synthetic Pages workflow patch** after permitted GitHub workflow authentication; independently inspect the built artifact for \`mode: demo\`, never private sessions/titles or VERIFIED live quotas.
+3. **Connect this Mac to actual T3 read-only MCP** with the owner's browser OAuth approval. Verify real-session coverage and source freshness; do not call synthetic activity a live end-to-end test.
+4. **With explicit owner approval**, install/test the Claude 1 and Claude 2 quota status-line readers separately, confirm real payloads and correct account attribution. Never overwrite existing status lines without a reviewed integration.
+5. **Treat two-Mac publisher handover as a separate approval gate.** A legacy publisher on the old Mac does **not** honor the new lease/epoch. Disable or upgrade the old writer and prove it cannot overwrite the new feed before claiming this Mac; test against the real private remote and verify safe recovery.
+6. Verify collector/runtime LaunchAgent activation, crash restart and sleep/wake **only after owner approval**, and preserve existing workers and ports.
+7. **Later:** implement portable shared agent instructions/skills for Claude, Cursor and Codex, using a canonical repo-owned ruleset with minimal client-specific adapters. Claude project-level skills are not automatically installed into Cursor or Codex. Do not let skill-system work displace the correctness and live-integration blockers above.
+
+**Acceptance standard:** documented evidence from actual integrations, green security + unit/frontend CI, safe demo-only public build, fresh and authenticated private observations, owner-approved live quota/ownership activation, and repeatable runbook. No "done" claim based solely on synthetic fixtures or local git remotes.
+
+---
+
+
 > Research and planning document, updated 2026-10-23. See *Status update* and *Cross-machine handoff* below for current state.
 >
 > Repository: https://github.com/ManpreetS2/agent-mindmap  
