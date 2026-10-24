@@ -64,6 +64,34 @@ def load_quota_pools(path: Path | None = QUOTA_FILE, *, now: datetime | None = N
     return pools
 
 
+def quota_line(name: str, pool: dict) -> str:
+    """One summary line per pool. Numbers appear only when a value exists; no value is never shown as '?%'."""
+    status = pool.get("status", "UNKNOWN")
+    if status == "UNKNOWN":
+        return f"- {name}: UNKNOWN"
+    parts = []
+    for w in pool.get("windows") or []:
+        if isinstance(w.get("used_pct"), (int, float)):
+            parts.append(f"{w.get('label') or w.get('type')} {w['used_pct']:g}% used")
+    if not parts:  # legacy manual shape
+        for key, label in (("five_hour_used_pct", "5h"), ("weekly_used_pct", "weekly")):
+            if isinstance(pool.get(key), (int, float)):
+                parts.append(f"{label} {pool[key]:g}% used")
+    text = f"- {name}: {status}"
+    if parts:
+        text += " — " + ", ".join(parts)
+        if status in {"STALE", "STALE_MANUAL"}:
+            text += " (EXPIRED reading: history, not the current state)"
+    elif pool.get("note"):
+        text += f" — no usage values; {pool['note']}"
+    if pool.get("source"):
+        text += f", source {pool['source']}"
+    if pool.get("observed_at"):
+        text += f", observed {pool['observed_at']}"
+    return text
+
+
+
 def default_quota_pools(now: datetime) -> dict:
     """Per-account readings from the quota subsystem when it is installed; else the manual snapshot file / UNKNOWN."""
     try:
@@ -174,12 +202,7 @@ def make_feed(
         f"Trusted until: {feed['trusted_until']} (older than this = treat as stale)",
         "",
         "**Quota:** T3 exposes no usage. Per-pool state (manual snapshots only, never combined):",
-        *[
-            f"- {name}: {pool['status']}"
-            + (f" — {pool.get('five_hour_used_pct', '?')}% 5h / {pool.get('weekly_used_pct', '?')}% weekly used,"
-               f" source {pool['source']}, observed {pool['observed_at']}" if pool["status"] != "UNKNOWN" else "")
-            for name, pool in feed["quota"]["pools"].items()
-        ],
+        *[quota_line(name, pool) for name, pool in feed["quota"]["pools"].items()],
         "**Limits:** Missing agents are not necessarily idle. Status updates are not proof that code ran.",
         "",
         "| Provider | Model | Status | Task | Project | Branch | Last update |",
