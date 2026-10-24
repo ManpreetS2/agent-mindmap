@@ -336,7 +336,7 @@ def push_files(repo: str, env: dict, plan, *, attempts: int = 2,
                     if target.is_symlink():
                         raise PublishError("Refusing to overwrite a symlink")
                     target.write_text(content, encoding="utf-8")
-                cmd(["git", *GIT_SAFE, "add", "--", *ALLOWED_FILES], cwd=checkout, env=env, what="stage")
+                cmd(["git", *GIT_SAFE, "add", "--", *files], cwd=checkout, env=env, what="stage")
                 staged = set(cmd(["git", *GIT_SAFE, "diff", "--cached", "--name-only"], cwd=checkout, env=env,
                                  what="inspect").splitlines())
                 if not staged or not staged <= set(ALLOWED_FILES):
