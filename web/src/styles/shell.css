@@ -425,8 +425,7 @@ th[aria-sort="descending"] .list-th-sort::after { content: " ↓"; opacity: 1; c
 .roster-sub { gap: 2px 7px; }
 .roster-meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-muted); }
 .roster-meta .roster-model { flex: 0 1 auto; }
-.roster-meta .roster-updated { flex-basis: auto; opacity: 0.85; }
-.roster-meta .roster-updated::before { content: "·"; margin-right: 6px; }
+.roster-meta .roster-updated { flex-basis: 100%; opacity: 0.85; }
 /* lineage text is for the focused/selected row (it stays in the DOM and in aria-description) */
 .roster-rel { display: none; }
 .roster-item.is-selected .roster-rel, .roster-item:hover .roster-rel, .roster-item:focus-visible .roster-rel { display: block; }
