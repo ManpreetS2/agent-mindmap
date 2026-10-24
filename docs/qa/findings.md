@@ -19,20 +19,20 @@ UI scratch worktree `/tmp/qa-ui-m003` at `98eec80`.
 
 | ID | Severity | Current status | Verified behavior |
 |---|---|---|---|
-| QA-003 | High | OPEN @ 07e5b4d | Email display metadata survives private export |
-| QA-009 | High | OPEN @ 07e5b4d | Private manual-source labels reach operational JSON |
+| QA-003 | High | FIXED @ ea31d24 | Email display metadata survives private export |
+| QA-009 | High | FIXED @ ea31d24 | Private manual-source labels reach operational JSON |
 | QA-015 | High | OPEN @ 98eec80 | Private metadata passes transport and reaches DOM |
-| QA-002 | Medium | OPEN @ 07e5b4d | VERIFIED accepts null observation/expiry |
-| QA-005 | Medium | OPEN @ 07e5b4d | Remote feed is read without a size bound |
-| QA-007 | Medium | OPEN @ 07e5b4d | Encoded credentials in supplied node IDs survive export |
-| QA-008 | Medium | OPEN @ 07e5b4d | Invalid provider resets become VERIFIED windows |
-| QA-010 | Medium | OPEN @ 07e5b4d | Five IDs bypass optional quota response validation |
-| QA-011 | Medium | OPEN @ 07e5b4d | Stale local epoch adopts a reclaimed same-machine epoch |
-| QA-012 | Medium | OPEN @ 07e5b4d | Doctor prints unsupported credential forms |
+| QA-002 | Medium | FIXED @ ea31d24 | VERIFIED accepts null observation/expiry |
+| QA-005 | Medium | FIXED @ ea31d24 | Remote feed is read without a size bound |
+| QA-007 | Medium | FIXED @ ea31d24 | Encoded credentials in supplied node IDs survive export |
+| QA-008 | Medium | FIXED @ ea31d24 | Invalid provider resets become VERIFIED windows |
+| QA-010 | Medium | FIXED @ ea31d24 | Five IDs bypass optional quota response validation |
+| QA-011 | Medium | FIXED @ ea31d24 | Stale local epoch adopts a reclaimed same-machine epoch |
+| QA-012 | Medium | FIXED @ ea31d24 | Doctor prints unsupported credential forms |
 | QA-013 | Medium | OPEN @ 98eec80 | Forged VERIFIED demo pool renders green VERIFIED state |
 | QA-014 | Medium | OPEN @ 98eec80 | Recommendations accept missing/future/stale evidence |
 | QA-016 | Medium | OPEN @ 98eec80 | Transport accepts null windows that rendering cannot handle |
-| QA-001 | Low | OPEN @ 07e5b4d | Schema accepts duplicate quota IDs |
+| QA-001 | Low | FIXED @ ea31d24 | Schema accepts duplicate quota IDs |
 | QA-004 | Medium | FIXED @ a0217a9 | All five malformed remote-shape regressions pass |
 | QA-006 | Medium | FIXED @ 07e5b4d | Future remote timestamp no longer suppresses heartbeat |
 
