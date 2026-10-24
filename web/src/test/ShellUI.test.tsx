@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Activity } from "@shared/types";
 import legacy from "../../../fixtures/sample-activity.json";
 import { MindmapView } from "../views/MindmapView";
@@ -125,5 +125,49 @@ describe("list view (T3)", () => {
     renderMindmap(<MindmapView activity={legacy as Activity} initialListView />);
     expect(screen.getByRole("heading", { name: /^Bots/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Edges/ })).toBeInTheDocument();
+  });
+});
+
+describe("roster defaults", () => {
+  const tablet = (matches: boolean) =>
+    vi.spyOn(window, "matchMedia").mockImplementation((q) => ({ matches: matches && q.includes("1099"), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false, onchange: null }) as MediaQueryList);
+  const open = (n = nodes) => renderMindmap(<MindmapView activity={t3Activity(n, [], "live")} initialListView={false} />);
+
+  it("starts as a compact rail on tablets/phones so the graph keeps the space", () => {
+    const mm = tablet(true);
+    open();
+    expect(screen.getByRole("navigation", { name: "Agents" })).toHaveClass("is-collapsed");
+    // the automatic default is not remembered as a user choice
+    expect(window.localStorage.getItem("mindmapRosterCollapsed")).toBeNull();
+    mm.mockRestore();
+  });
+  it("stays expanded on wide screens, and a saved choice always wins", () => {
+    const mm = tablet(false);
+    open();
+    expect(screen.getByRole("navigation", { name: "Agents" })).not.toHaveClass("is-collapsed");
+    mm.mockRestore();
+    const tab = tablet(true);
+    window.localStorage.setItem("mindmapRosterCollapsed", "0");
+    renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live")} initialListView={false} />);
+    expect(screen.getAllByRole("navigation", { name: "Agents" }).at(-1)).not.toHaveClass("is-collapsed");
+    tab.mockRestore();
+  });
+  it("switches to dense one-line rows above eight agents and shows status in the rail tooltip", () => {
+    const many = Array.from({ length: 10 }, (_, i) => sessionNode(`n${i}`, { status: i % 2 ? "FAILED" : "IN_PROGRESS" }));
+    open(many);
+    expect(screen.getByRole("navigation", { name: "Agents" })).toHaveClass("is-dense");
+    expect(screen.getByTestId("agent-node-n1")).toHaveAttribute("title", expect.stringMatching(/failed$/));
+  });
+});
+
+describe("states", () => {
+  it("ledger error is a labelled alert with guidance and a working retry", async () => {
+    const { LedgerErrorView } = await import("../components/LedgerErrorView");
+    let retried = 0;
+    const { render } = await import("@testing-library/react");
+    render(<LedgerErrorView onRetry={() => { retried++; }} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/No activity data is available yet/);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(retried).toBe(1);
   });
 });

@@ -440,3 +440,27 @@ th[aria-sort="descending"] .list-th-sort::after { content: " ↓"; opacity: 1; c
   .list-view section > table { min-width: 540px; }
   .list-view section:first-of-type > table { min-width: 0; }
 }
+
+/* Collapsed rail keeps status visible: a dot on each icon (the full status text is in the tooltip + aria-label) */
+.roster-item { --sc: var(--st-stale); }
+.roster-item[data-status="IN_PROGRESS"], .roster-item[data-status="IN_REVIEW"] { --sc: var(--st-working); }
+.roster-item[data-status="BLOCKED"] { --sc: var(--st-blocked); }
+.roster-item[data-status="FAILED"] { --sc: var(--st-failed); }
+.roster-item[data-status="DONE"] { --sc: var(--st-done); }
+.agent-roster.is-collapsed .roster-item::after {
+  content: ""; position: absolute; right: 9px; bottom: 6px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--sc); box-shadow: 0 0 0 2px #0a0e16;
+}
+.agent-roster.is-collapsed .roster-item[data-status="BLOCKED"]::after { background: transparent; border: 2px solid var(--sc); box-sizing: border-box; }
+
+@media (max-width: 767px) {
+  /* short columns stay whole inside the scrolling tables; only the agent names wrap */
+  .list-view section:not(:first-of-type) th, .list-view section:not(:first-of-type) td { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+}
+
+/* Keyboard users always get a visible focus ring, even on controls without their own style */
+button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible,
+[role="button"]:focus-visible, .focus-region:focus-visible {
+  outline: 2px solid var(--focus-ring); outline-offset: 2px;
+}
+input:focus-visible { outline: none; }

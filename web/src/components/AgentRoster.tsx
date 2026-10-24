@@ -130,7 +130,7 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                       aria-pressed={selectedId === n.id}
                       aria-label={`${providerLabel(s.provider)}, ${model}, ${n.status}, ${task}`}
                       aria-description={rel ?? undefined}
-                      title={`${providerLabel(s.provider)} · ${model}\n${task}`}
+                      title={`${providerLabel(s.provider)} · ${model}\n${task}\n${n.status.replace("_", " ").toLowerCase()}`}
                       onClick={() => onSelect(n.id)}
                       onMouseEnter={() => onHover(n.id)}
                       onMouseLeave={() => onHover(null)}
