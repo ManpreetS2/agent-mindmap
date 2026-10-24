@@ -1,0 +1,70 @@
+name: Security — pre-public full-history secret audit
+
+on:
+  push:
+    branches: [feat/pages-observability-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  history-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout all reachable history and refs
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch all branch and tag refs
+        run: |
+          git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+          git fetch origin '+refs/tags/*:refs/tags/*'
+      - name: Install pinned Gitleaks from official release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=8.30.1
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${version}"
+          curl --fail --location --silent --show-error --retry 3 \
+            -o "$RUNNER_TEMP/gitleaks.tar.gz" "$base/gitleaks_${version}_linux_x64.tar.gz"
+          curl --fail --location --silent --show-error --retry 3 \
+            -o "$RUNNER_TEMP/checksums.txt" "$base/gitleaks_${version}_checksums.txt"
+          cd "$RUNNER_TEMP"
+          grep " gitleaks_${version}_linux_x64.tar.gz" checksums.txt | \
+            sed "s/gitleaks_${version}_linux_x64.tar.gz/gitleaks.tar.gz/" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          chmod 755 gitleaks
+          ./gitleaks version
+      - name: Scan all reachable commits without printing any secret values
+        shell: bash
+        run: |
+          set -uo pipefail
+          report="$RUNNER_TEMP/gitleaks-report.json"
+          "$RUNNER_TEMP/gitleaks" git . --log-opts="--all" \
+            --report-format=json --report-path="$report" --exit-code=23 \
+            --no-banner > "$RUNNER_TEMP/scan-stdout.txt" \
+            2> "$RUNNER_TEMP/scan-stderr.txt"
+          status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 23 ]; then
+            echo "::error::Gitleaks scanner encountered a failure (details kept private)."
+            exit 2
+          fi
+          REPORT="$report" STATUS="$status" python - <<'PY'
+          import collections, json, os
+          from pathlib import Path
+          report = Path(os.environ["REPORT"])
+          findings = json.loads(report.read_text()) if report.exists() else []
+          counts = collections.Counter(str(item.get("RuleID", "unknown")) for item in findings)
+          print(f"Full-history audit: {len(findings)} potential secret exposures")
+          for rule, count in sorted(counts.items()):
+              print(f"  Rule category: {rule} — {count}")
+          if findings:
+              print("NOT SAFE TO MAKE PUBLIC until these findings are investigated and any exposed credentials revoked.")
+              raise SystemExit(1)
+          if os.environ["STATUS"] == "23":
+              print("Unexpected scanner mismatch; fail closed.")
+              raise SystemExit(2)
+          print("No Gitleaks pattern matches in reachable Git history.")
+          PY
