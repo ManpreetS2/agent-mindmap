@@ -35,6 +35,21 @@ beforeEach(() => { fgMock.reset(); vi.useFakeTimers(); setReduced(false); });
 afterEach(() => { vi.useRealTimers(); setReduced(false); });
 
 describe("AgentNetwork", () => {
+  it("keeps first-visit guidance compact and opens the full help only on request", () => {
+    window.localStorage.removeItem("mindmapHintSeen");
+    const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    expect(screen.queryByRole("dialog", { name: "How to use the graph" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Drag to pin · Scroll to zoom/ }));
+    expect(screen.getByRole("dialog", { name: "How to use the graph" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.localStorage.getItem("mindmapHintSeen")).toBe("1");
+    view.unmount();
+    render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    expect(screen.queryByRole("button", { name: "Dismiss graph tips" })).toBeNull();
+    window.localStorage.removeItem("mindmapHintSeen");
+  });
+
   it("restores centre and zoom after inspector-sized shrink and expand", () => {
     const callbacks: (() => void)[] = [];
     const original = window.ResizeObserver;
@@ -320,6 +335,26 @@ describe("AgentNetwork", () => {
     view.rerender(<AgentNetwork {...base} activity={renamed} />);
     frame();
     expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays a synthetic delegation once per explicit demo cycle without resetting layout or camera", () => {
+    const activity = (cycle: number, delegated: boolean) => t3Activity(nodes, delegated ? [["a", "b"]] : [], "demo", {
+      stage: delegated ? 3 : 0, stage_count: 10, cycle, step_sec: 5, label: "Synthetic test",
+    });
+    const view = render(<AgentNetwork {...base} activity={activity(0, false)} />);
+    const a = gdata().nodes[0]; a.x = 321; a.pinned = true; a.fx = 321;
+    for (const cycle of [0, 1]) {
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, false)} />);
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, true)} />);
+      frame();
+      expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(cycle + 1);
+      expect(gdata().nodes[0]).toBe(a);
+      expect(a.x).toBe(321);
+      expect(a.pinned).toBe(true);
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, true)} />);
+      frame();
+      expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(cycle + 1);
+    }
   });
 
   it("drops a queued particle if its link disappears before initialization", () => {

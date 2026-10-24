@@ -252,10 +252,10 @@ export function fitText(ctx: CanvasRenderingContext2D, text: string, width: numb
 /** Analytic hit testing uses the current visible position, not the library's 800 ms shadow cache. */
 export function containsNode(n: GNode, x: number, y: number): boolean {
   const p = nodePosition(n), dx = Math.abs(x - p.x), dy = Math.abs(y - p.y);
-  const r = NODE_R + 6; // ring plus a one-unit pointer gutter
-  if (n.provider !== "codex") return dx * dx + dy * dy <= r * r;
-  const hr = r * 1.08;
-  return dx <= hr * Math.sqrt(3) / 2 && dy <= hr - dx / Math.sqrt(3);
+  // Both providers have a circular status ring. Its visible stroke must also be clickable,
+  // including the space outside a Codex hexagon's sides; use a small three-unit touch gutter.
+  const r = NODE_R + 10;
+  return dx * dx + dy * dy <= r * r;
 }
 
 export function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string, zoom: number): void {

@@ -1,0 +1,42 @@
+/* Renderer-only additions. Shell, roster and inspector styling remain independent. */
+.network-canvas .network-help {
+  top: auto;
+  bottom: 14px;
+  max-height: calc(100% - 76px);
+  overflow-y: auto;
+}
+.network-intro {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  max-width: calc(100% - 120px);
+  padding: 3px;
+  border: 1px solid rgba(148, 170, 214, 0.18);
+  border-radius: 9px;
+  color: #adbdd4;
+  background: rgba(10, 16, 26, 0.94);
+}
+.network-intro button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.network-intro__tips { padding: 7px 9px; text-align: left; line-height: 1.4; }
+.network-intro__tips span { margin-left: 6px; color: #88aff0; }
+.network-intro__dismiss { align-self: stretch; min-width: 28px; padding: 4px; }
+.network-intro button:hover { color: #f0f5ff; background: rgba(148, 170, 214, 0.09); }
+.network-intro button:focus-visible { outline: 2px solid #8fb0ff; outline-offset: 1px; }
+@media (max-width: 767px) {
+  .network-intro { right: 10px; bottom: 10px; max-width: calc(100% - 20px); }
+  .network-canvas .network-help { bottom: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .network-canvas .network-help { animation: none; }
+}

@@ -142,6 +142,15 @@ describe("drawNode", () => {
     expect(containsNode(hex, 100, 0)).toBe(true);
   });
 
+  it.each(["claude", "codex"] as const)("includes the entire visible %s status ring in the pointer target", provider => {
+    const n = node({ provider, x: 0, y: 0, active: false });
+    for (let i = 0; i < 24; i++) {
+      const angle = i * Math.PI / 12;
+      expect(containsNode(n, Math.cos(angle) * (NODE_R + 8), Math.sin(angle) * (NODE_R + 8))).toBe(true);
+    }
+    expect(containsNode(n, NODE_R + 11, 0)).toBe(false);
+  });
+
   it("bounds long text and caches measurements", () => {
     const measureText = vi.fn((text: string) => ({ width: text.length * 7 }));
     const c = { font: "unique-test-font", measureText } as unknown as CanvasRenderingContext2D;

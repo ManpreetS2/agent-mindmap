@@ -18,10 +18,11 @@ import {
   type GLink,
   type GNode,
 } from "../utils/networkModel";
-import { NODE_R, STATUS_COLOR, bodyPath, drawNode, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
+import { NODE_R, STATUS_COLOR, drawNode, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
 import { drawNetworkLink } from "../utils/networkEdges";
 import { AgentRoster } from "./AgentRoster";
 import "../styles/networkCanvas.css";
+import "../styles/networkPresentation.css";
 
 const FLASH_MS = 2400;
 const FRESH_LINK_COLOR = "#8fb4ff";
@@ -81,12 +82,14 @@ export function AgentNetwork({
   const [redraw, setRedraw] = useState(0);
   const [transient, setTransient] = useState(false);
   const [dragging, setDragging] = useState(false);
-  // First-time visitors see the help popover once; dismissing it is remembered.
-  const [helpOpen, setHelpOpen] = useState(() => {
+  const [helpOpen, setHelpOpen] = useState(false);
+  // First-time guidance stays small; the full help opens only when requested.
+  const [hintOpen, setHintOpen] = useState(() => {
     try { return window.localStorage?.getItem("mindmapHintSeen") !== "1"; } catch { return false; }
   });
   const closeHelp = useCallback(() => {
     setHelpOpen(false);
+    setHintOpen(false);
     try { window.localStorage?.setItem("mindmapHintSeen", "1"); } catch { /* storage unavailable */ }
   }, []);
   useEffect(() => {
@@ -111,6 +114,7 @@ export function AgentNetwork({
   const camera = useRef<Camera | null>(null);
   const pendingCamera = useRef<Camera | null>(null);
   const queuedParticles = useRef(new Set<string>());
+  const particleCount = useRef(0);
   const forces = useMemo(networkForces, []);
   // A changed zero accessor clears in-flight photons on pause/reduced-motion without reheating.
   const noContinuousParticles = useMemo(() => () => 0, [motionOn]);
@@ -138,6 +142,7 @@ export function AgentNetwork({
       camera.current = null;
       pendingCamera.current = null;
       queuedParticles.current.clear();
+      particleCount.current = 0;
     }
     const saved = fgRef.current && (fitted.current || touched.current) ? readCamera(fgRef.current) : null;
     const r = model.sync(activity);
@@ -193,6 +198,11 @@ export function AgentNetwork({
       zoom: () => fgRef.current?.zoom(),
       camera: () => fgRef.current && readCamera(fgRef.current),
       revision: () => model.revision,
+      particlesEmitted: () => particleCount.current,
+      reactions: () => [...flashes.current].filter(([, f]) => performance.now() - f.start < FLASH_MS)
+        .map(([id, f]) => ({ id, caption: f.caption })),
+      observations: () => [...live.current.fresh].map(([id, kind]) => ({ id, kind })),
+      labels: () => [...(labelLayout.current ?? [])].map(([id, l]) => ({ id, x: l.x, y: l.y, width: l.width, height: l.height })),
     };
     return () => { delete (window as unknown as Record<string, unknown>).__mindmap; };
   }, [model]);
@@ -225,12 +235,16 @@ export function AgentNetwork({
       } else if (fg && initialized && typeof link.source === "object" && typeof link.target === "object") {
         // Object endpoints prove the library has initialized the link (which clears photons).
         fg.emitParticle(link);
+        particleCount.current++;
         queuedParticles.current.delete(id);
       }
     }
   }, [model, ambientClock]);
 
   useEffect(() => {
+    // useFreshEdges owns durable deduplication. This set only guards the current highlight;
+    // a later explicit demo cycle may legitimately emit the same synthetic relationship again.
+    for (const id of emitted.current) if (!fresh.has(id)) emitted.current.delete(id);
     for (const [id, kind] of fresh) {
       if (emitted.current.has(id)) continue;
       emitted.current.add(id);
@@ -320,7 +334,8 @@ export function AgentNetwork({
 
   const pointerArea = useCallback((n: GNode, color: string, ctx: CanvasRenderingContext2D) => {
     ctx.fillStyle = color;
-    bodyPath(ctx, n, NODE_R + 6);
+    const p = nodePosition(n);
+    ctx.beginPath(); ctx.arc(p.x, p.y, NODE_R + 10, 0, Math.PI * 2);
     ctx.fill();
   }, []);
 
@@ -503,12 +518,20 @@ export function AgentNetwork({
             aria-expanded={helpOpen}
             aria-controls="network-help"
             title="How to use the graph"
-            onClick={() => (helpOpen ? closeHelp() : setHelpOpen(true))}
+            onClick={() => { if (helpOpen) closeHelp(); else { setHintOpen(false); setHelpOpen(true); } }}
           >
             <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8.2 8a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.4M10 13.6v.1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
             <span className="sr-only">Help</span>
           </button>
         </div>
+        {hintOpen && !helpOpen && (
+          <div className="network-intro" aria-label="Graph tips">
+            <button type="button" className="network-intro__tips" onClick={() => { setHintOpen(false); setHelpOpen(true); }}>
+              Drag to pin · Scroll to zoom <span aria-hidden="true">↗</span>
+            </button>
+            <button type="button" className="network-intro__dismiss" aria-label="Dismiss graph tips" onClick={closeHelp}>×</button>
+          </div>
+        )}
         {helpOpen && (
           <div id="network-help" className="network-help" role="dialog" aria-label="How to use the graph">
             <p className="network-help__title">Exploring the network</p>
