@@ -56,6 +56,7 @@ import {
   staleReferenceTime,
 } from "../utils/viewState";
 import { SourceHealthBar } from "../components/SourceHealthBar";
+import { QuotaPanel } from "../components/QuotaPanel";
 import type { ObservabilityState } from "../hooks/useObservability";
 
 export interface MindmapViewProps {
@@ -109,6 +110,7 @@ export function MindmapView({
   const [focusedTimelineEventId, setFocusedTimelineEventId] = useState<
     string | null
   >(null);
+  const [opsOpen, setOpsOpen] = useState(false);
 
   const selectedNode: Node | null = useMemo(
     () => activity.nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -388,6 +390,24 @@ export function MindmapView({
       )}
 
       <SourceHealthBar state={observability} nowMs={nowMs} />
+
+      <div className="ops-drawer">
+        <button
+          type="button"
+          className="ops-drawer__toggle"
+          aria-expanded={opsOpen}
+          aria-controls="ops-drawer-panel"
+          data-testid="ops-drawer-toggle"
+          onClick={() => setOpsOpen((o) => !o)}
+        >
+          <span aria-hidden="true">{opsOpen ? "▾" : "▸"}</span>
+          <span>Ops · quota &amp; workload</span>
+          <span className="timeline-toggle__hint">{opsOpen ? "Hide" : "Show"}</span>
+        </button>
+        <div id="ops-drawer-panel" className="ops-drawer__body" hidden={!opsOpen}>
+          <QuotaPanel state={observability} nowMs={nowMs} />
+        </div>
+      </div>
 
       <div id="main-content" className="mindmap-body" tabIndex={-1}>
         {listView ? (
