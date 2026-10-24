@@ -1,0 +1,174 @@
+{
+  "schema": "agent-mindmap-observability/v1",
+  "generated_at": "2026-10-24T07:00:00+00:00",
+  "mode": "live",
+  "machine": {
+    "id": "mac-3f9a21c4",
+    "label": "Mac B",
+    "role": "publisher",
+    "platform": "darwin-arm64"
+  },
+  "collector": {
+    "status": "connected",
+    "last_t3_poll": "2026-10-24T06:59:40+00:00",
+    "stale_after_sec": 300,
+    "reason": null
+  },
+  "feed": {
+    "status": "fresh",
+    "last_published_at": "2026-10-24T06:58:00+00:00",
+    "last_observed_at": "2026-10-24T06:57:45+00:00",
+    "trusted_until": "2026-10-24T07:12:45+00:00",
+    "owner": {
+      "machine_id": "mac-3f9a21c4",
+      "label": "Mac B",
+      "epoch": 3
+    },
+    "owned_by_this_machine": true,
+    "last_error": null
+  },
+  "quota": {
+    "pools": [
+      {
+        "id": "claude-1",
+        "label": "Claude 1",
+        "provider": "claude",
+        "account_alias": "claude-1",
+        "plan": "pro",
+        "status": "VERIFIED",
+        "windows": [
+          {
+            "type": "session",
+            "label": "5-hour",
+            "window_minutes": 300,
+            "used_pct": 62.5,
+            "remaining_pct": 37.5,
+            "resets_at": "2026-10-24T10:00:00+00:00"
+          },
+          {
+            "type": "weekly",
+            "label": "7-day",
+            "window_minutes": 10080,
+            "used_pct": 41.2,
+            "remaining_pct": 58.8,
+            "resets_at": "2026-10-29T18:00:00+00:00"
+          }
+        ],
+        "source": {
+          "kind": "claude-statusline",
+          "method": "Claude Code status line rate_limits (CLAUDE_CONFIG_DIR=claude-1)",
+          "supported_programmatically": true
+        },
+        "observed_at": "2026-10-24T06:59:00+00:00",
+        "expires_at": "2026-10-24T07:14:00+00:00",
+        "reason": null
+      },
+      {
+        "id": "claude-2",
+        "label": "Claude 2",
+        "provider": "claude",
+        "account_alias": "claude-2",
+        "plan": "pro",
+        "status": "STALE",
+        "windows": [
+          {
+            "type": "session",
+            "label": "5-hour",
+            "window_minutes": 300,
+            "used_pct": 88,
+            "remaining_pct": 12,
+            "resets_at": "2026-10-24T05:00:00+00:00"
+          },
+          {
+            "type": "weekly",
+            "label": "7-day",
+            "window_minutes": 10080,
+            "used_pct": 70,
+            "remaining_pct": 30,
+            "resets_at": "2026-10-28T12:00:00+00:00"
+          }
+        ],
+        "source": {
+          "kind": "claude-statusline",
+          "method": "Claude Code status line rate_limits (CLAUDE_CONFIG_DIR=claude-2)",
+          "supported_programmatically": true
+        },
+        "observed_at": "2026-10-24T04:10:00+00:00",
+        "expires_at": "2026-10-24T04:25:00+00:00",
+        "reason": "Reading expired; open a Claude 2 Code session to refresh"
+      },
+      {
+        "id": "cursor-premium",
+        "label": "Cursor Premium",
+        "provider": "cursor",
+        "account_alias": "cursor-premium",
+        "plan": "premium",
+        "status": "UNSUPPORTED",
+        "windows": [],
+        "source": {
+          "kind": "cursor-cli",
+          "method": "cursor-agent about reports plan only",
+          "supported_programmatically": false
+        },
+        "observed_at": "2026-10-24T06:50:00+00:00",
+        "expires_at": null,
+        "reason": "Usage is visible in Cursor's UI only; enter it manually to track it"
+      },
+      {
+        "id": "devin-free",
+        "label": "Devin Free",
+        "provider": "devin",
+        "account_alias": "devin-free",
+        "plan": "free",
+        "status": "UNKNOWN",
+        "windows": [],
+        "source": {
+          "kind": "none",
+          "method": "no collector configured",
+          "supported_programmatically": false
+        },
+        "observed_at": null,
+        "expires_at": null,
+        "reason": "No sourced, timestamped reading"
+      },
+      {
+        "id": "codex",
+        "label": "Codex",
+        "provider": "codex",
+        "account_alias": "codex",
+        "plan": "plus",
+        "status": "VERIFIED",
+        "windows": [
+          {
+            "type": "session",
+            "label": "5-hour",
+            "window_minutes": 300,
+            "used_pct": 0,
+            "remaining_pct": 100,
+            "resets_at": "2026-10-24T11:56:50+00:00"
+          },
+          {
+            "type": "weekly",
+            "label": "7-day",
+            "window_minutes": 10080,
+            "used_pct": 30,
+            "remaining_pct": 70,
+            "resets_at": "2026-10-30T18:00:00+00:00"
+          }
+        ],
+        "source": {
+          "kind": "codex-app-server",
+          "method": "codex app-server account/rateLimits/read",
+          "supported_programmatically": true
+        },
+        "observed_at": "2026-10-24T06:59:30+00:00",
+        "expires_at": "2026-10-24T07:14:30+00:00",
+        "reason": null
+      }
+    ],
+    "collected_at": "2026-10-24T07:00:00+00:00"
+  },
+  "notes": [
+    "Claude 1 and Claude 2 are separate accounts and are never combined"
+  ]
+}

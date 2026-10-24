@@ -1,0 +1,136 @@
+{
+  "schema": "agent-mindmap-observability/v1",
+  "generated_at": "2026-10-24T07:00:00+00:00",
+  "mode": "demo",
+  "machine": {
+    "id": "mac-0de00000",
+    "label": "Demo",
+    "role": "reader",
+    "platform": "synthetic"
+  },
+  "collector": {
+    "status": "connected",
+    "last_t3_poll": "2026-10-24T07:00:00+00:00",
+    "stale_after_sec": 300,
+    "reason": "synthetic demo collector"
+  },
+  "feed": {
+    "status": "disabled",
+    "last_published_at": null,
+    "last_observed_at": null,
+    "trusted_until": null,
+    "owner": null,
+    "owned_by_this_machine": null,
+    "last_error": null
+  },
+  "quota": {
+    "pools": [
+      {
+        "id": "claude-1",
+        "label": "Claude 1",
+        "provider": "claude",
+        "account_alias": "claude-1",
+        "plan": "pro",
+        "status": "MANUAL",
+        "windows": [
+          {
+            "type": "session",
+            "label": "5-hour",
+            "window_minutes": 300,
+            "used_pct": 40,
+            "remaining_pct": 60,
+            "resets_at": "2026-10-24T10:00:00+00:00"
+          },
+          {
+            "type": "weekly",
+            "label": "Weekly",
+            "window_minutes": 10080,
+            "used_pct": 12,
+            "remaining_pct": 88,
+            "resets_at": "2026-10-30T00:00:00+00:00"
+          }
+        ],
+        "source": {
+          "kind": "manual",
+          "method": "SYNTHETIC DEMO DATA",
+          "supported_programmatically": false
+        },
+        "observed_at": "2026-10-24T06:30:00+00:00",
+        "expires_at": "2026-10-25T06:30:00+00:00",
+        "reason": "Synthetic demo value, not a real account"
+      },
+      {
+        "id": "claude-2",
+        "label": "Claude 2",
+        "provider": "claude",
+        "account_alias": "claude-2",
+        "plan": "pro",
+        "status": "UNKNOWN",
+        "windows": [],
+        "source": {
+          "kind": "none",
+          "method": "no collector configured",
+          "supported_programmatically": false
+        },
+        "observed_at": null,
+        "expires_at": null,
+        "reason": "Synthetic demo: no reading"
+      },
+      {
+        "id": "cursor-premium",
+        "label": "Cursor Premium",
+        "provider": "cursor",
+        "account_alias": "cursor-premium",
+        "plan": "premium",
+        "status": "UNKNOWN",
+        "windows": [],
+        "source": {
+          "kind": "none",
+          "method": "no collector configured",
+          "supported_programmatically": false
+        },
+        "observed_at": null,
+        "expires_at": null,
+        "reason": "No sourced, timestamped reading"
+      },
+      {
+        "id": "devin-free",
+        "label": "Devin Free",
+        "provider": "devin",
+        "account_alias": "devin-free",
+        "plan": "free",
+        "status": "UNKNOWN",
+        "windows": [],
+        "source": {
+          "kind": "none",
+          "method": "no collector configured",
+          "supported_programmatically": false
+        },
+        "observed_at": null,
+        "expires_at": null,
+        "reason": "No sourced, timestamped reading"
+      },
+      {
+        "id": "codex",
+        "label": "Codex",
+        "provider": "codex",
+        "account_alias": "codex",
+        "plan": "plus",
+        "status": "UNKNOWN",
+        "windows": [],
+        "source": {
+          "kind": "none",
+          "method": "no collector configured",
+          "supported_programmatically": false
+        },
+        "observed_at": null,
+        "expires_at": null,
+        "reason": "No sourced, timestamped reading"
+      }
+    ],
+    "collected_at": "2026-10-24T07:00:00+00:00"
+  },
+  "notes": [
+    "DEMO: every value in this document is synthetic"
+  ]
+}
