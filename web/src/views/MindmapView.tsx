@@ -55,6 +55,8 @@ import {
   staleAgeLabel,
   staleReferenceTime,
 } from "../utils/viewState";
+import { SourceHealthBar } from "../components/SourceHealthBar";
+import type { ObservabilityState } from "../hooks/useObservability";
 
 export interface MindmapViewProps {
   activity: Activity;
@@ -65,6 +67,11 @@ export interface MindmapViewProps {
   initialListView?: boolean;
   /** Node ids whose status just changed (pulse animation). */
   statusPulseNodeIds?: ReadonlySet<string>;
+  /**
+   * Observability poll state. Absent/rejected is an honest strip, never an error screen.
+   * Defaults to absent when omitted (unit tests that only pass activity).
+   */
+  observability?: ObservabilityState;
 }
 
 const SOURCE_HINTS: Record<string, string> = {
@@ -81,6 +88,7 @@ export function MindmapView({
   nowMs = Date.now(),
   initialListView,
   statusPulseNodeIds,
+  observability = { status: "absent" },
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -378,6 +386,8 @@ export function MindmapView({
           </span>
         </div>
       )}
+
+      <SourceHealthBar state={observability} nowMs={nowMs} />
 
       <div id="main-content" className="mindmap-body" tabIndex={-1}>
         {listView ? (

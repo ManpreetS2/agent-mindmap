@@ -481,3 +481,46 @@ input:focus-visible { outline: none; }
 .unavailable-strip strong { flex: none; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.09em; color: #ffb1ba; background: rgba(240, 89, 107, 0.2); border: 1px solid rgba(240, 89, 107, 0.5); }
 .unavailable-strip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #e8c9a0; }
 @media (max-width: 767px) { .unavailable-strip span { display: none; } }
+
+/* ── Source health strip (observability.json provenance) ─────────────────────────────────── */
+.source-health {
+  flex: none; padding: 6px 14px 8px; border-bottom: 1px solid var(--line);
+  background: rgba(8, 12, 19, 0.92); font-size: 11.5px; color: var(--text-secondary);
+}
+.source-health--unavailable { color: var(--text-muted); }
+.source-health--unavailable p { margin: 0; }
+.source-health--demo {
+  background: linear-gradient(90deg, rgba(245, 185, 66, 0.12), rgba(8, 12, 19, 0.92) 55%);
+  border-bottom-color: rgba(245, 185, 66, 0.35);
+}
+.source-health__demo, .source-health__stale {
+  margin: 0 0 6px; padding: 4px 10px; border-radius: 8px; font-size: 11.5px;
+}
+.source-health__demo {
+  color: #f3d48f; background: rgba(245, 185, 66, 0.12); border: 1px solid rgba(245, 185, 66, 0.4);
+}
+.source-health__stale {
+  color: #f7cf7a; background: rgba(245, 185, 66, 0.08); border: 1px dashed rgba(245, 185, 66, 0.45);
+}
+.source-health__list {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none;
+}
+.source-health__item {
+  display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; max-width: 100%;
+}
+.source-health__label {
+  flex: none; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.source-health__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.source-health__item--ok .source-health__value { color: #bdf0d4; }
+.source-health__item--bad .source-health__value { color: #ffa3ae; }
+.source-health__item--warn .source-health__value { color: #f7cf7a; }
+.source-health__item--demo .source-health__value { color: #f3d48f; font-weight: 700; }
+.source-health__item--muted .source-health__value { color: var(--text-muted); }
+.source-health__item--unknown .source-health__value { color: #aab3c5; font-style: italic; }
+@media (max-width: 767px) {
+  .source-health { padding: 6px 10px; }
+  .source-health__list { gap: 4px 10px; }
+  .source-health__value { white-space: normal; }
+}
