@@ -29,6 +29,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from tools.publisher_launchd import LABEL as PUBLISHER_LABEL
+from tools.publisher_launchd import derive_path, discover_python
 from tools.publisher_launchd import plist_data as publisher_plist
 
 REPO = Path(__file__).resolve().parents[1]
@@ -39,8 +40,6 @@ COLLECTOR_STATE = Path.home() / ".local" / "state" / "agent-mindmap-collector"
 PUBLISHER_STATE = Path.home() / ".local" / "state" / "agent-mindmap-publisher"
 PORT = 8799
 SHIPPED = ("ingest", "tools", "schema", "shared", "config", "fixtures", "pyproject.toml", "web")
-PYTHON = os.environ.get("AGENT_MINDMAP_PYTHON") or str(Path.home() / ".local" / "bin" / "python3.12")
-PATH_ENV = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
 
 class InstallError(RuntimeError):
@@ -76,7 +75,9 @@ def collector_plist(runtime: Path = RUNTIME, state: Path = COLLECTOR_STATE) -> d
         "ThrottleInterval": 30,
         "ProcessType": "Background",
         "Nice": 5,
-        "EnvironmentVariables": {"PATH": PATH_ENV, "PYTHONPATH": str(cur), "PYTHONDONTWRITEBYTECODE": "1"},
+        "EnvironmentVariables": {"PATH": derive_path(), "PYTHONPATH": str(cur), "PYTHONDONTWRITEBYTECODE": "1",
+                                 **({"AGENT_MINDMAP_T3_URL": os.environ["AGENT_MINDMAP_T3_URL"]}
+                                    if os.environ.get("AGENT_MINDMAP_T3_URL") else {})},
         "StandardOutPath": str(state / "collector.log"),
         "StandardErrorPath": str(state / "collector.log"),
     }
@@ -84,7 +85,7 @@ def collector_plist(runtime: Path = RUNTIME, state: Path = COLLECTOR_STATE) -> d
 
 def publisher_plist_runtime(runtime: Path = RUNTIME) -> dict:
     data = publisher_plist(python=str(runtime / "venv" / "bin" / "python"), repo=runtime / "current",
-                           state_dir=PUBLISHER_STATE)
+                           state_dir=PUBLISHER_STATE, path_env=derive_path())
     return data
 
 
@@ -105,7 +106,10 @@ def stage(runtime: Path = RUNTIME) -> list[Path]:
 
 # ---------------------------------------------------------------- build
 
-def build(repo: Path = REPO, runtime: Path = RUNTIME, python: str = PYTHON) -> str:
+def build(repo: Path = REPO, runtime: Path = RUNTIME, python: str | None = None) -> str:
+    python = python or discover_python()
+    if not python:
+        raise InstallError("No Python >= 3.12 found (set AGENT_MINDMAP_PYTHON to one, e.g. from `brew install python@3.12`)")
     dirty = sh(["git", "status", "--porcelain", "--untracked-files=no"], cwd=repo).stdout.strip()
     if dirty:
         raise InstallError("Tracked files have uncommitted changes; commit them first so the release is reproducible")
@@ -213,22 +217,33 @@ def wait_connected(timeout: int = 60, port: int = PORT) -> bool:
     return False
 
 
-def status() -> str:
-    doc = healthz()
-    cur = current()
-    release = json.loads((cur / "RELEASE.json").read_text()) if (cur / "RELEASE.json").exists() else None
+def status_data(*, loaded_fn=None, pids_fn=None, health_fn=None, runtime: Path | None = None,
+                publisher_state: Path | None = None) -> dict:
+    """Read-only facts about the runtime install; every probe is injectable (the doctor and tests supply their own)."""
+    loaded_fn, pids_fn, health_fn = loaded_fn or loaded, pids_fn or port_owner_pids, health_fn or healthz
+    runtime = runtime or RUNTIME
+    doc = health_fn()
+    cur = runtime / "current"
+    try:
+        release = json.loads((cur / "RELEASE.json").read_text()) if (cur / "RELEASE.json").exists() else None
+    except (OSError, ValueError):
+        release = None
     pub = {}
     try:
-        pub = json.loads((PUBLISHER_STATE / "state.json").read_text())
+        pub = json.loads(((publisher_state or PUBLISHER_STATE) / "state.json").read_text())
     except (OSError, ValueError):
         pass
-    return json.dumps({
-        "runtime": str(RUNTIME), "release": release, "venv_ok": runtime_python().exists(),
-        "collector_loaded": loaded(COLLECTOR_LABEL), "publisher_loaded": loaded(PUBLISHER_LABEL),
-        "port_8799_pids": port_owner_pids(PORT),
+    return {
+        "runtime": str(runtime), "release": release, "venv_ok": (runtime / "venv" / "bin" / "python").exists(),
+        "collector_loaded": loaded_fn(COLLECTOR_LABEL), "publisher_loaded": loaded_fn(PUBLISHER_LABEL),
+        "port_8799_pids": pids_fn(PORT),
         "collector_health": {k: (doc or {}).get(k) for k in ("last_t3_poll", "last_build", "errors")} if doc else "unreachable",
         "publisher": {k: pub.get(k) for k in ("last_success_at", "last_error", "consecutive_failures")},
-    }, indent=2)
+    }
+
+
+def status() -> str:
+    return json.dumps(status_data(), indent=2)
 
 
 def activate(runtime: Path = RUNTIME) -> list[str]:

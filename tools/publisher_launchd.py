@@ -15,8 +15,10 @@ import argparse
 import json
 import os
 import plistlib
+import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from tools.export_observability import ROOT
@@ -28,7 +30,69 @@ INTERVAL_SEC = 240
 COLLECTOR_URL = "http://127.0.0.1:8799/activity.json"
 
 
-def plist_data(python: str = sys.executable, repo: Path = ROOT, state_dir: Path = STATE_DIR) -> dict:
+SYSTEM_PATH = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+HOMEBREW_DIRS = ("/opt/homebrew/bin", "/usr/local/bin")
+MIN_PYTHON = (3, 12)
+
+
+def find_tool(name: str, env: dict | None = None, which: Callable = shutil.which) -> str | None:
+    env = os.environ if env is None else env
+    return which(name, path=env.get("PATH"))
+
+
+def derive_path(tools: tuple[str, ...] = ("gh", "git", "node", "npm"), env: dict | None = None,
+                which: Callable = shutil.which, extra: tuple[str, ...] = ()) -> str:
+    """PATH for a LaunchAgent, built from where the tools it needs were actually found (not guessed), then the
+    system directories. Paths may contain spaces."""
+    dirs: list[str] = []
+    for name in tools:
+        found = find_tool(name, env, which)
+        if found:
+            dirs.append(str(Path(found).parent))
+    ordered: list[str] = []
+    for d in (*extra, *dirs, *SYSTEM_PATH):
+        if d and d not in ordered:
+            ordered.append(d)
+    return ":".join(ordered)
+
+
+def python_version(python: str, run: Callable | None = None) -> tuple[int, int] | None:
+    runner = run or (lambda a: subprocess.run(a, capture_output=True, text=True, check=False, timeout=20))
+    try:
+        r = runner([python, "-c", "import sys;print(sys.version_info[0],sys.version_info[1])"])
+        major, minor = r.stdout.split()[:2]
+        return (int(major), int(minor)) if r.returncode == 0 else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def discover_python(env: dict | None = None, which: Callable = shutil.which, run: Callable | None = None,
+                    home: Path | None = None) -> str | None:
+    """First interpreter >= 3.12: env AGENT_MINDMAP_PYTHON, this interpreter, PATH, Homebrew/python.org/user locations."""
+    env = os.environ if env is None else env
+    home = home or Path.home()
+    candidates: list[str] = []
+    if env.get("AGENT_MINDMAP_PYTHON"):
+        candidates.append(env["AGENT_MINDMAP_PYTHON"])
+    candidates.append(sys.executable)
+    for name in ("python3.14", "python3.13", "python3.12", "python3"):
+        found = find_tool(name, env, which)
+        if found:
+            candidates.append(found)
+    for d in (*HOMEBREW_DIRS, str(home / ".local" / "bin")):
+        candidates += [str(Path(d) / n) for n in ("python3.14", "python3.13", "python3.12", "python3")]
+    seen: set[str] = set()
+    for c in candidates:
+        if not c or c in seen:
+            continue
+        seen.add(c)
+        if (Path(c).exists() or run is not None) and (python_version(c, run) or (0, 0)) >= MIN_PYTHON:
+            return c
+    return None
+
+
+def plist_data(python: str = sys.executable, repo: Path = ROOT, state_dir: Path = STATE_DIR,
+               path_env: str | None = None) -> dict:
     return {
         "Label": LABEL,
         "ProgramArguments": [python, "-m", "tools.publish_observability", "--collector-url", COLLECTOR_URL,
@@ -41,8 +105,8 @@ def plist_data(python: str = sys.executable, repo: Path = ROOT, state_dir: Path 
         "Nice": 10,
         "ThrottleInterval": 60,
         "EnvironmentVariables": {
-            # gh lives in Homebrew; launchd's default PATH would not find it. No tokens are set here.
-            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+            # launchd's default PATH would not find gh/git; derived from where they really are. No tokens here.
+            "PATH": path_env or derive_path(),
             "PYTHONPATH": str(repo),
             "PYTHONDONTWRITEBYTECODE": "1",
         },
