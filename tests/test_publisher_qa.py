@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """Independent QA probes for the private publisher (originally strict-xfail defects; all fixed)."""
 import json
 import subprocess
