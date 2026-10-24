@@ -596,3 +596,4 @@ input:focus-visible { outline: none; }
 .workload-recs__candidates > li { margin-bottom: 10px; }
 .workload-recs__blockers h3 { margin: 12px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
 .workload-recs__limits { color: var(--text-muted); font-style: italic; }
+.roster-account { font-size: 10.5px; color: var(--text-muted); }

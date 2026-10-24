@@ -119,7 +119,10 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                 const key = providerKey(s.provider);
                 const model = s.model ?? "Model not reported";
                 const task = n.current_task ?? "No task reported";
+                const account = s.account?.label ?? "account not reported";
                 const rel = relation(n.id);
+                const desc = [account !== "account not reported" ? `account ${account}` : "account not reported", rel].filter(Boolean).join(" · ");
+                const settledDone = n.status === "DONE" || n.status === "IDLE";
                 return (
                   <li key={n.id}>
                     <button
@@ -129,8 +132,8 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                       className={`roster-item roster-item--${key}${selectedId === n.id ? " is-selected" : ""}${hoveredId === n.id ? " is-hovered" : ""}`}
                       aria-pressed={selectedId === n.id}
                       aria-label={`${providerLabel(s.provider)}, ${model}, ${n.status}, ${task}`}
-                      aria-description={rel ?? undefined}
-                      title={`${providerLabel(s.provider)} · ${model}\n${task}\n${n.status.replace("_", " ").toLowerCase()}`}
+                      aria-description={desc || undefined}
+                      title={`${providerLabel(s.provider)} · ${model}\n${task}\n${n.status.replace("_", " ").toLowerCase()}\n${account}`}
                       onClick={() => onSelect(n.id)}
                       onMouseEnter={() => onHover(n.id)}
                       onMouseLeave={() => onHover(null)}
@@ -145,6 +148,10 @@ export function AgentRoster({ nodes, edges = [], selectedId, hoveredId, onSelect
                         <span className="roster-sub">
                           <StatusPill status={n.status} />
                           <strong>{providerLabel(s.provider)}</strong>
+                        </span>
+                        <span className="roster-account" data-testid={`roster-account-${n.id}`}>
+                          {account}
+                          {settledDone ? " · not an available worker" : ""}
                         </span>
                         <span className="roster-meta">
                           <span className="roster-model mono">{model}</span>

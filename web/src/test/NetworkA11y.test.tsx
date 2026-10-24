@@ -21,7 +21,7 @@ describe("network accessibility", () => {
     render(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
     expect(screen.getByText("delegated 1 agent")).toBeInTheDocument();
     expect(screen.getByText("delegated by Task a")).toBeInTheDocument();
-    expect(screen.getByTestId("agent-node-b")).toHaveAttribute("aria-description", "delegated by Task a");
+    expect(screen.getByTestId("agent-node-b").getAttribute("aria-description")).toMatch(/delegated by Task a/);
   });
 
   it("never encodes provider or status by colour alone", () => {
