@@ -1,5 +1,17 @@
 # Agent Mind Map — Project Plan & UI Research
 
+## PROJECT STATUS — PAUSED BY OWNER (2026-10-24)
+
+**Decision:** Suspend further Agent Mindmap implementation and deployment until the owner explicitly resumes it. Engineering focus moves to finishing existing projects, in this order to be chosen by a fresh evidence-based repo audit: **R.E.A.C.T**, **EquityTrace**, and **Minecraft AI Civilization**. No Agent Mindmap feature development, additional agent delegation, PR merge or service activation is authorized by this pause note.
+
+**Preserve as-is:** Existing draft PR #36 (`feat/t3-readonly-activity`) and stacked draft PR #38 (`feat/pages-observability-preview`) remain open, draft and unmerged. Do not start/modify collectors, OAuth authorization, Claude quota hooks, private publisher credentials, machine lease/epoch ownership or launchd jobs. The old Mac's legacy publisher does **not** honor the new lease protocol; do not activate a second publisher. Public GitHub Pages stays synthetic-only.
+
+**Last checked before pause:** PR #38 reached `9c4ef5c` before this pause-only documentation commit. GitHub Actions Python CI reported **760 passed, 2 skipped** and web CI succeeded. An exact-match review of two historical synthetic Gitleaks test findings was committed (`78175c1`), QA-013/014/015/016 findings were reconciled against integrated code and regression tests (`cd3de68`), and the Pages workflow now builds a synthetic-only `observability.json` in addition to `activity.json` (`0540497`); its obsolete strict expected-failure marker was corrected (`9c4ef5c`). **Unverified at pause:** new full-history Gitleaks workflow green result, real hosted Pages artifact/deployment, this Mac's T3 MCP OAuth, both independent Claude quota taps, and single-writer real private-remote handover. CI/unit success must not be described as live integration success.
+
+**Resume checklist:** (1) check GitHub's full-history Gitleaks and Pages workflow results against a fresh head; (2) confirm synthetic-only public artifact; (3) obtain owner approval for any T3/Claude authentication, quota settings, private publishing or persistent service changes; (4) verify old legacy publisher is fenced or shut down *before* assigning another owner. Consult `docs/handoffs/2026-10-24-mission003.md` for technical handoff detail.
+
+---
+
 ## CURRENT STATE — Mission 003 handoff (2026-10-24)
 
 **Read this section first.** Earlier 2026-10-23 integration notes and previous handoffs below are historical checkpoints, not current instructions. The current continuation document is [docs/handoffs/2026-10-24-mission003.md](docs/handoffs/2026-10-24-mission003.md).
