@@ -16,7 +16,7 @@ import re
 import subprocess
 import tempfile
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -152,9 +152,34 @@ def read_source(input_path: Path | None, collector_url: str | None) -> dict:
     if len(raw) > MAX_SOURCE_BYTES:
         raise PublishError("Source snapshot is unexpectedly large")
     try:
-        return json.loads(raw.decode("utf-8"))
+        source = json.loads(raw.decode("utf-8"))
     except (UnicodeError, ValueError):
         raise PublishError("Source snapshot is not valid JSON") from None
+    if collector_url and isinstance(source, dict):
+        apply_last_poll(source, collector_url)
+    return source
+
+
+def apply_last_poll(source: dict, collector_url: str) -> None:
+    """The collector rewrites activity.json only when content changes, so generated_at is the last CHANGE. Its
+    /healthz reports the last poll in which T3 actually answered; that is the real observation time. Only ever
+    moves the time forward, never into the future, and only while the snapshot says connected. Any problem
+    leaves generated_at alone (which errs towards 'stale')."""
+    try:
+        u = urlparse(collector_url)
+        with NO_REDIRECT.open(urllib.request.Request(f"{u.scheme}://{u.netloc}/healthz"), timeout=5) as r:
+            polled = json.loads(r.read(65536).decode("utf-8")).get("last_t3_poll")
+        t3 = (source.get("meta") or {}).get("t3") or {}
+        if t3.get("connection") != "connected" or not isinstance(polled, str):
+            return
+        poll_dt = datetime.fromisoformat(polled)
+        gen_dt = datetime.fromisoformat(source["generated_at"])
+        if poll_dt.utcoffset() is None or gen_dt.utcoffset() is None:
+            return
+        if gen_dt < poll_dt <= datetime.now(UTC) + timedelta(seconds=60):
+            source["generated_at"] = poll_dt.astimezone(UTC).isoformat()
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return
 
 
 def unavailable_feed(now: datetime) -> tuple[dict, str, str]:

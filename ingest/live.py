@@ -102,6 +102,9 @@ class HealthState:
     last_gh_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    # Last poll in which T3 answered. The snapshot is only rewritten when its content changes, so its
+    # generated_at is the last CHANGE, not the last successful observation.
+    last_t3_poll: str | None = None
     errors: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
@@ -110,6 +113,7 @@ class HealthState:
             "last_gh_poll": self.last_gh_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "last_t3_poll": self.last_t3_poll,
             "errors": list(self.errors),
         }
 
@@ -200,6 +204,7 @@ class LiveDaemon:
                 last_gh_poll=self._health.last_gh_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                last_t3_poll=self._health.last_t3_poll,
                 errors=list(self._health.errors),
             )
 

@@ -300,3 +300,96 @@ def test_enable_requires_explicit_approval_flag(monkeypatch):
 def test_heartbeat_stays_inside_the_trust_window():
     from tools.export_observability import TRUST_WINDOW_SEC
     assert pub.HEARTBEAT_SEC + 240 < TRUST_WINDOW_SEC  # worst case: due just after a 240 s launchd tick
+
+
+def _serve(routes):
+    import http.server
+    import threading
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            body = routes.get(self.path)
+            self.send_response(200 if body is not None else 404)
+            self.end_headers()
+            if body is not None:
+                self.wfile.write(json.dumps(body).encode())
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def test_last_successful_poll_not_last_change_decides_freshness():
+    changed = datetime.now(UTC) - timedelta(minutes=6)
+    polled = datetime.now(UTC) - timedelta(seconds=7)
+    act = snapshot(changed, activity_at=changed)
+    srv = _serve({"/activity.json": act, "/healthz": {"last_t3_poll": polled.isoformat()}})
+    try:
+        src = pub.read_source(None, f"http://127.0.0.1:{srv.server_port}/activity.json")
+    finally:
+        srv.shutdown()
+    feed, _, _ = pub.build(src, datetime.now(UTC))
+    assert feed["freshness"] == "fresh" and feed["observed_at"] == polled.astimezone(UTC).isoformat()
+
+
+@pytest.mark.parametrize("health", [None, {"last_t3_poll": None}, {"last_t3_poll": "garbage"},
+                                    {"last_t3_poll": "2999-01-01T00:00:00+00:00"},
+                                    {"last_t3_poll": "2026-01-01T00:00:00+00:00"}])
+def test_missing_bad_future_or_older_poll_time_is_ignored(health):
+    changed = datetime.now(UTC) - timedelta(minutes=6)
+    routes = {"/activity.json": snapshot(changed, activity_at=changed)}
+    if health is not None:
+        routes["/healthz"] = health
+    srv = _serve(routes)
+    try:
+        src = pub.read_source(None, f"http://127.0.0.1:{srv.server_port}/activity.json")
+    finally:
+        srv.shutdown()
+    feed, _, _ = pub.build(src, datetime.now(UTC))
+    assert feed["freshness"] == "stale"
+
+
+def test_poll_time_is_not_trusted_when_the_snapshot_says_unavailable():
+    changed = datetime.now(UTC) - timedelta(minutes=6)
+    act = snapshot(changed, activity_at=changed)
+    act["meta"]["t3"]["connection"] = "unavailable"
+    srv = _serve({"/activity.json": act, "/healthz": {"last_t3_poll": datetime.now(UTC).isoformat()}})
+    try:
+        src = pub.read_source(None, f"http://127.0.0.1:{srv.server_port}/activity.json")
+    finally:
+        srv.shutdown()
+    feed, _, _ = pub.build(src, datetime.now(UTC))
+    assert feed["freshness"] == "stale" and feed["connection"] == "unavailable"
+
+
+def test_collector_reports_last_successful_poll_even_when_nothing_changed(tmp_path, monkeypatch):
+    from ingest.t3 import read_demo
+    from ingest.t3_live import T3Daemon
+    clock = [1_800_000_000.0]
+
+    async def fake_connect(url, cache=None):
+        return read_demo()
+
+    monkeypatch.setattr("ingest.t3_live.connect", fake_connect)
+    daemon = T3Daemon(activity_path=tmp_path / "activity.json", static_dir=tmp_path, cache_dir=tmp_path, bots=[],
+                      t3_url="http://127.0.0.1:3773/mcp", clock=lambda: clock[0])
+    daemon.run_poll_cycle()
+    first = daemon.health().last_t3_poll
+    built = daemon.activity_body()
+    clock[0] += 12
+    daemon.run_poll_cycle()
+    assert daemon.activity_body() == built            # content unchanged, so the snapshot is not rewritten
+    assert daemon.health().last_t3_poll != first      # but the poll time moved
+    assert daemon.health().to_json()["last_t3_poll"]
+
+    async def down(url, cache=None):
+        raise OSError("unreachable")
+
+    monkeypatch.setattr("ingest.t3_live.connect", down)
+    before = daemon.health().last_t3_poll
+    clock[0] += 12
+    daemon.run_poll_cycle()
+    assert daemon.health().last_t3_poll == before     # a failed poll never advances it
