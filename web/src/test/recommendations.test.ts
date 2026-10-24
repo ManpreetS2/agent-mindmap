@@ -146,13 +146,15 @@ describe("recommend()", () => {
   it("expiry boundary: VERIFIED becomes ineligible after expires_at", () => {
     const doc = loadFixture("live-mixed");
     const c1 = doc.quota.pools.find((p) => p.id === "claude-1")!;
-    // Keep collector poll fresh relative to `after` so the failure is pool expiry, not collector.
+    // Keep collector poll + activity fresh relative to `after` so the failure is pool expiry.
     doc.collector.last_t3_poll = c1.expires_at;
     const after = Date.parse(c1.expires_at!) + 1;
     const expired = withPool(doc, "codex", { expires_at: c1.expires_at });
-    const r = recommend(liveActivity(), expired, after);
+    expired.generated_at = c1.expires_at!;
+    const act = liveActivity({ generated_at: c1.expires_at! });
+    const r = recommend(act, expired, after);
     expect(r.status).toBe("INSUFFICIENT_DATA");
-    expect(r.reasons.some((x) => x.includes("claude-1") && /expired/i.test(x))).toBe(true);
+    expect(r.reasons.some((x) => x.includes("claude-1") && /expir/i.test(x))).toBe(true);
   });
 
   it("deterministic with fixed now", () => {

@@ -98,25 +98,28 @@ function WindowRow({
 
 function PoolCard({ pool, nowMs }: { pool: EvaluatedQuotaPool; nowMs: number }) {
   const status = pool.effectiveStatus;
-  const bars = canShowBars(status);
+  const demoValue = Boolean(pool.demoValue);
+  // Demo never exposes VERIFIED chrome; badge is neutral "DEMO value".
+  const displayStatus = demoValue ? "DEMO" : status;
+  const bars = !demoValue && canShowBars(status);
   const reasonOnly = status === "UNKNOWN" || status === "UNSUPPORTED" || status === "ERROR";
   const stale = status === "STALE";
 
   return (
     <article
-      className={`quota-card quota-card--${status.toLowerCase()}${pool.clientExpired ? " quota-card--client-expired" : ""}`}
+      className={`quota-card quota-card--${displayStatus.toLowerCase()}${pool.clientExpired ? " quota-card--client-expired" : ""}${demoValue ? " quota-card--demo-value" : ""}`}
       data-testid={`quota-pool-${pool.id}`}
-      data-status={status}
+      data-status={displayStatus}
       aria-label={`${pool.label} quota`}
     >
       <header className="quota-card__head">
         <h3 className="quota-card__title">{pool.label}</h3>
         <span
-          className={`quota-badge quota-badge--${status.toLowerCase()}`}
-          aria-label={`Status ${status}`}
+          className={`quota-badge quota-badge--${displayStatus.toLowerCase()}`}
+          aria-label={demoValue ? "Status DEMO value" : `Status ${status}`}
         >
-          <span aria-hidden="true">{STATUS_ICON[status]} </span>
-          {status}
+          <span aria-hidden="true">{demoValue ? "◌" : STATUS_ICON[status]} </span>
+          {demoValue ? "DEMO value" : status}
         </span>
       </header>
       <p className="quota-card__plan">
