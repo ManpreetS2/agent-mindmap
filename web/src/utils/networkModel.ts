@@ -91,6 +91,10 @@ export class NetworkModel {
       (e) => ids.has(e.source) && ids.has(e.target) && e.source !== e.target,
     );
     const parentOf = new Map(edges.map((e) => [e.target, e.source]));
+    const degree = new Map<string, number>();
+    for (const e of edges) degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
+    const hub = [...incoming].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id))[0]?.id;
+    const satellites = incoming.filter(n => n.id !== hub);
     const wasBaseline = this.baseline;
     let changed = false;
     let visualChanged = false;
@@ -133,6 +137,9 @@ export class NetworkModel {
           transitions.push({ id: n.id, from: existing.status, to: facts.status });
         }
         if (Object.entries(facts).some(([key, value]) => existing[key as keyof GNode] !== value)) visualChanged = true;
+        // Completing/blocking must not snap a swaying body back to its simulation anchor.
+        // Commit its last visible position, then let the settled node remain exactly still.
+        if (existing.active && !facts.active) commitAmbientPosition(existing);
         Object.assign(existing, facts);
         continue;
       }
@@ -141,7 +148,24 @@ export class NetworkModel {
       let y: number;
       const parent = parentOf.get(n.id);
       const p = parent ? this.nodes.get(parent) : undefined;
-      if (this.nodes.size === 0 || wasBaseline) {
+      if (wasBaseline && incoming.length <= 5) {
+        const count = incoming.length;
+        if (count === 1) { x = 0; y = 0; }
+        else if (count === 2) {
+          const side = n.id === hub ? -1 : 1;
+          x = side * 115; y = side * 24;
+        } else if (count === 3 && edges.length > 0) {
+          x = n.id === hub ? 0 : satellites.findIndex(q => q.id === n.id) === 0 ? -130 : 130;
+          y = n.id === hub ? -85 : 95;
+        } else if (n.id === hub && edges.length > 0) { x = 0; y = 0; }
+        else {
+          const hasHub = edges.length > 0;
+          const index = (hasHub ? satellites : incoming).findIndex(q => q.id === n.id);
+          const angle = index * Math.PI * 2 / (count - Number(hasHub)) - Math.PI / 4;
+          const radius = hasHub ? 220 : 170;
+          x = Math.cos(angle) * radius; y = Math.sin(angle) * radius;
+        }
+      } else if (this.nodes.size === 0 || wasBaseline) {
         // Deterministic sunflower seed for the first arrangement.
         const i = this.nodes.size;
         const r = 130 * Math.sqrt(i + 0.7);
@@ -249,4 +273,15 @@ export function stepAmbient(nodes: Iterable<GNode>, timeMs: number): void {
 export function nodePosition(n: GNode): { x: number; y: number } {
   const offset = n.active && !n.pinned && !n.dragging && n.fx == null && n.fy == null;
   return { x: (n.x ?? 0) + (offset ? n.ox ?? 0 : 0), y: (n.y ?? 0) + (offset ? n.oy ?? 0 : 0) };
+}
+
+/** Preserve the drawn position when a state change or accessibility preference stops sway. */
+export function commitAmbientPosition(n: GNode): void {
+  const p = nodePosition(n);
+  if (n.fx == null && n.fy == null && !n.dragging && !n.pinned) {
+    n.x = p.x; n.y = p.y;
+    if (n.settledX != null) n.settledX = p.x;
+    if (n.settledY != null) n.settledY = p.y;
+  }
+  n.ox = 0; n.oy = 0;
 }

@@ -72,6 +72,18 @@ describe("delegation evidence timing", () => {
     rerender({ activity: offline }); rerender({ activity: structuredClone(base) });
     expect(result.current.size).toBe(0);
   });
+
+  it("a replay-like field in live data never resets durable evidence history", () => {
+    const activity = (cycle: number, pairs: Array<[string, string]>) => t3Activity([a, b], pairs, "live", {
+      cycle, stage: 0, stage_count: 10, step_sec: 5, label: "Ignored in live mode",
+    });
+    const { result, rerender } = renderHook(({ value }) => useFreshEdges(value), { initialProps: { value: activity(0, []) } });
+    rerender({ value: activity(0, [["a", "b"]]) });
+    expect(result.current.size).toBe(1);
+    rerender({ value: activity(1, []) });
+    rerender({ value: activity(1, [["a", "b"]]) });
+    expect(result.current.size).toBe(0);
+  });
 });
 
 describe("continuity is bounded by the producer cadence", () => {

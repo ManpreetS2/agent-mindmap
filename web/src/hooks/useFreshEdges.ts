@@ -15,7 +15,10 @@ export function useFreshEdges(activity: Activity): ReadonlyMap<string, EdgeObser
     timers.current.clear();
   }, []);
   useLayoutEffect(() => {
-    const k = sourceKey(activity);
+    // Replay explicitly creates a new synthetic scenario each cycle. Reset only observation
+    // history, not the graph model/camera/pins. Live data never gains a replay exemption.
+    const replayCycle = activity.meta.t3?.mode === "demo" ? activity.meta.t3.replay?.cycle : undefined;
+    const k = `${sourceKey(activity)}|${replayCycle ?? "live-history"}`;
     const changed = key.current !== k;
     if (changed) {
       key.current = k;

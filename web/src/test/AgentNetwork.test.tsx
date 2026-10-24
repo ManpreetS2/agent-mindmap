@@ -35,6 +35,21 @@ beforeEach(() => { fgMock.reset(); vi.useFakeTimers(); setReduced(false); });
 afterEach(() => { vi.useRealTimers(); setReduced(false); });
 
 describe("AgentNetwork", () => {
+  it("keeps first-visit guidance compact and opens the full help only on request", () => {
+    window.localStorage.removeItem("mindmapHintSeen");
+    const view = render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    expect(screen.queryByRole("dialog", { name: "How to use the graph" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Drag to pin · Scroll to zoom/ }));
+    expect(screen.getByRole("dialog", { name: "How to use the graph" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.localStorage.getItem("mindmapHintSeen")).toBe("1");
+    view.unmount();
+    render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    expect(screen.queryByRole("button", { name: "Dismiss graph tips" })).toBeNull();
+    window.localStorage.removeItem("mindmapHintSeen");
+  });
+
   it("restores centre and zoom after inspector-sized shrink and expand", () => {
     const callbacks: (() => void)[] = [];
     const original = window.ResizeObserver;
@@ -127,7 +142,7 @@ describe("AgentNetwork", () => {
     const ctx = new Proxy({ fillText, measureText: () => ({ width: 90 }), createRadialGradient: () => ({ addColorStop() {} }) }, {
       get: (obj, key) => obj[key as keyof typeof obj] ?? (() => {}),
     });
-    const draw = () => { fillText.mockClear(); props().nodeCanvasObject(gdata().nodes[0], ctx, 1); return fillText.mock.calls.map(c => c[0]); };
+    const draw = () => { fillText.mockClear(); props().onRenderFramePre(); props().nodeCanvasObject(gdata().nodes[0], ctx, 1); return fillText.mock.calls.map(c => c[0]); };
     expect(draw()).not.toContain(caption ?? "RESUMED"); // no first-load reaction
     const next = t3Activity([sessionNode("a", { status: to })], []);
     view.rerender(<AgentNetwork {...base} activity={next} />);
@@ -165,7 +180,7 @@ describe("AgentNetwork", () => {
     view.rerender(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
     expect(fgMock.methods.emitParticle).not.toHaveBeenCalled();
     expect(props().cooldownTicks).toBe(0);
-    expect(props().warmupTicks).toBeGreaterThan(100);
+    expect(props().warmupTicks).toBe(0); // already solved synchronously; do not simulate twice
     expect(props().autoPauseRedraw).toBe(true);
     expect(screen.getByRole("button", { name: /Resume motion/ })).toBeDisabled();
   });
@@ -205,6 +220,20 @@ describe("AgentNetwork", () => {
     expect([n.fx, n.fy, n.pinned]).toEqual([undefined, undefined, false]);
     expect(fgMock.methods.d3ReheatSimulation).toHaveBeenCalled();
     expect(screen.queryByText(/pinned/)).toBeNull();
+  });
+
+  it.each(["paused", "reduced"])("releasing pins under %s motion never starts an animated simulation", mode => {
+    setReduced(mode === "reduced");
+    render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    if (mode === "paused") fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
+    const n = gdata().nodes[0]; n.x = 40; n.y = 50;
+    act(() => props().onNodeDragEnd(n));
+    fireEvent.click(screen.getByRole("button", { name: "Release 1 pinned" }));
+    expect(n.pinned).toBe(false);
+    expect(n.settledX).toBe(n.x);
+    expect(n.settledY).toBe(n.y);
+    if (mode === "paused") expect([n.x, n.y]).toEqual([40, 50]);
+    expect(fgMock.methods.d3ReheatSimulation).not.toHaveBeenCalled();
   });
 
   it("selection and background clicks go through the shared inspector callbacks", () => {
@@ -250,10 +279,8 @@ describe("AgentNetwork", () => {
 
   it("arrows point parent → child and edges are directional but not animated", () => {
     render(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
-    for (const zoom of [0.35, 1, 2.4]) {
-      fgMock.methods.zoom.mockReturnValue(zoom);
-      expect(props().linkDirectionalArrowLength() * zoom).toBeCloseTo(7);
-    }
+    expect(props().linkDirectionalArrowLength).toBe(0); // clipped arrows are custom-painted once
+    expect(props().linkCanvasObjectMode()).toBe("replace");
     const link = gdata().links[0];
     expect([link.source, link.target]).toEqual(["a", "b"]);
     expect(props().linkDirectionalParticles()).toBe(0);
@@ -308,6 +335,26 @@ describe("AgentNetwork", () => {
     view.rerender(<AgentNetwork {...base} activity={renamed} />);
     frame();
     expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays a synthetic delegation once per explicit demo cycle without resetting layout or camera", () => {
+    const activity = (cycle: number, delegated: boolean) => t3Activity(nodes, delegated ? [["a", "b"]] : [], "demo", {
+      stage: delegated ? 3 : 0, stage_count: 10, cycle, step_sec: 5, label: "Synthetic test",
+    });
+    const view = render(<AgentNetwork {...base} activity={activity(0, false)} />);
+    const a = gdata().nodes[0]; a.x = 321; a.pinned = true; a.fx = 321;
+    for (const cycle of [0, 1]) {
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, false)} />);
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, true)} />);
+      frame();
+      expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(cycle + 1);
+      expect(gdata().nodes[0]).toBe(a);
+      expect(a.x).toBe(321);
+      expect(a.pinned).toBe(true);
+      view.rerender(<AgentNetwork {...base} activity={activity(cycle, true)} />);
+      frame();
+      expect(fgMock.methods.emitParticle).toHaveBeenCalledTimes(cycle + 1);
+    }
   });
 
   it("drops a queued particle if its link disappears before initialization", () => {
