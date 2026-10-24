@@ -67,6 +67,14 @@ export interface MindmapViewProps {
   statusPulseNodeIds?: ReadonlySet<string>;
 }
 
+const SOURCE_HINTS: Record<string, string> = {
+  live: "Connected to the T3 MCP server (read-only). Showing real session metadata.",
+  unavailable: "T3 is unreachable. Showing the last snapshot, which may be out of date.",
+  demo: "Synthetic fixture data. These example agents are not real T3 activity.",
+  replay: "Deterministic synthetic replay. Everything shown is simulated.",
+  ledger: "Task ledger + GitHub (legacy source).",
+};
+
 export function MindmapView({
   activity,
   onRefresh,
@@ -102,6 +110,7 @@ export function MindmapView({
   const handoffs = useMemo(() => handoffEdgeCount(activity), [activity]);
   const metrics = useMemo(() => agentMetrics(activity), [activity]);
   const kind = sourceKind(activity);
+  const hasSessions = Boolean(activity.meta.t3);
   const nodeIds = useMemo(
     () => new Set(activity.nodes.map((n) => n.id)),
     [activity.nodes],
@@ -241,6 +250,15 @@ export function MindmapView({
         const target = e.target as HTMLElement;
         if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
         e.preventDefault();
+        if (hasSessions) {
+          const focusFilter = () => document.querySelector<HTMLInputElement>('[data-testid="roster-filter"]')?.focus();
+          const input = document.querySelector<HTMLInputElement>('[data-testid="roster-filter"]');
+          if (input?.closest(".agent-roster")?.classList.contains("is-collapsed")) {
+            document.querySelector<HTMLButtonElement>(".roster-collapse")?.click(); // expand the rail first
+            window.setTimeout(focusFilter, 0);
+          } else focusFilter();
+          return;
+        }
         setTimelineOpen(true);
         window.setTimeout(() => {
           filterRegionRef.current?.querySelector<HTMLButtonElement>(".filter-chip")?.focus();
@@ -249,7 +267,7 @@ export function MindmapView({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [highlightedTaskId, selectedNodeId]);
+  }, [highlightedTaskId, selectedNodeId, hasSessions]);
 
   return (
     <div className="mindmap-layout">
@@ -275,6 +293,12 @@ export function MindmapView({
           <span>Offline example agents · not real T3 activity · no API calls</span>
         </div>
       )}
+      {kind === "unavailable" && (
+        <div className="unavailable-strip" role="status" aria-live="polite">
+          <strong>T3 UNAVAILABLE</strong>
+          <span>Showing the last snapshot — agent states may be out of date. Reconnecting automatically.</span>
+        </div>
+      )}
       <header className="app-header">
         <div className="app-header__brand">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
@@ -284,7 +308,7 @@ export function MindmapView({
           </span>
         </div>
         <div className="app-header__center">
-          <span className={`source-chip source-chip--${kind}`}>
+          <span className={`source-chip source-chip--${kind}`} title={SOURCE_HINTS[kind]}>
             <span className="source-chip__dot" aria-hidden="true" />
             {activity.meta.t3 ? `Source: ${activity.meta.t3.replay && activity.meta.t3.mode === "demo" ? "Synthetic replay" : `T3 MCP · ${activity.meta.t3.mode === "demo" ? "DEMO — offline fixtures" : activity.meta.t3.connection}`}` : `Source: ledger + GitHub (${activity.meta.github})`}
           </span>

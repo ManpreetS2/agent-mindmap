@@ -191,3 +191,31 @@ describe("timeline filters are source-aware", () => {
     expect(within(filters).getByText("Bot")).toBeInTheDocument();
   });
 });
+
+describe("unavailable + shortcuts", () => {
+  it("shows an unmistakable strip when T3 is unreachable, never for live/demo", () => {
+    const { container, rerender } = renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live", undefined, "unavailable")} initialListView={false} />);
+    expect(container.querySelector(".unavailable-strip")).toHaveTextContent(/T3 UNAVAILABLE/);
+    expect(container.querySelector(".source-chip")).toHaveAttribute("title", expect.stringMatching(/unreachable/));
+    rerender(<div style={{ width: 1280, height: 720 }}><MindmapView activity={t3Activity(nodes, [], "live")} initialListView={false} /></div>);
+    expect(container.querySelector(".unavailable-strip")).toBeNull();
+  });
+  it("'/' focuses the agent filter for T3 sessions", () => {
+    renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live")} initialListView={false} />);
+    fireEvent.keyDown(window, { key: "/" });
+    expect(screen.getByTestId("roster-filter")).toHaveFocus();
+  });
+  it("'/' expands a collapsed rail first, then focuses the filter", async () => {
+    window.localStorage.setItem("mindmapRosterCollapsed", "1");
+    renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live")} initialListView={false} />);
+    expect(screen.getByRole("navigation", { name: "Agents" })).toHaveClass("is-collapsed");
+    fireEvent.keyDown(window, { key: "/" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.getByRole("navigation", { name: "Agents" })).not.toHaveClass("is-collapsed");
+    expect(screen.getByTestId("roster-filter")).toHaveFocus();
+  });
+  it("each source kind explains itself in a tooltip", () => {
+    const { container } = renderMindmap(<MindmapView activity={t3Activity(nodes, [], "demo")} initialListView={false} />);
+    expect(container.querySelector(".source-chip")).toHaveAttribute("title", expect.stringMatching(/not real T3 activity/));
+  });
+});
