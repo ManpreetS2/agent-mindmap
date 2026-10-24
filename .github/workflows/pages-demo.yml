@@ -59,6 +59,15 @@ jobs:
               raise RuntimeError("Refusing to publish non-demo activity")
           out = Path("web/dist/activity.json")
           out.write_text(json.dumps(activity, ensure_ascii=False, indent=2) + "\n")
+          # Public Pages may contain only a committed synthetic observability fixture.
+          fixture = json.loads(Path("fixtures/observability/demo.json").read_text())
+          if fixture.get("mode") != "demo" or fixture.get("machine", {}).get("platform") != "synthetic":
+              raise RuntimeError("Refusing to publish a non-synthetic observability document")
+          if any(pool["status"] == "VERIFIED" for pool in fixture["quota"]["pools"]):
+              raise RuntimeError("Refusing to publish verified quota readings")
+          Path("web/dist/observability.json").write_text(
+              json.dumps(fixture, ensure_ascii=False, indent=2) + "\n"
+          )
           Path("web/dist/.nojekyll").touch()
           PY
       - name: Verify artifact is demo-only
@@ -70,6 +79,9 @@ jobs:
           assert p["meta"]["t3"]["mode"] == "demo"
           assert p["meta"]["t3"]["connection"] == "connected"
           assert all(n.get("session", {}).get("source") == "pages-demo" for n in p["nodes"])
+          o = json.loads(Path("web/dist/observability.json").read_text())
+          assert o["mode"] == "demo" and o["machine"]["platform"] == "synthetic"
+          assert all(q["status"] != "VERIFIED" for q in o["quota"]["pools"])
           assert Path("web/dist/index.html").exists()
           assert "/agent-mindmap/assets/" in Path("web/dist/index.html").read_text()
           PY
