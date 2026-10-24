@@ -41,7 +41,8 @@ describe("session inspector", () => {
     const { panel } = open(t3Activity([a, b], [["a", "b"]]), "b");
     expect(within(panel).getByText("claude-x")).toBeInTheDocument();
     expect(within(panel).getByText("Child task", { selector: "h2" })).toBeInTheDocument();
-    expect(within(panel).getByText("Delegated by")).toBeInTheDocument();
+    expect(within(panel).getByText(/Evidenced parent:/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Delegated by/)).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Parent task" })).toBeInTheDocument();
     expect(within(panel).getAllByText(/T3 reported subagent lineage/).length).toBeGreaterThan(0);
     expect(within(panel).getByText(/does not show that messages were exchanged/)).toBeInTheDocument();
@@ -70,7 +71,8 @@ describe("session inspector", () => {
     expect(within(panel).getAllByText("Not reported by T3")).toHaveLength(2);
     // task, branch and last-activity are each explicitly "Not reported" (never blank or invented)
     expect(within(panel).getAllByText("Not reported", { selector: "dd" })).toHaveLength(3);
-    expect(within(panel).getByText(/No delegation lineage reported/)).toBeInTheDocument();
+    expect(within(panel).getByTestId("inspector-no-lineage")).toHaveTextContent(/Lineage not reported/);
+    expect(within(panel).getByTestId("inspector-no-lineage")).toHaveTextContent(/no delegation lineage reported/i);
     expect(within(panel).getByText(/No external links reported/)).toBeInTheDocument();
   });
 

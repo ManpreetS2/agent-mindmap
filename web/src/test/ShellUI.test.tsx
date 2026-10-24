@@ -156,7 +156,7 @@ describe("roster defaults", () => {
     const many = Array.from({ length: 10 }, (_, i) => sessionNode(`n${i}`, { status: i % 2 ? "FAILED" : "IN_PROGRESS" }));
     open(many);
     expect(screen.getByRole("navigation", { name: "Agents" })).toHaveClass("is-dense");
-    expect(screen.getByTestId("agent-node-n1")).toHaveAttribute("title", expect.stringMatching(/failed$/));
+    expect(screen.getByTestId("agent-node-n1")).toHaveAttribute("title", expect.stringMatching(/failed/i));
   });
 });
 
