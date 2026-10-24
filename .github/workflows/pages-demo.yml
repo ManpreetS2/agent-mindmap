@@ -1,0 +1,74 @@
+name: Agent Mindmap — safe GitHub Pages preview
+
+# Deploys ONLY synthetic demo data. Never upload local T3 snapshots or credentials here.
+on:
+  push:
+    branches:
+      - feat/pages-observability-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: agent-mindmap-pages
+  cancel-in-progress: true
+
+jobs:
+  publish-demo:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci --prefix web
+      - name: Build app for GitHub Pages subpath
+        run: npm run build --prefix web -- --base /agent-mindmap/
+      - name: Generate public-safe synthetic T3 activity fixture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from ingest.t3 import DEMO_REPLAY_EPOCH, T3Projection, read_demo
+
+          activity = T3Projection("pages-demo", demo=True).snapshot(
+              read_demo(), DEMO_REPLAY_EPOCH
+          )
+          if activity.get("meta", {}).get("t3", {}).get("mode") != "demo":
+              raise RuntimeError("Refusing to publish non-demo activity")
+          out = Path("web/dist/activity.json")
+          out.write_text(json.dumps(activity, ensure_ascii=False, indent=2) + "\n")
+          Path("web/dist/.nojekyll").touch()
+          PY
+      - name: Verify artifact is demo-only
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("web/dist/activity.json").read_text())
+          assert p["meta"]["t3"]["mode"] == "demo"
+          assert p["meta"]["t3"]["connection"] == "connected"
+          assert all(n.get("session", {}).get("source") == "pages-demo" for n in p["nodes"])
+          assert Path("web/dist/index.html").exists()
+          assert "/agent-mindmap/assets/" in Path("web/dist/index.html").read_text()
+          PY
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
