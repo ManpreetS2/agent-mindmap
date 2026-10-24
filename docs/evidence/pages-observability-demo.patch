@@ -1,0 +1,34 @@
+commit a6ee6c618b89db608bf793d8d8665268fe688cd0
+Author: Manpreet <manpreet@JsMacbookpro.local>
+Date:   Fri Oct 23 23:50:54 2026 -0700
+
+    ci: Pages publishes only the synthetic observability fixture, with demo-only verification
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/.github/workflows/pages-demo.yml b/.github/workflows/pages-demo.yml
+index f5bb591..e2205bb 100644
+--- a/.github/workflows/pages-demo.yml
++++ b/.github/workflows/pages-demo.yml
+@@ -59,6 +59,11 @@ jobs:
+               raise RuntimeError("Refusing to publish non-demo activity")
+           out = Path("web/dist/activity.json")
+           out.write_text(json.dumps(activity, ensure_ascii=False, indent=2) + "\n")
++          # The public site only ever gets the synthetic observability fixture, never a live document.
++          fixture = json.loads(Path("fixtures/observability/demo.json").read_text())
++          if fixture.get("mode") != "demo" or any(p["status"] == "VERIFIED" for p in fixture["quota"]["pools"]):
++              raise RuntimeError("Refusing to publish a non-demo observability document")
++          Path("web/dist/observability.json").write_text(json.dumps(fixture, ensure_ascii=False, indent=2) + "\n")
+           Path("web/dist/.nojekyll").touch()
+           PY
+       - name: Verify artifact is demo-only
+@@ -70,6 +75,9 @@ jobs:
+           assert p["meta"]["t3"]["mode"] == "demo"
+           assert p["meta"]["t3"]["connection"] == "connected"
+           assert all(n.get("session", {}).get("source") == "pages-demo" for n in p["nodes"])
++          o = json.loads(Path("web/dist/observability.json").read_text())
++          assert o["mode"] == "demo" and o["machine"]["platform"] == "synthetic"
++          assert all(q["status"] != "VERIFIED" for q in o["quota"]["pools"])
+           assert Path("web/dist/index.html").exists()
+           assert "/agent-mindmap/assets/" in Path("web/dist/index.html").read_text()
+           PY

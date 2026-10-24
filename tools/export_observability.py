@@ -64,7 +64,52 @@ def load_quota_pools(path: Path | None = QUOTA_FILE, *, now: datetime | None = N
     return pools
 
 
-def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict | None = None) -> tuple[dict, str]:
+def quota_line(name: str, pool: dict) -> str:
+    """One summary line per pool. Numbers appear only when a value exists; no value is never shown as '?%'."""
+    status = pool.get("status", "UNKNOWN")
+    if status == "UNKNOWN":
+        return f"- {name}: UNKNOWN"
+    parts = []
+    for w in pool.get("windows") or []:
+        if isinstance(w.get("used_pct"), (int, float)):
+            parts.append(f"{w.get('label') or w.get('type')} {w['used_pct']:g}% used")
+    if not parts:  # legacy manual shape
+        for key, label in (("five_hour_used_pct", "5h"), ("weekly_used_pct", "weekly")):
+            if isinstance(pool.get(key), (int, float)):
+                parts.append(f"{label} {pool[key]:g}% used")
+    text = f"- {name}: {status}"
+    if parts:
+        text += " — " + ", ".join(parts)
+        if status in {"STALE", "STALE_MANUAL"}:
+            text += " (EXPIRED reading: history, not the current state)"
+    elif pool.get("note"):
+        text += f" — no usage values; {pool['note']}"
+    if pool.get("source"):
+        text += f", source {pool['source']}"
+    if pool.get("observed_at"):
+        text += f", observed {pool['observed_at']}"
+    return text
+
+
+
+def default_quota_pools(now: datetime) -> dict:
+    """Per-account readings from the quota subsystem when it is installed; else the manual snapshot file / UNKNOWN."""
+    try:
+        from tools.quota.api import pools as read_pools, to_feed_pools
+
+        return to_feed_pools(read_pools(now=now))
+    except Exception:  # noqa: BLE001 - ImportError or any collector problem: fall back to honest manual/UNKNOWN
+        return load_quota_pools(now=now)
+
+
+def make_feed(
+    activity: dict,
+    *,
+    now: datetime | None = None,
+    quota_pools: dict | None = None,
+    machine: dict | None = None,
+    publisher: dict | None = None,
+) -> tuple[dict, str]:
     """Allowlist fields, validate source, and label incomplete or stale observations."""
     from jsonschema import validate
 
@@ -96,6 +141,7 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
         sessions.append({
             "id": ident,
             "provider": safe_text(session.get("provider")) or "UNKNOWN",
+            "account": safe_text((session.get("account") or {}).get("label"), 40) or "UNKNOWN",
             "model": safe_text(session.get("model")) or "UNKNOWN",
             "project": safe_text(session.get("project")) or "UNKNOWN",
             "task": safe_text(node.get("current_task")) or "UNKNOWN",
@@ -112,6 +158,11 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
         if edge.get("type") == "delegation" and edge.get("source") in known and edge.get("target") in known:
             delegations.append({"from": edge["source"], "to": edge["target"]})
     counts = dict(sorted(Counter(s["status"] for s in sessions).items()))
+    extras: dict = {}
+    if machine:  # additive, non-identifying: random id, owner-chosen label, role (never host/user/path)
+        extras["machine"] = {k: safe_text(str(machine[k]), 40) for k in ("id", "label", "role") if machine.get(k)}
+    if publisher:
+        extras["publisher"] = publisher
     feed = {
         "format": "agent-mindmap-private-feed/v1",
         "source": "T3 read-only metadata",
@@ -125,18 +176,19 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
         "quota": {
             "status": "unsupported",
             "note": "T3 read-only MCP does not expose subscription usage; pools below are manual snapshots or UNKNOWN",
-            "pools": quota_pools if quota_pools is not None else load_quota_pools(now=current),
+            "pools": quota_pools if quota_pools is not None else default_quota_pools(current),
         },
         "limitations": [
             "T3 thread updates are not proof of actual tool execution",
             "Unseen external Cursor/Devin sessions cannot be inferred as idle",
-            "The provider label does not uniquely identify two memberships",
+            "The provider label does not identify an account; `account` is T3's provider-instance label when reported (else UNKNOWN)",
             "Pull-request links are not exposed by T3 metadata (UNKNOWN)",
             "Each quota pool is separate; one account's quota is never the combined allowance",
         ],
         "status_counts": counts,
         "sessions": sessions,
         "delegations": delegations,
+        **extras,
     }
     def cell(value: str | None) -> str:
         return (value or "UNKNOWN").replace("|", "\\|")
@@ -150,12 +202,7 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
         f"Trusted until: {feed['trusted_until']} (older than this = treat as stale)",
         "",
         "**Quota:** T3 exposes no usage. Per-pool state (manual snapshots only, never combined):",
-        *[
-            f"- {name}: {pool['status']}"
-            + (f" — {pool.get('five_hour_used_pct', '?')}% 5h / {pool.get('weekly_used_pct', '?')}% weekly used,"
-               f" source {pool['source']}, observed {pool['observed_at']}" if pool["status"] != "UNKNOWN" else "")
-            for name, pool in feed["quota"]["pools"].items()
-        ],
+        *[quota_line(name, pool) for name, pool in feed["quota"]["pools"].items()],
         "**Limits:** Missing agents are not necessarily idle. Status updates are not proof that code ran.",
         "",
         "| Provider | Model | Status | Task | Project | Branch | Last update |",
