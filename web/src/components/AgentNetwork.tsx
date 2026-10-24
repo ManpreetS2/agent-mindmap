@@ -1,0 +1,553 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
+import { networkForces, releaseSettled, settleLayout, freezeLayout } from "../utils/networkPhysics";
+import { fittedCamera, maxFitZoom, readCamera, restoreCamera, labelViewport, type Camera } from "../utils/networkCamera";
+import { useNetworkPointer } from "../hooks/useNetworkPointer";
+import type { Activity } from "@shared/types";
+import { useFreshEdges } from "../hooks/useFreshEdges";
+import { useReducedMotionPreference } from "../hooks/useReducedMotion";
+import { sourceKey, snapshotConnected } from "../utils/edgeActivity";
+import {
+  NetworkModel,
+  AmbientClock,
+  endpointId,
+  stepAmbient,
+  nodePosition,
+  commitAmbientPosition,
+  transitionCaption,
+  type GLink,
+  type GNode,
+} from "../utils/networkModel";
+import { NODE_R, STATUS_COLOR, drawNode, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
+import { drawNetworkLink } from "../utils/networkEdges";
+import { AgentRoster } from "./AgentRoster";
+import "../styles/networkCanvas.css";
+import "../styles/networkPresentation.css";
+
+const FLASH_MS = 2400;
+const FRESH_LINK_COLOR = "#8fb4ff";
+const replaceCanvas = () => "replace" as const;
+const noLabel = () => "";
+const particleColor = () => "#e8f0ff";
+
+export interface AgentNetworkProps {
+  activity: Activity;
+  selectedNodeId: string | null;
+  onOpenNodeDetail: (id: string) => void;
+  onClearNodeDetail: () => void;
+}
+
+type FG = ForceGraphMethods<GNode, GLink>;
+
+function useSize(ref: React.RefObject<HTMLElement>, beforeResize: () => void): { w: number; h: number } {
+  const [size, setSize] = useState({ w: 800, h: 520 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let last = "";
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      const next = `${Math.round(r.width)}:${Math.round(r.height)}`;
+      if (r.width > 0 && r.height > 0 && next !== last) {
+        beforeResize();
+        last = next;
+        setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, beforeResize]);
+  return size;
+}
+
+export function AgentNetwork({
+  activity,
+  selectedNodeId,
+  onOpenNodeDetail,
+  onClearNodeDetail,
+}: AgentNetworkProps) {
+  const reduce = useReducedMotionPreference();
+  const [paused, setPaused] = useState(false);
+  const motionOn = !reduce && !paused;
+  const hostRef = useRef<HTMLDivElement>(null);
+  const fgRef = useRef<FG>();
+  const model = useRef(new NetworkModel()).current;
+  const ambientClock = useRef(new AmbientClock()).current;
+  const modelKey = useRef("");
+  const [data, setData] = useState(() => model.data);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [pinCount, setPinCount] = useState(0);
+  const [redraw, setRedraw] = useState(0);
+  const [transient, setTransient] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  // First-time guidance stays small; the full help opens only when requested.
+  const [hintOpen, setHintOpen] = useState(() => {
+    try { return window.localStorage?.getItem("mindmapHintSeen") !== "1"; } catch { return false; }
+  });
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    setHintOpen(false);
+    try { window.localStorage?.setItem("mindmapHintSeen", "1"); } catch { /* storage unavailable */ }
+  }, []);
+  useEffect(() => {
+    if (!helpOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeHelp(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [helpOpen, closeHelp]);
+  const flashTimer = useRef<number>();
+  const flashes = useRef(new Map<string, { caption: string; start: number; color: string }>());
+  const scheduleFlashExpiry = useCallback(() => {
+    setTransient(true);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      flashes.current.clear();
+      setTransient(false);
+      setRedraw(v => v + 1);
+    }, FLASH_MS + 100);
+  }, []);
+  const fresh = useFreshEdges(activity);
+  const emitted = useRef(new Set<string>());
+  const camera = useRef<Camera | null>(null);
+  const pendingCamera = useRef<Camera | null>(null);
+  const queuedParticles = useRef(new Set<string>());
+  const particleCount = useRef(0);
+  const forces = useMemo(networkForces, []);
+  // A changed zero accessor clears in-flight photons on pause/reduced-motion without reheating.
+  const noContinuousParticles = useMemo(() => () => 0, [motionOn]);
+  const fitted = useRef(false);
+  const touched = useRef(false);
+  const beforeResize = useCallback(() => {
+    if (fgRef.current && (fitted.current || touched.current)) {
+      pendingCamera.current ??= readCamera(fgRef.current);
+    }
+  }, []);
+  const { w, h } = useSize(hostRef, beforeResize);
+  const live = useRef({ selected: selectedNodeId, hovered: hoveredId, motionOn, fresh, simulated: activity.meta.t3?.mode === "demo" });
+  live.current = { selected: selectedNodeId, hovered: hoveredId, motionOn, fresh, simulated: activity.meta.t3?.mode === "demo" };
+
+  // --- sync model with each snapshot (layout effect: before paint, runs once per snapshot) ---
+  useLayoutEffect(() => {
+    const k = sourceKey(activity);
+    if (modelKey.current !== k) {
+      modelKey.current = k;
+      model.reset();
+      flashes.current.clear();
+      emitted.current.clear();
+      fitted.current = false;
+      touched.current = false;
+      camera.current = null;
+      pendingCamera.current = null;
+      queuedParticles.current.clear();
+      particleCount.current = 0;
+    }
+    const saved = fgRef.current && (fitted.current || touched.current) ? readCamera(fgRef.current) : null;
+    const r = model.sync(activity);
+    if (reduce) {
+      for (const n of model.data.nodes) commitAmbientPosition(n);
+      if (model.data.nodes.some(n => n.settledX == null && !n.pinned)) settleLayout(model.data.nodes, model.data.links);
+    }
+    if (paused) freezeLayout(model.node.values());
+    if (!snapshotConnected(activity)) {
+      flashes.current.clear();
+      setTransient(false);
+      window.clearTimeout(flashTimer.current);
+    }
+    const now = performance.now();
+    for (const t of r.transitions) {
+      flashes.current.set(t.id, {
+        caption: transitionCaption(t),
+        start: now,
+        color: STATUS_COLOR[t.to],
+      });
+    }
+    if (r.transitions.length) scheduleFlashExpiry();
+    if (r.topologyChanged) {
+      pendingCamera.current ??= saved;
+      setData(model.data);
+    }
+    setPinCount([...model.node.values()].filter((n) => n.pinned).length);
+    if (r.visualChanged) setRedraw((v) => v + 1);
+  }, [activity, model, reduce, paused, scheduleFlashExpiry]);
+
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+
+  // Stable, named forces replace themselves on StrictMode setup; never accumulate.
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    fg.d3Force("charge")?.strength(-180).distanceMax(500);
+    fg.d3Force("link")?.distance(154).strength(0.16);
+    fg.d3Force("center", null as never);
+    for (const [name, force] of Object.entries(forces)) fg.d3Force(name, force as never);
+  }, [forces]);
+
+  // Opt-in debug/QA hook (localStorage.mindmapDebug = "1"): node screen positions for browser tests.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.localStorage?.getItem("mindmapDebug") !== "1") return;
+    (window as unknown as Record<string, unknown>).__mindmap = {
+      nodes: () =>
+        [...model.node.values()].map((n) => {
+          const v = nodePosition(n);
+          const p = fgRef.current?.graph2ScreenCoords(v.x, v.y);
+          return { id: n.id, status: n.status, provider: n.provider, pinned: n.pinned, x: v.x, y: v.y, layoutX: n.x, layoutY: n.y, sx: p?.x, sy: p?.y };
+        }),
+      zoom: () => fgRef.current?.zoom(),
+      camera: () => fgRef.current && readCamera(fgRef.current),
+      revision: () => model.revision,
+      particlesEmitted: () => particleCount.current,
+      reactions: () => [...flashes.current].filter(([, f]) => performance.now() - f.start < FLASH_MS)
+        .map(([id, f]) => ({ id, caption: f.caption })),
+      observations: () => [...live.current.fresh].map(([id, kind]) => ({ id, kind })),
+      labels: () => [...(labelLayout.current ?? [])].map(([id, l]) => ({ id, x: l.x, y: l.y, width: l.width, height: l.height, reaction: l.reaction?.caption })),
+    };
+    return () => { delete (window as unknown as Record<string, unknown>).__mindmap; };
+  }, [model]);
+
+  const labelLayout = useRef<Map<string, LabelPlacement> | null>(null);
+  const labelKey = useRef("");
+  const labelChecked = useRef(false);
+  const frameTime = useRef(0);
+  const anyActive = useMemo(() => data.nodes.some((n) => n.active), [data, redraw]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stepFrame = useCallback(() => {
+    labelChecked.current = false;
+    const fg = fgRef.current;
+    // The library may have auto-scaled while applying graphData. Restore before painting.
+    const initialized = fg?.d3Force("link")?.links() === model.data.links;
+    if (fg && pendingCamera.current && initialized) {
+      const saved = pendingCamera.current;
+      pendingCamera.current = null;
+      restoreCamera(fg, saved);
+      camera.current = saved;
+    }
+    const zoomCap = maxFitZoom(model.data.nodes.length);
+    if (fg && !fitted.current && !touched.current && fg.zoom() > zoomCap) fg.zoom(zoomCap, 0);
+    const time = ambientClock.step(performance.now(), live.current.motionOn);
+    frameTime.current = time;
+    if (live.current.motionOn) stepAmbient(model.node.values(), time);
+    for (const id of queuedParticles.current) {
+      const link = model.data.links.find(l => l.id === id);
+      if (!link || !live.current.motionOn || live.current.fresh.get(id) !== "new-delegation") {
+        queuedParticles.current.delete(id);
+      } else if (fg && initialized && typeof link.source === "object" && typeof link.target === "object") {
+        // Object endpoints prove the library has initialized the link (which clears photons).
+        fg.emitParticle(link);
+        particleCount.current++;
+        queuedParticles.current.delete(id);
+      }
+    }
+  }, [model, ambientClock]);
+
+  useEffect(() => {
+    // useFreshEdges owns durable deduplication. This set only guards the current highlight;
+    // a later explicit demo cycle may legitimately emit the same synthetic relationship again.
+    for (const id of emitted.current) if (!fresh.has(id)) emitted.current.delete(id);
+    for (const [id, kind] of fresh) {
+      if (emitted.current.has(id)) continue;
+      emitted.current.add(id);
+      if (kind === "new-delegation") {
+        if (motionOn) queuedParticles.current.add(id);
+        const link = model.data.links.find(l => l.id === id);
+        if (link) {
+          const parent = endpointId(link.source);
+          const existing = flashes.current.get(parent);
+          // Keep attention/completion captions if both deltas arrive in the same poll.
+          if (!existing || performance.now() - existing.start > FLASH_MS || ["STARTED", "RESUMED", "DELEGATED"].includes(existing.caption)) {
+            flashes.current.set(parent, { caption: "DELEGATED", start: performance.now(), color: FRESH_LINK_COLOR });
+            scheduleFlashExpiry();
+            setRedraw(v => v + 1);
+          }
+        }
+      }
+    }
+  }, [fresh, motionOn, data, model, scheduleFlashExpiry]);
+
+  const zoomBy = useCallback((factor: number) => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    touched.current = true;
+    fg.zoom(Math.min(6, Math.max(0.1, fg.zoom() * factor)), reduce ? 0 : 180);
+  }, [reduce]);
+
+  const fit = useCallback(() => {
+    const fg = fgRef.current, next = fittedCamera(model.data.nodes, w, h);
+    if (!fg || !next) return;
+    fitted.current = true;
+    pendingCamera.current = null;
+    // No camera tween: it cannot fight a user pan or animate under reduced motion.
+    restoreCamera(fg, next);
+    camera.current = next;
+  }, [model, w, h]);
+  useEffect(() => {
+    if (fitted.current || !data.nodes.length) return;
+    const timer = window.setTimeout(() => {
+      if (!touched.current && !fitted.current) fit();
+    }, reduce ? 80 : 1100);
+    return () => window.clearTimeout(timer);
+  }, [data, reduce, fit]);
+
+  // --- drawing ---
+  const focusId = hoveredId ?? selectedNodeId;
+  const neighbors = useMemo(() => {
+    const s = new Set<string>();
+    if (!focusId) return s;
+    for (const l of data.links) {
+      const a = endpointId(l.source);
+      const b = endpointId(l.target);
+      if (a === focusId) s.add(b);
+      if (b === focusId) s.add(a);
+    }
+    return s;
+  }, [data, focusId]);
+
+  const nodeCanvas = useCallback(
+    (n: GNode, ctx: CanvasRenderingContext2D, scale: number) => {
+      const now = performance.now();
+      const f = flashes.current.get(n.id);
+      if (f && now - f.start > FLASH_MS) flashes.current.delete(n.id);
+      if (!labelChecked.current || !labelLayout.current) {
+        const view = fgRef.current && readCamera(fgRef.current);
+        const reactions = new Map([...flashes.current].filter(([, f]) => now - f.start <= FLASH_MS)
+          .map(([id, f]) => [id, { caption: live.current.simulated ? `DEMO · ${f.caption}` : f.caption, color: f.color }]));
+        const key = `${model.revision}|${scale}|${focusId}|${view?.x},${view?.y}|${w},${h}|${[...reactions].map(([id, f]) => `${id}:${f.caption}`).join(";")}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
+        if (key !== labelKey.current || !labelLayout.current) {
+          labelKey.current = key;
+          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx, view ? labelViewport(view, w, h) : undefined, reactions);
+        }
+        labelChecked.current = true;
+      }
+      drawNode(ctx, n, {
+        t: live.current.motionOn ? frameTime.current : null,
+        selected: live.current.selected === n.id,
+        hovered: live.current.hovered === n.id,
+        alpha: !focusId || n.id === focusId || neighbors.has(n.id) || (f && now - f.start <= FLASH_MS) ? 1 : 0.24,
+        flash: f && now - f.start <= FLASH_MS ? { caption: live.current.simulated ? `DEMO · ${f.caption}` : f.caption, age: now - f.start, color: f.color } : null,
+        inlineReaction: true,
+        zoom: scale,
+        label: labelLayout.current.get(n.id) ?? null,
+      });
+    },
+    // `redraw` forces a new identity => canvas repaint when facts change in place.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusId, neighbors, redraw, motionOn, transient, selectedNodeId, hoveredId, w, h],
+  );
+
+  const pointerArea = useCallback((n: GNode, color: string, ctx: CanvasRenderingContext2D) => {
+    ctx.fillStyle = color;
+    const p = nodePosition(n);
+    ctx.beginPath(); ctx.arc(p.x, p.y, NODE_R + 10, 0, Math.PI * 2);
+    ctx.fill();
+  }, []);
+
+  const linkIncident = (l: GLink) =>
+    focusId !== null && (endpointId(l.source) === focusId || endpointId(l.target) === focusId);
+  const linkColor = useCallback(
+    (l: GLink) =>
+      focusId === null
+        ? "rgba(143,180,255,0.48)"
+        : linkIncident(l)
+          ? "rgba(190,214,255,0.98)"
+          : "rgba(143,180,255,0.12)",
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusId],
+  );
+  const linkWidth = useCallback(
+    (l: GLink) => (live.current.fresh.has(l.id) ? 2.6 : linkIncident(l) ? 2 : 1.15),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusId, fresh],
+  );
+  const linkCanvas = useCallback(
+    (l: GLink, ctx: CanvasRenderingContext2D, scale: number) => drawNetworkLink(ctx, l, scale, {
+      focused: linkIncident(l), dimmed: focusId !== null && !linkIncident(l),
+      observation: live.current.fresh.get(l.id), simulated: live.current.simulated,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusId, fresh],
+  );
+
+  const onDragEnd = useCallback(
+    (n: GNode) => {
+      n.fx = n.x;
+      n.fy = n.y;
+      n.pinned = true;
+      n.ox = 0; n.oy = 0; n.vx = 0; n.vy = 0;
+      setPinCount([...model.node.values()].filter((q) => q.pinned).length);
+    },
+    [model],
+  );
+
+  const resumeLayout = useCallback(() => {
+    if (reduce) settleLayout(model.data.nodes, model.data.links);
+    else if (paused) freezeLayout(model.node.values());
+    else fgRef.current?.d3ReheatSimulation();
+    setRedraw(v => v + 1);
+  }, [model, reduce, paused]);
+
+  const releasePins = useCallback(() => {
+    for (const n of model.node.values()) {
+      if (n.pinned) {
+        releaseSettled(n);
+        n.fx = undefined;
+        n.fy = undefined;
+        n.pinned = false;
+      }
+    }
+    setPinCount(0);
+    resumeLayout();
+  }, [model, resumeLayout]);
+
+  const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onUnpin: (n) => {
+    releaseSettled(n);
+    setPinCount([...model.node.values()].filter(n => n.pinned).length);
+    resumeLayout();
+  }, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
+  const needsLoop = dragging || (motionOn && (anyActive || transient || fresh.size > 0));
+  const hasNodes = data.nodes.length > 0;
+
+  return (
+    <div className="network-view">
+      <AgentRoster
+        nodes={activity.nodes.filter((n) => n.session)}
+        edges={activity.edges}
+        selectedId={selectedNodeId}
+        hoveredId={hoveredId}
+        onSelect={onOpenNodeDetail}
+        onHover={setHoveredId}
+      />
+      <div
+        className="network-canvas"
+        ref={hostRef}
+        {...pointer}
+        style={{ cursor: hoveredId ? "pointer" : undefined, touchAction: "none" }}
+        onPointerDown={() => (touched.current = true)}
+        onWheel={() => (touched.current = true)}
+      >
+        <ForceGraph2D<GNode, GLink>
+          ref={fgRef as never}
+          width={w}
+          height={h}
+          graphData={data}
+          backgroundColor="rgba(0,0,0,0)"
+          nodeId="id"
+          nodeRelSize={NODE_R}
+          nodeCanvasObjectMode={replaceCanvas}
+          nodeCanvasObject={nodeCanvas}
+          nodePointerAreaPaint={pointerArea}
+          nodeLabel={noLabel}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
+          linkCurvature={0}
+          linkDirectionalArrowLength={0}
+          linkDirectionalArrowColor={linkColor}
+          linkDirectionalParticles={noContinuousParticles}
+          linkDirectionalParticleSpeed={0.011}
+          linkDirectionalParticleWidth={4.5}
+          linkDirectionalParticleColor={particleColor}
+          linkCanvasObjectMode={replaceCanvas}
+          linkCanvasObject={linkCanvas}
+          d3AlphaMin={0.0002}
+          onRenderFramePre={stepFrame}
+          d3AlphaDecay={0.035}
+          d3VelocityDecay={0.55}
+          cooldownTime={Infinity}
+          cooldownTicks={!motionOn ? 0 : Infinity}
+          warmupTicks={0}
+          autoPauseRedraw={!needsLoop}
+          minZoom={0.1}
+          enablePointerInteraction={false}
+          enableNodeDrag={false}
+          enableZoomInteraction={!dragging}
+          enablePanInteraction={!dragging}
+          maxZoom={6}
+          onZoom={() => {
+            if (!pendingCamera.current && fgRef.current) camera.current = readCamera(fgRef.current);
+          }}
+          onNodeClick={(n) => onOpenNodeDetail(n.id)}
+          onBackgroundClick={onClearNodeDetail}
+          onNodeHover={(n) => setHoveredId(n ? n.id : null)}
+          onNodeDragEnd={onDragEnd}
+          onEngineStop={() => {
+            if (!fitted.current && !touched.current && model.data.nodes.length) {
+              fitted.current = true;
+              fit();
+            }
+          }}
+        />
+        <div className="network-toolbar" role="toolbar" aria-label="Graph controls">
+          {pinCount > 0 && (
+            <button type="button" className="nt-pill" onClick={releasePins}>
+              Release {pinCount} pinned
+            </button>
+          )}
+          <div className="nt-group">
+            <button
+              type="button"
+              className="nt-btn"
+              aria-pressed={paused}
+              disabled={reduce}
+              title={reduce ? "Motion is off (reduced-motion preference)" : reduce || paused ? "Resume motion" : "Pause motion"}
+              onClick={() => {
+                freezeLayout(model.node.values());
+                ambientClock.step(performance.now(), false);
+                setPaused((p) => !p);
+              }}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                {reduce || paused ? <path d="M6 4.5v11l9-5.5z" fill="currentColor" /> : <path d="M6 4.5h2.8v11H6zM11.2 4.5H14v11h-2.8z" fill="currentColor" />}
+              </svg>
+              <span className="sr-only">{reduce || paused ? "Resume motion" : "Pause motion"}</span>
+            </button>
+            <button type="button" className="nt-btn" title="Fit view" onClick={fit}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span className="sr-only">Fit view</span>
+            </button>
+          </div>
+          <div className="nt-group">
+            <button type="button" className="nt-btn" title="Zoom out" onClick={() => zoomBy(1 / 1.35)}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10h11" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>
+              <span className="sr-only">Zoom out</span>
+            </button>
+            <button type="button" className="nt-btn" title="Zoom in" onClick={() => zoomBy(1.35)}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10h11M10 4.5v11" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>
+              <span className="sr-only">Zoom in</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            className="nt-btn nt-btn--solo"
+            aria-expanded={helpOpen}
+            aria-controls="network-help"
+            title="How to use the graph"
+            onClick={() => { if (helpOpen) closeHelp(); else { setHintOpen(false); setHelpOpen(true); } }}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8.2 8a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.4M10 13.6v.1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+            <span className="sr-only">Help</span>
+          </button>
+        </div>
+        {hintOpen && !helpOpen && (
+          <div className="network-intro" aria-label="Graph tips">
+            <button type="button" className="network-intro__tips" onClick={() => { setHintOpen(false); setHelpOpen(true); }}>
+              Drag to pin · Scroll to zoom <span aria-hidden="true">↗</span>
+            </button>
+            <button type="button" className="network-intro__dismiss" aria-label="Dismiss graph tips" onClick={closeHelp}>×</button>
+          </div>
+        )}
+        {helpOpen && (
+          <div id="network-help" className="network-help" role="dialog" aria-label="How to use the graph">
+            <p className="network-help__title">Exploring the network</p>
+            <ul>
+              <li><strong>Drag</strong> an agent to pin it · <strong>double-click</strong> to release</li>
+              <li><strong>Scroll</strong> or pinch to zoom · drag the background to pan</li>
+              <li><strong>Click</strong> an agent to open its details</li>
+            </ul>
+            <button type="button" className="network-help__ok" onClick={closeHelp}>Got it</button>
+          </div>
+        )}
+        {!hasNodes && <p className="network-empty">No agent sessions observed yet.</p>}
+      </div>
+    </div>
+  );
+}

@@ -41,7 +41,7 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
     <motion.button
       type="button"
       data-testid={`agent-node-${node.id}`}
-      className={`agent-node-card nopan nodrag${selected ? " is-selected" : ""}${deemphasized ? " is-deemphasized" : ""}${lifecycleDimmed ? " is-lifecycle-dimmed" : ""}${lifecycleHighlighted ? " is-lifecycle-highlight" : ""}${statusPulse && !reduceMotion ? " is-status-pulse" : ""}`}
+      className={`agent-node-card nopan nodrag${node.session ? " agent-node-card--session" : ""}${selected ? " is-selected" : ""}${deemphasized ? " is-deemphasized" : ""}${lifecycleDimmed ? " is-lifecycle-dimmed" : ""}${lifecycleHighlighted ? " is-lifecycle-highlight" : ""}${statusPulse && !reduceMotion ? " is-status-pulse" : ""}`}
       onClick={() => onOpenDetail(node.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -74,15 +74,21 @@ export function AgentNodeCard({ data }: AgentNodeCardProps) {
       transition={
         reduceMotion
           ? { duration: 0 }
-          : { type: "spring", stiffness: 320, damping: 22 }
+          : statusPulse
+            ? { type: "tween", duration: 0.7, ease: "easeOut" }
+            : { type: "spring", stiffness: 320, damping: 22 }
       }
     >
       <div className="agent-node-card__header">
         <span className="agent-node-card__title">{node.label}</span>
         <StatusPill status={node.status} />
       </div>
+      {node.session && <div className="agent-node-card__meta">
+        {node.session.provider ?? "Unknown provider"} · {node.session.model ?? "Unknown model"}
+      </div>}
       <div className="agent-node-card__task mono">{taskLine}</div>
-      <div className="agent-node-card__meta">{lastLine}</div>
+      <div className="agent-node-card__meta" title={node.last_activity_ts}>{lastLine}</div>
     </motion.button>
   );
 }
+

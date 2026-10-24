@@ -237,3 +237,26 @@ Third-party libraries and adapted UI patterns (shadcn/ui, Magic UI, Tailwind, Re
 1. No live Grok / room chat API — only ledger + GitHub + agent links (links only).
 2. Localhost only (`127.0.0.1`).
 3. No secrets in the repo; no tokens in ingest — `gh` CLI login only.
+
+
+## T3 Code monitoring (Codex / Claude Code)
+
+The existing dashboard now has an opt-in, read-only T3 MCP source and explicit offline DEMO mode. Legacy ledger ingestion remains the default. See [setup, pipeline, compatibility and limitations](docs/t3-integration.md).
+
+```sh
+python -m ingest.live --source t3-demo
+```
+
+### Animated synthetic replay
+
+After building the frontend, run the existing dashboard with:
+
+```sh
+python -m ingest.live --source t3-demo --demo-replay --demo-step-sec 5
+```
+
+Open http://127.0.0.1:8787. The prominent **DEMO REPLAY — SIMULATED ACTIVITY** banner identifies a ten-stage, 50-second loop: idle → Minecraft navigation task → working → delegation to Claude → concurrent work → blocked dependency → failed test → retry → completion → reset. Both session IDs stay stable; the delegation edge appears only after the simulated delegation and clears on reset. All agents, models, tasks, branches, timestamps and events are synthetic; replay makes no external API calls.
+
+`--demo-step-sec` accepts 2–300 seconds. A replay-specific conditional polling interval of 0.5–1 second lets the foreground dashboard display the stages without reloading. Slow networks, suspended/background tabs or a stopped process can skip stages; replay follows elapsed time rather than accumulating a queue. Restarting the daemon restarts at stage 1. Snapshots/events are replaced rather than accumulated.
+
+Omit `--demo-replay` to keep the original static `t3-demo` fixture. Replay is rejected with `--source t3` or `--source legacy`. Real T3 polling, read-only boundaries, zoom/pan, node dragging and reduced-motion behavior are preserved.

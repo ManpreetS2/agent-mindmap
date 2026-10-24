@@ -9,9 +9,11 @@ export type Status =
   | "IN_REVIEW"
   | "BLOCKED"
   | "DONE"
-  | "UNKNOWN";
+  | "UNKNOWN"
+  | "FAILED"
+  | "STALE";
 
-export type NodeGroup = "owner" | "build" | "qr" | "radar";
+export type NodeGroup = "owner" | "build" | "qr" | "radar" | "sessions";
 
 export type EventType =
   | "assigned"
@@ -25,7 +27,7 @@ export type EventType =
   | "note"
   | "unparsed";
 
-export type EdgeType = "handoff" | "verdict" | "pr" | "merge";
+export type EdgeType = "handoff" | "verdict" | "pr" | "merge" | "delegation";
 
 export type Verdict =
   | "PASS"
@@ -55,6 +57,7 @@ export interface Node {
   last_activity_ts?: string;
   agent_links: string[];
   layout: Layout;
+  session?: SessionMetadata;
 }
 
 /**
@@ -107,7 +110,20 @@ export type GitHubMetaStatus = "ok" | "error" | "skipped" | "rate_limited";
 
 export type LedgerMetaStatus = "ok" | "error" | "skipped";
 
+export interface SessionMetadata {
+  source: string;
+  thread_id: string;
+  project: string;
+  provider: string | null;
+  model: string | null;
+  reported_status: string;
+  branch: string | null;
+  source_links: string[];
+  stale: boolean;
+}
+
 export interface ActivityMeta {
+  t3?: { source: string; mode: "live" | "demo"; connection: "connected" | "unavailable"; server_version: string | null; stale_after_sec: number; poll_sec?: number; replay?: { stage: number; stage_count: number; cycle: number; step_sec: number; label: string } };
   github: GitHubMetaStatus;
   /** Present when ingest reports ledger read status (MM-010). */
   ledger?: LedgerMetaStatus;
@@ -118,7 +134,7 @@ export interface ActivityMeta {
 export interface Activity {
   schema_version: "1.0.0";
   generated_at: string;
-  project: "fencepost";
+  project: string;
   meta: ActivityMeta;
   nodes: Node[];
   tasks: Task[];
@@ -140,3 +156,4 @@ export interface BotsConfig {
   schema_version: "1.0.0";
   bots: BotConfigEntry[];
 }
+

@@ -1,0 +1,71 @@
+/* In-canvas presentation: background, floating toolbar, help popover. */
+.network-canvas {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 42%, rgba(15, 24, 48, 0.95), rgba(7, 10, 16, 0) 100%),
+    radial-gradient(circle at 85% 90%, rgba(58, 208, 184, 0.05), transparent 45%),
+    radial-gradient(circle at 12% 14%, rgba(139, 124, 255, 0.05), transparent 40%),
+    #070a10;
+  border-left: 1px solid var(--line, rgba(148, 170, 214, 0.14));
+}
+/* a faint dot grid and a soft vignette: depth without distraction */
+.network-canvas::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(rgba(148, 170, 214, 0.09) 1px, transparent 1.2px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 20%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 20%, transparent 100%);
+}
+.network-canvas::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  box-shadow: inset 0 0 120px 20px rgba(0, 0, 0, 0.45);
+}
+.network-canvas canvas { position: relative; z-index: 2; }
+
+.network-toolbar {
+  position: absolute; top: 14px; right: 14px; z-index: 6; display: flex; align-items: center; gap: 8px;
+}
+.nt-group {
+  display: flex; padding: 3px; gap: 2px; border-radius: 12px;
+  background: rgba(10, 14, 22, 0.78); border: 1px solid var(--line, rgba(148, 170, 214, 0.14)); backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.8);
+}
+.nt-btn {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; padding: 0; cursor: pointer;
+  color: var(--text-secondary, #9aa6bd); background: transparent; border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.nt-btn svg { width: 18px; height: 18px; }
+.nt-btn:hover:not(:disabled) { color: #e8ecf4; background: rgba(255, 255, 255, 0.07); }
+.nt-btn[aria-pressed="true"], .nt-btn[aria-expanded="true"] { color: #cfe0ff; background: rgba(91, 140, 255, 0.18); border-color: rgba(91, 140, 255, 0.45); }
+.nt-btn:disabled { opacity: 0.4; cursor: default; }
+.nt-btn:focus-visible, .nt-pill:focus-visible, .network-help__ok:focus-visible { outline: 2px solid var(--focus-ring, #8fb0ff); outline-offset: 2px; }
+.nt-btn--solo {
+  width: 38px; height: 38px; border-radius: 12px; background: rgba(10, 14, 22, 0.78); border-color: var(--line, rgba(148, 170, 214, 0.14));
+  backdrop-filter: blur(10px); box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.8);
+}
+.nt-pill {
+  padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; color: #cfe0ff;
+  background: rgba(91, 140, 255, 0.16); border: 1px solid rgba(91, 140, 255, 0.5);
+}
+.nt-pill:hover { background: rgba(91, 140, 255, 0.26); }
+
+.network-help {
+  position: absolute; top: 62px; right: 14px; z-index: 7; width: min(300px, calc(100% - 28px)); padding: 14px 16px 12px; border-radius: 14px;
+  color: var(--text-primary, #e8ecf4); background: rgba(12, 17, 27, 0.96); border: 1px solid var(--line-strong, rgba(148, 170, 214, 0.26));
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); animation: network-help-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes network-help-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.network-help__title { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted, #8591aa); }
+.network-help ul { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 7px; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary, #9aa6bd); }
+.network-help strong { color: var(--text-primary, #e8ecf4); font-weight: 600; }
+.network-help__ok {
+  padding: 5px 14px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; color: #cfe0ff;
+  background: rgba(91, 140, 255, 0.16); border: 1px solid rgba(91, 140, 255, 0.5);
+}
+.network-help__ok:hover { background: rgba(91, 140, 255, 0.26); }
+
+@media (max-width: 767px) {
+  .network-toolbar { top: 10px; right: 10px; gap: 6px; }
+  .nt-btn { width: 36px; height: 36px; }
+  .network-help { top: 56px; right: 10px; }
+}

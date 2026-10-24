@@ -16,11 +16,13 @@ import { isHttpSourceUrl } from "../utils/sourceUrl";
 import { FactSourceLink } from "./FactSourceLink";
 import { StatusPill } from "./StatusPill";
 import { UnsourcedTag } from "./UnsourcedTag";
+import { SessionInspector } from "./SessionInspector";
 
 interface DetailPanelProps {
   node: Node;
   activity: Activity;
   onClose: () => void;
+  onSelectNode?: (id: string) => void;
 }
 
 function FactRow({
@@ -55,7 +57,7 @@ function AgentLinkChip({ id }: { id: string }) {
   );
 }
 
-export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
+export function DetailPanel({ node, activity, onClose, onSelectNode }: DetailPanelProps) {
   const task = taskForNode(node, activity.tasks);
   const ownedTasks = tasksOwnedByLabel(node.label, activity.tasks);
   const statusSource = resolveStatusSource(node, activity.tasks, activity.events);
@@ -65,6 +67,17 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
     activity.events,
   );
   const lastActivity = resolveLastActivity(node, activity.events);
+
+  if (node.session) {
+    return (
+      <SessionInspector
+        node={node}
+        activity={activity}
+        onClose={onClose}
+        onSelectNode={onSelectNode}
+      />
+    );
+  }
 
   return (
     <aside className="detail-panel" aria-label={`Details for ${node.label}`}>
@@ -207,3 +220,4 @@ export function DetailPanel({ node, activity, onClose }: DetailPanelProps) {
     </aside>
   );
 }
+

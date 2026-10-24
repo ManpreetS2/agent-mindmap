@@ -32,14 +32,14 @@ function mergeById<T extends { id: string }>(
     if (!prior || stableJson(prior) !== stableJson(item)) {
       changedIds.add(item.id);
     }
-    items.push(item);
+    items.push(prior && stableJson(prior) === stableJson(item) ? prior : item);
   }
   for (const id of prevMap.keys()) {
     if (!nextMap.has(id)) {
       changedIds.add(id);
     }
   }
-  return { items, changedIds };
+  return { items: changedIds.size === 0 ? prev : items, changedIds };
 }
 
 /** Patch activity collections by id so unchanged entities keep identity. */
@@ -100,3 +100,4 @@ export function statusChangedNodeIds(
   }
   return changed;
 }
+

@@ -46,6 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATIC = ROOT / "web" / "dist"
 DEFAULT_ACTIVITY = DEFAULT_STATIC / "activity.json"
 DEFAULT_CACHE = ROOT / "ingest" / ".cache"
+# T3 sources never share the legacy default activity/cache paths (gitignored under ingest/.cache).
+DEFAULT_T3_STATE = DEFAULT_CACHE / "t3"
 BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DEFAULT_LEDGER_POLL_SEC = 30.0
@@ -644,6 +646,12 @@ def resolve_live_ledger(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MINDMAP live daemon + localhost server")
+    parser.add_argument("--source", choices=("legacy", "t3", "t3-demo"), default="legacy")
+    parser.add_argument("--demo-replay", action="store_true", help="Replay synthetic activity (t3-demo only)")
+    parser.add_argument("--demo-step-sec", type=float, default=5, help="Replay stage duration: 2–300 seconds")
+    parser.add_argument("--t3-url", default="http://127.0.0.1:3773/mcp")
+    parser.add_argument("--t3-poll-sec", type=float, default=15)
+    parser.add_argument("--t3-stale-sec", type=float, default=300)
     parser.add_argument("--ledger", type=Path, default=None, help="Path to task-ledger.md")
     parser.add_argument(
         "--ledger-source",
@@ -651,9 +659,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="path",
         help="path (default) or gh (data/ledger mirror via gh api)",
     )
-    parser.add_argument("--activity-out", type=Path, default=DEFAULT_ACTIVITY)
+    parser.add_argument(
+        "--activity-out",
+        type=Path,
+        default=None,
+        help=f"Snapshot path (legacy default {DEFAULT_ACTIVITY}; t3 sources default under {DEFAULT_T3_STATE}/<source>/)",
+    )
     parser.add_argument("--static-dir", type=Path, default=DEFAULT_STATIC)
-    parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=f"Cache dir (legacy default {DEFAULT_CACHE}; t3 sources default under {DEFAULT_T3_STATE}/<source>/cache)",
+    )
     parser.add_argument("--bots", type=Path, default=DEFAULT_BOTS)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
@@ -678,6 +696,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
+    if args.source == "legacy":
+        args.activity_out = args.activity_out or DEFAULT_ACTIVITY
+        args.cache_dir = args.cache_dir or DEFAULT_CACHE
+    else:
+        state = DEFAULT_T3_STATE / args.source
+        args.activity_out = args.activity_out or state / "activity.json"
+        args.cache_dir = args.cache_dir or state / "cache"
+
+    if args.demo_replay and args.source != "t3-demo":
+        parser.error("--demo-replay requires --source t3-demo")
+    if args.demo_replay:
+        from .t3 import demo_replay
+        try:
+            demo_replay(0, args.demo_step_sec)
+        except ValueError as exc:
+            parser.error(str(exc))
+
     ledger_poll = args.ledger_poll_sec
     if ledger_poll is None:
         ledger_poll = _env_float("MINDMAP_LEDGER_POLL_SEC", DEFAULT_LEDGER_POLL_SEC)
@@ -685,54 +720,79 @@ def main(argv: list[str] | None = None) -> int:
     if gh_poll is None:
         gh_poll = _env_float("MINDMAP_GH_POLL_SEC", DEFAULT_GH_POLL_SEC)
 
-    try:
-        source, ledger_path, ledger_url = resolve_live_ledger(
-            ledger_source=args.ledger_source,
-            ledger_path=args.ledger,
+    if args.source != "legacy":
+        from .t3_live import T3Daemon
+        from .t3_mcp import credential_path, validate_url
+
+        try:
+            validate_url(args.t3_url)
+            import math
+            if not math.isfinite(args.t3_poll_sec) or not 5 <= args.t3_poll_sec <= 300:
+                raise ValueError("T3 poll interval must be 5–300 seconds")
+            if not math.isfinite(args.t3_stale_sec) or args.t3_stale_sec < args.t3_poll_sec * 2:
+                raise ValueError("T3 stale interval must be at least twice the poll interval")
+            credentials = credential_path(args.t3_url).resolve()
+            if credentials.is_relative_to(args.static_dir.resolve()):
+                raise ValueError("Static directory must not contain T3 credentials")
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        daemon = T3Daemon(activity_path=args.activity_out, static_dir=args.static_dir,
+                          cache_dir=args.cache_dir, bots=[], t3_url=args.t3_url,
+                          demo=args.source == "t3-demo", poll_sec=args.t3_poll_sec,
+                          stale_after=args.t3_stale_sec, replay=args.demo_replay,
+                          demo_step_sec=args.demo_step_sec)
+    else:
+        try:
+            source, ledger_path, ledger_url = resolve_live_ledger(
+                ledger_source=args.ledger_source,
+                ledger_path=args.ledger,
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        if source == "path" and (ledger_path is None or not ledger_path.is_file()):
+            print(f"ledger not found: {ledger_path}", file=sys.stderr)
+            return 1
+
+        with args.bots.open(encoding="utf-8") as f:
+            bots = json.load(f)["bots"]
+
+        daemon = LiveDaemon(
+            ledger_source=source,
+            ledger_path=ledger_path,
+            ledger_source_url=ledger_url,
+            activity_path=args.activity_out,
+            static_dir=args.static_dir,
+            cache_dir=args.cache_dir,
+            bots=bots,
+            ledger_poll_sec=ledger_poll,
+            gh_poll_sec=gh_poll,
         )
-    except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-
-    if source == "path" and (ledger_path is None or not ledger_path.is_file()):
-        print(f"ledger not found: {ledger_path}", file=sys.stderr)
-        return 1
-
-    with args.bots.open(encoding="utf-8") as f:
-        bots = json.load(f)["bots"]
-
-    daemon = LiveDaemon(
-        ledger_source=source,
-        ledger_path=ledger_path,
-        ledger_source_url=ledger_url,
-        activity_path=args.activity_out,
-        static_dir=args.static_dir,
-        cache_dir=args.cache_dir,
-        bots=bots,
-        ledger_poll_sec=ledger_poll,
-        gh_poll_sec=gh_poll,
-    )
-    daemon._load_activity_from_disk()
-    daemon.run_poll_cycle()
-    daemon.start_polling()
-
+    # Bind first: a port conflict must fail before any poll/write can touch activity files.
     try:
         httpd = create_http_server(daemon, port=args.port)
-    except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    except (ValueError, OSError) as exc:
+        print(f"error: cannot start server on port {args.port}: {exc}", file=sys.stderr)
         return 2
 
     def shutdown(signum: int, _frame: Any) -> None:
         daemon.stop_polling()
         threading.Thread(target=httpd.shutdown, daemon=True).start()
 
-    signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGINT, shutdown)
-
-    host, port = httpd.server_address
-    ledger_desc = ledger_path if ledger_path else "gh:data/ledger"
-    print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
     try:
+        if args.source == "legacy":
+            daemon._load_activity_from_disk()
+        daemon.run_poll_cycle()
+        daemon.start_polling()
+
+        signal.signal(signal.SIGTERM, shutdown)
+        signal.signal(signal.SIGINT, shutdown)
+
+        host, port = httpd.server_address
+        ledger_desc = (ledger_path if ledger_path else "gh:data/ledger") if args.source == "legacy" else args.source
+        print(f"mindmap live on http://{host}:{port} (ledger={ledger_desc})", file=sys.stderr)
         httpd.serve_forever(poll_interval=0.5)
     finally:
         daemon.stop_polling()
@@ -742,3 +802,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

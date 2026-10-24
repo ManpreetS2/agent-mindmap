@@ -5,6 +5,7 @@ export const STALE_THRESHOLD_MS = 10 * 60 * 1000;
 export const LEDGER_ERROR_PATH = "build/task-ledger.md";
 
 export function isActivityEmpty(activity: Activity): boolean {
+  if (activity.meta.t3) return activity.nodes.length === 0;
   return (
     activity.events.length === 0 &&
     activity.tasks.length === 0 &&
@@ -32,6 +33,7 @@ export function isActivityStale(
   activity: Activity,
   nowMs = Date.now(),
 ): boolean {
+  if (activity.meta.t3) return activity.meta.t3.connection === "unavailable" || activity.nodes.some(n => n.session?.stale);
   return isStaleGeneratedAt(staleReferenceTime(activity), nowMs);
 }
 
@@ -44,6 +46,7 @@ export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
 }
 
 export function partialGithubBanner(meta: ActivityMeta): string | null {
+  if (meta.t3) return meta.t3.connection === "unavailable" ? "T3 unavailable — last known sessions are stale. Reconnecting automatically." : null;
   const status = meta.github as string;
   if (status === "ok") return null;
   const sourceName =
@@ -54,3 +57,4 @@ export function partialGithubBanner(meta: ActivityMeta): string | null {
         : "GitHub (error)";
   return `${sourceName} — showing ledger only. Retry refresh.`;
 }
+

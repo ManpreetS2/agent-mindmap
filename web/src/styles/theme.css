@@ -12,7 +12,7 @@
 
   --text-primary: #e8ecf1;
   --text-secondary: #a8b0bd;
-  --text-muted: #7a8494;
+  --text-muted: #8e98a9; /* >=4.5:1 on panel, card and elevated surfaces */
 
   --accent: #6b9fff;
 
@@ -30,6 +30,10 @@
   --status-unknown-fg: #c5cad3;
 
   --edge-handoff: #8b9cb8;
+  --edge-delegation: #8fb4ff;
+  --provider-claude: #e0946a;
+  --provider-codex: #4fc3b0;
+  --focus-ring: #9cc0ff;
   --edge-verdict: #c9a227;
   --edge-pr: #6b9fff;
   --edge-merge: #5ecf8a;
@@ -50,6 +54,8 @@
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

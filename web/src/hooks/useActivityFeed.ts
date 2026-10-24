@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Activity } from "@shared/types";
 import {
   createPollTransport,
-  LedgerLoadError,
   type ActivityTransport,
 } from "../data/activityTransport";
 import {
@@ -20,8 +19,11 @@ export interface ActivityFeedState {
 }
 
 export function useActivityFeed(
-  transport: ActivityTransport = createPollTransport(),
+  suppliedTransport?: ActivityTransport,
 ): ActivityFeedState {
+  const defaultTransport = useRef<ActivityTransport>();
+  if (!defaultTransport.current) defaultTransport.current = createPollTransport();
+  const transport = suppliedTransport ?? defaultTransport.current;
   const [activity, setActivity] = useState<Activity | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [lastPatch, setLastPatch] = useState<ActivityPatch | null>(null);
@@ -29,7 +31,6 @@ export function useActivityFeed(
     ReadonlySet<string>
   >(() => new Set());
   const [retryToken, setRetryToken] = useState(0);
-  const [liveReady, setLiveReady] = useState(false);
   const activityRef = useRef<Activity | null>(null);
 
   const applyNext = useCallback((next: Activity) => {
@@ -41,14 +42,12 @@ export function useActivityFeed(
     setLastPatch(patch);
     setStatusPulseNodeIds(pulses);
     setError(null);
-    setLiveReady(true);
   }, []);
 
   const reload = useCallback(() => {
     setError(null);
     setActivity(null);
     activityRef.current = null;
-    setLiveReady(false);
     setRetryToken((t) => t + 1);
   }, []);
 
@@ -72,12 +71,17 @@ export function useActivityFeed(
   }, [transport, retryToken, applyNext]);
 
   useEffect(() => {
-    if (!transport.subscribe || !liveReady) return;
-    if (error instanceof LedgerLoadError) return;
+    if (!transport.subscribe) return;
     return transport.subscribe((data) => {
       applyNext(data);
+    }, (failure) => {
+      const last = activityRef.current;
+      if (last?.meta.t3) {
+        setActivity({ ...last, meta: { ...last.meta, t3: { ...last.meta.t3, connection: "unavailable" } },
+          nodes: last.nodes.map(n => n.session ? { ...n, status: "STALE", session: { ...n.session, stale: true } } : n) });
+      } else if (!last) setError(failure);
     });
-  }, [transport, liveReady, error, applyNext]);
+  }, [transport, retryToken, applyNext]);
 
   useEffect(() => {
     if (statusPulseNodeIds.size === 0) return;
@@ -93,3 +97,4 @@ export function useActivityFeed(
     reload,
   };
 }
+
