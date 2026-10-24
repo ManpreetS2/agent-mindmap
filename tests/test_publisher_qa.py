@@ -1,12 +1,19 @@
 # ruff: noqa: F811
 """Independent QA probes for the private publisher (originally strict-xfail defects; all fixed)."""
-import json
 import subprocess
 from datetime import timedelta
 
 import pytest
 
-from tests.test_publish_observability import NOW, REMOTE, remote_commits, remote_files, run, snapshot, world  # noqa: F401
+from tests.test_publish_observability import (  # noqa: F401
+    NOW,
+    REMOTE,
+    remote_commits,
+    remote_files,
+    run,
+    snapshot,
+    world,
+)
 from tools import publish_observability as pub
 from tools.export_observability import make_feed
 
