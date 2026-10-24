@@ -17,10 +17,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Fetch all branch and tag refs
+      - name: Check full-history ref coverage
+        shell: bash
         run: |
-          git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
-          git fetch origin '+refs/tags/*:refs/tags/*'
+          count="$(git for-each-ref --format='%(refname)' refs/remotes/origin refs/tags | wc -l | tr -d ' ')"
+          echo "Fetched remote refs and tags: $count"
+          test "$count" -ge 50 || { echo "::error::Full-history checkout did not fetch all expected branches"; exit 1; }
       - name: Install pinned Gitleaks from official release
         shell: bash
         run: |
