@@ -69,14 +69,20 @@ jobs:
               location = finding.get("StartLine", "?")
               commit = str(finding.get("Commit", "unknown"))[:12]
               print(f"  Finding location (NO SECRET): file={file} line={location} commit={commit} rule={finding.get('RuleID')}")
-          # Exact reviewed findings only: three deliberately synthetic redaction-test
-          # values, and a 40-hex Git commit hash mistakenly flagged in a QA report.
+          # Exact reviewed findings only: deliberate synthetic redaction-test
+          # values, mock CLI output, and a commit SHA in a QA report.
           # Pin commit, path, line, AND detection rule. Any other match is a blocker.
           reviewed = {
               ("63cd72cec485", "tests/test_t3_hardening.py", 38, "gitlab-pat"),
               ("63cd72cec485", "tests/test_t3_hardening.py", 32, "slack-bot-token"),
               ("63cd72cec485", "tests/test_t3_hardening.py", 33, "slack-app-token"),
               ("3939d3520c44", "qa-mm009/REPORT.md", 107, "generic-api-key"),
+              # Reviewed 2026-10-24: simulated auth-status output from a fake
+              # command runner. This is test data, not a credential.
+              ("d50d337e3b85", "tests/test_machine_doctor.py", 36, "generic-api-key"),
+              # Reviewed 2026-10-24: a literal intentionally used to assert
+              # that the private publisher rejects sensitive-looking text.
+              ("bb8943888bf0", "tests/test_publish_observability.py", 155, "generic-api-key"),
           }
           unreviewed = [
               f for f in findings if (
@@ -88,11 +94,11 @@ jobs:
           ]
           print(f"Reviewed synthetic fixture / commit SHA findings: {len(findings) - len(unreviewed)}")
           print(f"Unreviewed findings: {len(unreviewed)}")
-          if unreviewed or len(findings) != 4:
+          if unreviewed or len(findings) != len(reviewed):
               print("BLOCKED: investigate unmatched findings before making the repo public.")
               raise SystemExit(1)
           if os.environ["STATUS"] != "23":
               print("Unexpected scanner status; fail closed.")
               raise SystemExit(2)
-          print("Passed: all detected patterns are the four previously reviewed false positives.")
+          print("Passed: all detected patterns match exactly the reviewed historical test/QA false positives.")
           PY
