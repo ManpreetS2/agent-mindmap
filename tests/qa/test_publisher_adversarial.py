@@ -40,7 +40,6 @@ def test_malformed_remote_json_is_clean_failure(world, payload):
     assert pub.load_state(world.state)['consecutive_failures'] == 1
 
 
-@pytest.mark.xfail(strict=True, reason='QA-004: invalid remote feed overwrites or bypasses failure accounting', raises=AssertionError)
 @pytest.mark.parametrize('payload', ['null', '[]', '42', '"text"', '{}'])
 def test_non_feed_json_remote_is_rejected(world, payload):
     before = world.seed({'latest.json': payload})
@@ -55,6 +54,9 @@ def test_non_feed_json_remote_is_rejected(world, payload):
 @pytest.mark.xfail(strict=True, reason='QA-005: remote latest.json has no size bound', raises=AssertionError)
 def test_oversized_remote_feed_rejected(world):
     feed, _, _ = pub.build(snapshot(), NOW)
+    if world.identity is not None:
+        from tools import publisher_ownership
+        feed['publisher'] = publisher_ownership.publisher_object(world.identity, 1, NOW)
     feed['padding'] = 'x' * (pub.MAX_SOURCE_BYTES + 1)
     before = world.seed({'latest.json': json.dumps(feed)})
     try:
@@ -183,7 +185,6 @@ def test_heartbeat_exact_boundary(seconds, expected):
     assert pub.should_publish(previous, feed, now=NOW) is expected
 
 
-@pytest.mark.xfail(strict=True, reason='QA-006: future remote exported_at suppresses heartbeat indefinitely', raises=AssertionError)
 def test_future_remote_timestamp_cannot_suspend_heartbeat():
     feed, _, _ = pub.build(snapshot(), NOW)
     previous = copy.deepcopy(feed)

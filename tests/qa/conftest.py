@@ -68,6 +68,12 @@ def world(tmp_path, monkeypatch):
     src.write_text(json.dumps(snapshot()))
     state = tmp_path / 'publisher state'
     calls = []
+    # Runtime integration requires a registered publisher. Keep all identity state temporary.
+    import importlib.util
+    identity = None
+    if importlib.util.find_spec('tools.machine_identity') is not None:
+        from tools import machine_identity
+        identity = machine_identity.init_identity('Synthetic QA', 'publisher')
     real_cmd = pub.cmd
 
     def local_cmd(args, **kwargs):
@@ -108,6 +114,6 @@ def world(tmp_path, monkeypatch):
                                 capture_output=True, text=True, timeout=10)
         return result.stdout.strip() if result.returncode == 0 else None
 
-    return SimpleNamespace(bare=bare, src=src, state=state, calls=calls, publish=publish,
+    return SimpleNamespace(bare=bare, src=src, state=state, identity=identity, calls=calls, publish=publish,
                            seed=seed, head=head,
                            read=lambda name: git('--git-dir', bare, 'show', f'main:{name}'))
