@@ -116,6 +116,28 @@ describe("NetworkModel", () => {
     expect(Object.fromEntries(m.data.nodes.map((n) => [n.id, n.active]))).toEqual({ run: true, stale: false, done: false, rev: true });
   });
 
+  it.each(["DONE", "BLOCKED", "FAILED", "IDLE", "STALE"] as const)("keeps the exact visible position when a swaying agent becomes %s", status => {
+    const m = new NetworkModel(); m.sync(t3Activity([sessionNode("a")], []));
+    const n = m.node.get("a")!;
+    Object.assign(n, { x: 100, y: 50, settledX: 100, settledY: 50, ox: 2.3, oy: -1.7 });
+    const visible = nodePosition(n), data = m.data;
+    m.sync(t3Activity([sessionNode("a", { status })], []));
+    expect(nodePosition(n)).toEqual(visible);
+    expect({ x: n.settledX, y: n.settledY }).toEqual(visible);
+    expect([n.ox, n.oy]).toEqual([0, 0]);
+    stepAmbient(m.data.nodes, 5000);
+    expect(nodePosition(n)).toEqual(visible);
+    expect(m.data).toBe(data);
+  });
+
+  it("does not overwrite a user pin when a status poll stops activity", () => {
+    const m = new NetworkModel(); m.sync(t3Activity([sessionNode("a")], []));
+    const n = m.node.get("a")!;
+    Object.assign(n, { x: 90, y: 80, fx: 90, fy: 80, pinned: true, ox: 2, oy: 2 });
+    m.sync(t3Activity([sessionNode("a", { status: "DONE" })], []));
+    expect([n.x, n.y, n.fx, n.fy]).toEqual([90, 80, 90, 80]);
+  });
+
   it("ignores edges whose endpoints are missing", () => {
     const m = new NetworkModel();
     m.sync(t3Activity([sessionNode("a")], [["a", "ghost"]]));

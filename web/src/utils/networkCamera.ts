@@ -1,5 +1,6 @@
 import type { GNode } from "./networkModel";
 import { NODE_BOUNDS } from "./networkPhysics";
+import type { LabelViewport } from "./nodeDraw";
 
 export interface Camera { x: number; y: number; zoom: number }
 export interface CameraApi {
@@ -33,4 +34,15 @@ export function fittedCamera(nodes: GNode[], width: number, height: number): Cam
   const top = 64, bottom = Math.min(84, height * 0.13);
   const zoom = Math.max(0.1, Math.min(maxFitZoom(nodes.length), (width - left - right) / (x1 - x0), (height - top - bottom) / (y1 - y0)));
   return { zoom, x: (x0 + x1) / 2 + (right - left) / (2 * zoom), y: (y0 + y1) / 2 + (bottom - top) / (2 * zoom) };
+}
+
+/** Screen-sized text is placed inside the viewport, without shrinking the whole graph to fit it. */
+export function labelViewport(camera: Camera, width: number, height: number): LabelViewport {
+  const z = camera.zoom;
+  return {
+    left: camera.x + (12 - width / 2) / z,
+    right: camera.x + (width / 2 - 12) / z,
+    top: camera.y + (58 - height / 2) / z,
+    bottom: camera.y + (height / 2 - 16) / z,
+  };
 }

@@ -293,6 +293,7 @@ export interface LabelPlacement {
   x: number; y: number; width: number; height: number; lines: number;
   title: string[]; subtitle: string; font: number; unit: number;
 }
+export interface LabelViewport { left: number; right: number; top: number; bottom: number }
 const SANS = "ui-sans-serif, system-ui, -apple-system, sans-serif";
 
 /** World size of a readable screen-space title. Zooming out simplifies detail before hiding it. */
@@ -344,7 +345,7 @@ function drawNodeLabel(ctx: CanvasRenderingContext2D, l: LabelPlacement, color: 
 
 /** Attention and focus get first choice. Try below/above, simplify, then cull.
  * Layout uses simulation anchors: ambient sway must never jiggle text or change its placement. */
-export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null, ctx?: CanvasRenderingContext2D): Map<string, LabelPlacement> {
+export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null, ctx?: CanvasRenderingContext2D, viewport?: LabelViewport): Map<string, LabelPlacement> {
   const placed = new Map<string, LabelPlacement>();
   const priority = (n: GNode) => n.id === focus ? 4 : n.status === "FAILED" || n.status === "BLOCKED" ? 3 : n.active ? 2 : 1;
   const ordered = [...nodes].sort((a, b) => priority(b) - priority(a) || a.id.localeCompare(b.id));
@@ -353,6 +354,7 @@ export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null 
   for (const n of ordered) {
     if (zoom <= 0.3 && n.id !== focus) continue;
     const x = n.x ?? 0, ny = n.y ?? 0;
+    if (viewport && (x + BODY_CLEAR < viewport.left || x - BODY_CLEAR > viewport.right || ny + BODY_CLEAR < viewport.top || ny - BODY_CLEAR > viewport.bottom)) continue;
     const details = zoom > 0.7 || n.id === focus ? [true, false] : [false];
     let found = false;
     for (const detail of details) {
@@ -362,7 +364,9 @@ export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null 
         { x: x + width * shift, y: ny + gap },
         { x: x + width * shift, y: ny - gap - height },
       ]);
-      for (const p of candidates) {
+      for (const candidate of candidates) {
+        const p = viewport ? { x: Math.max(viewport.left + width / 2, Math.min(viewport.right - width / 2, candidate.x)), y: candidate.y } : candidate;
+        if (viewport && (width > viewport.right - viewport.left || p.y < viewport.top || p.y + height > viewport.bottom)) continue;
         if (bodies.some(b => b.id !== n.id && Math.abs(b.x - p.x) < width / 2 + BODY_CLEAR && b.y + BODY_CLEAR > p.y - 3 && b.y - BODY_CLEAR < p.y + height)) continue;
         if ([...placed.values()].some(q => Math.abs(q.x - p.x) < (q.width + width) / 2 + 4 / zoom && q.y + q.height + 3 > p.y - 3 && p.y + height + 3 > q.y - 3)) continue;
         placed.set(n.id, { ...p, ...content }); found = true; break;

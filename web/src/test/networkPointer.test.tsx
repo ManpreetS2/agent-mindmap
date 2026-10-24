@@ -52,7 +52,7 @@ describe("network pointer", () => {
 
   it("ignores controls and hexagon corner space", () => {
     const { n, result, event } = setup("codex");
-    result.current.onPointerDownCapture(event(123, 122));
+    result.current.onPointerDownCapture(event(133, 132));
     expect(n.dragging).toBeUndefined();
     const control = event(103, 102);
     Object.defineProperty(control, "target", { value: document.createElement("button") });

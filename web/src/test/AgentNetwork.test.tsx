@@ -165,7 +165,7 @@ describe("AgentNetwork", () => {
     view.rerender(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
     expect(fgMock.methods.emitParticle).not.toHaveBeenCalled();
     expect(props().cooldownTicks).toBe(0);
-    expect(props().warmupTicks).toBeGreaterThan(100);
+    expect(props().warmupTicks).toBe(0); // already solved synchronously; do not simulate twice
     expect(props().autoPauseRedraw).toBe(true);
     expect(screen.getByRole("button", { name: /Resume motion/ })).toBeDisabled();
   });
@@ -205,6 +205,20 @@ describe("AgentNetwork", () => {
     expect([n.fx, n.fy, n.pinned]).toEqual([undefined, undefined, false]);
     expect(fgMock.methods.d3ReheatSimulation).toHaveBeenCalled();
     expect(screen.queryByText(/pinned/)).toBeNull();
+  });
+
+  it.each(["paused", "reduced"])("releasing pins under %s motion never starts an animated simulation", mode => {
+    setReduced(mode === "reduced");
+    render(<AgentNetwork {...base} activity={t3Activity(nodes, [])} />);
+    if (mode === "paused") fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
+    const n = gdata().nodes[0]; n.x = 40; n.y = 50;
+    act(() => props().onNodeDragEnd(n));
+    fireEvent.click(screen.getByRole("button", { name: "Release 1 pinned" }));
+    expect(n.pinned).toBe(false);
+    expect(n.settledX).toBe(n.x);
+    expect(n.settledY).toBe(n.y);
+    if (mode === "paused") expect([n.x, n.y]).toEqual([40, 50]);
+    expect(fgMock.methods.d3ReheatSimulation).not.toHaveBeenCalled();
   });
 
   it("selection and background clicks go through the shared inspector callbacks", () => {

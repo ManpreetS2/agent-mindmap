@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
 import { networkForces, releaseSettled, settleLayout, freezeLayout } from "../utils/networkPhysics";
-import { fittedCamera, maxFitZoom, readCamera, restoreCamera, type Camera } from "../utils/networkCamera";
+import { fittedCamera, maxFitZoom, readCamera, restoreCamera, labelViewport, type Camera } from "../utils/networkCamera";
 import { useNetworkPointer } from "../hooks/useNetworkPointer";
 import type { Activity } from "@shared/types";
 import { useFreshEdges } from "../hooks/useFreshEdges";
@@ -13,6 +13,7 @@ import {
   endpointId,
   stepAmbient,
   nodePosition,
+  commitAmbientPosition,
   transitionCaption,
   type GLink,
   type GNode,
@@ -140,8 +141,10 @@ export function AgentNetwork({
     }
     const saved = fgRef.current && (fitted.current || touched.current) ? readCamera(fgRef.current) : null;
     const r = model.sync(activity);
-    if (reduce && model.data.nodes.some(n => n.settledX == null && !n.pinned)) settleLayout(model.data.nodes, model.data.links);
-    if (reduce) for (const n of model.data.nodes) { n.ox = 0; n.oy = 0; }
+    if (reduce) {
+      for (const n of model.data.nodes) commitAmbientPosition(n);
+      if (model.data.nodes.some(n => n.settledX == null && !n.pinned)) settleLayout(model.data.nodes, model.data.links);
+    }
     if (paused) freezeLayout(model.node.values());
     if (!snapshotConnected(activity)) {
       flashes.current.clear();
@@ -292,10 +295,11 @@ export function AgentNetwork({
       const f = flashes.current.get(n.id);
       if (f && now - f.start > FLASH_MS) flashes.current.delete(n.id);
       if (!labelChecked.current || !labelLayout.current) {
-        const key = `${model.revision}|${scale}|${focusId}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
+        const view = fgRef.current && readCamera(fgRef.current);
+        const key = `${model.revision}|${scale}|${focusId}|${view?.x},${view?.y}|${w},${h}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
         if (key !== labelKey.current || !labelLayout.current) {
           labelKey.current = key;
-          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx);
+          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx, view ? labelViewport(view, w, h) : undefined);
         }
         labelChecked.current = true;
       }
@@ -311,7 +315,7 @@ export function AgentNetwork({
     },
     // `redraw` forces a new identity => canvas repaint when facts change in place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusId, neighbors, redraw, motionOn, transient, selectedNodeId, hoveredId],
+    [focusId, neighbors, redraw, motionOn, transient, selectedNodeId, hoveredId, w, h],
   );
 
   const pointerArea = useCallback((n: GNode, color: string, ctx: CanvasRenderingContext2D) => {
@@ -357,6 +361,13 @@ export function AgentNetwork({
     [model],
   );
 
+  const resumeLayout = useCallback(() => {
+    if (reduce) settleLayout(model.data.nodes, model.data.links);
+    else if (paused) freezeLayout(model.node.values());
+    else fgRef.current?.d3ReheatSimulation();
+    setRedraw(v => v + 1);
+  }, [model, reduce, paused]);
+
   const releasePins = useCallback(() => {
     for (const n of model.node.values()) {
       if (n.pinned) {
@@ -367,13 +378,13 @@ export function AgentNetwork({
       }
     }
     setPinCount(0);
-    fgRef.current?.d3ReheatSimulation();
-  }, [model]);
+    resumeLayout();
+  }, [model, resumeLayout]);
 
   const pointer = useNetworkPointer({ fg: fgRef, nodes: data.nodes, onHover: setHoveredId, onSelect: onOpenNodeDetail, onDragEnd, onUnpin: (n) => {
     releaseSettled(n);
     setPinCount([...model.node.values()].filter(n => n.pinned).length);
-    if (motionOn) fgRef.current?.d3ReheatSimulation();
+    resumeLayout();
   }, onDragging: (on) => { if (on) touched.current = true; setDragging(on); } });
   const needsLoop = dragging || (motionOn && (anyActive || transient || fresh.size > 0));
   const hasNodes = data.nodes.length > 0;
@@ -425,7 +436,7 @@ export function AgentNetwork({
           d3VelocityDecay={0.55}
           cooldownTime={Infinity}
           cooldownTicks={!motionOn ? 0 : Infinity}
-          warmupTicks={reduce ? 420 : 0}
+          warmupTicks={0}
           autoPauseRedraw={!needsLoop}
           minZoom={0.1}
           enablePointerInteraction={false}

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { forceSimulation, forceManyBody, forceLink } from "d3-force";
 import { NetworkModel, type GNode, type GLink } from "../utils/networkModel";
 import { networkForces, NODE_BOUNDS, settleLayout } from "../utils/networkPhysics";
-import { fittedCamera, maxFitZoom } from "../utils/networkCamera";
+import { fittedCamera, maxFitZoom, labelViewport } from "../utils/networkCamera";
+import { layoutLabels } from "../utils/nodeDraw";
 import { sessionNode, t3Activity } from "./helpers";
 
 function layout(count: number) {
@@ -98,5 +99,19 @@ describe("network physics", () => {
     expect(maxFitZoom(30)).toBe(1.8);
     expect(widths[5]).toBeGreaterThan(0.5); // a five-agent cluster spans over half the canvas width
     expect(widths[2]).toBeGreaterThan(0.3);
+  });
+
+  it.each([2, 5, 12, 30])("fits screen-sized labels as well as bodies for %i agents on desktop/tablet/phone canvases", count => {
+    const { m, sim } = layout(count); sim.tick(420);
+    for (const n of m.data.nodes) n.task = `Investigate the graph arrival and collision behavior for agent ${n.id}`;
+    for (const [width, height] of [[1160, 782], [536, 878], [390, 355]]) {
+      const c = fittedCamera(m.data.nodes, width, height)!;
+      for (const l of layoutLabels(m.data.nodes, c.zoom, null, undefined, labelViewport(c, width, height)).values()) {
+        expect((l.x - l.width / 2 - c.x) * c.zoom + width / 2).toBeGreaterThanOrEqual(-0.1);
+        expect((l.x + l.width / 2 - c.x) * c.zoom + width / 2).toBeLessThanOrEqual(width + 0.1);
+        expect((l.y - c.y) * c.zoom + height / 2).toBeGreaterThanOrEqual(57.9);
+        expect((l.y + l.height - c.y) * c.zoom + height / 2).toBeLessThanOrEqual(height - 15.9);
+      }
+    }
   });
 });
