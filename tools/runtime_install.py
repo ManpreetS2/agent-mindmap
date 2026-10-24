@@ -38,7 +38,7 @@ COLLECTOR_LABEL = "com.manpreets2.agent-mindmap-collector"
 COLLECTOR_STATE = Path.home() / ".local" / "state" / "agent-mindmap-collector"
 PUBLISHER_STATE = Path.home() / ".local" / "state" / "agent-mindmap-publisher"
 PORT = 8799
-SHIPPED = ("ingest", "tools", "schema", "config", "fixtures", "pyproject.toml", "web")
+SHIPPED = ("ingest", "tools", "schema", "shared", "config", "fixtures", "pyproject.toml", "web")
 PYTHON = os.environ.get("AGENT_MINDMAP_PYTHON") or str(Path.home() / ".local" / "bin" / "python3.12")
 PATH_ENV = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 

@@ -174,3 +174,10 @@ def test_sleep_wake_and_disconnects_cannot_fabricate_a_fresh_observation():
     src = {"generated_at": old, "meta": {"t3": {"connection": "connected"}}}
     apply_last_poll(src, "http://127.0.0.1:1/activity.json")   # unreachable healthz
     assert src["generated_at"] == old
+
+
+def test_release_ships_everything_the_web_build_and_collector_import():
+    assert {"ingest", "tools", "schema", "shared", "config", "fixtures", "web"} <= set(ri.SHIPPED)
+    tracked = subprocess.run(["git", "ls-files", *ri.SHIPPED], cwd=ri.REPO, capture_output=True, text=True,
+                             check=True).stdout
+    assert "shared/types.ts" in tracked and "config/bots.json" in tracked and "fixtures/t3-demo.json" in tracked
