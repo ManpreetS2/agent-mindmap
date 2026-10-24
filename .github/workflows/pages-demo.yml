@@ -27,6 +27,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python test and schema dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Validate Python tests
+        run: python -m pytest -q
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -35,6 +43,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install locked frontend dependencies
         run: npm ci --prefix web
+      - name: Validate frontend tests
+        run: npm test --prefix web -- --maxWorkers=2 --minWorkers=1
       - name: Build app for GitHub Pages subpath
         run: npm run build --prefix web -- --base /agent-mindmap/
       - name: Generate public-safe synthetic T3 activity fixture
