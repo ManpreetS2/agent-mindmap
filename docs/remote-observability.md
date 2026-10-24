@@ -115,3 +115,18 @@ any Pages build.
 
 The private repository's default branch must be `main` (the publisher always pushes `main`). The 9-minute heartbeat
 stays below the 15-minute trust window, so an idle but healthy Mac never looks stale.
+
+
+## Stable runtime and persistent collector (staged; activation needs approval)
+
+    python -m tools.runtime_install build      # venv + immutable release of COMMITTED code in ~/.local/share/agent-mindmap-runtime
+    python -m tools.runtime_install status
+    python -m tools.runtime_install activate --yes-i-approved-persistent-collector
+    python -m tools.runtime_install deactivate
+
+`build` starts nothing and `stage`d plists live in `<runtime>/staged`, outside `~/Library/LaunchAgents`.
+`activate` (1) stops only the manual collector on 8799 if it is recognisably ours, (2) loads the collector
+LaunchAgent (RunAtLoad, restart only after a crash/retryable failure, 30 s throttle, loopback 127.0.0.1:8799, fixed
+T3 URL, no port argument) and waits for a live T3 poll, then (3) reloads the existing publisher job from the runtime.
+Any failure unloads the collector; the publisher plist is restored. Credentials in ~/.config/agent-mindmap are not moved.
+Upgrade: commit, `build` again (new release, `current` switches atomically), `deactivate`/`activate` or `launchctl kickstart`.

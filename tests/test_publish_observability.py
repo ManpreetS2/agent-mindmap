@@ -307,7 +307,7 @@ def _serve(routes):
     import threading
 
     class H(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
+        def do_GET(self):
             body = routes.get(self.path)
             self.send_response(200 if body is not None else 404)
             self.end_headers()
