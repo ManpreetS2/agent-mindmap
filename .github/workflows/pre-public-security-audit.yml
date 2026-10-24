@@ -64,6 +64,11 @@ jobs:
           print(f"Full-history audit: {len(findings)} potential secret exposures")
           for rule, count in sorted(counts.items()):
               print(f"  Rule category: {rule} — {count}")
+          for finding in findings[:50]:
+              file = str(finding.get("File", "unknown"))[:160].replace("\\n", " ")
+              location = finding.get("StartLine", "?")
+              commit = str(finding.get("Commit", "unknown"))[:12]
+              print(f"  Finding location (NO SECRET): file={file} line={location} commit={commit} rule={finding.get('RuleID')}")
           if findings:
               print("NOT SAFE TO MAKE PUBLIC until these findings are investigated and any exposed credentials revoked.")
               raise SystemExit(1)
