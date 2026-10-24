@@ -2,7 +2,7 @@ import type { Status } from "@shared/types";
 import { nodePosition, type GNode } from "./networkModel";
 
 /** Body radius in world units (the library multiplies by zoom). Fit zoom is >1 for small graphs. */
-export const NODE_R = 19;
+export const NODE_R = 26;
 /** Scale for hand-tuned glyph geometry that was drawn for the original 15-unit radius. */
 const K = NODE_R / 15;
 
@@ -88,20 +88,26 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
   ctx.fill();
 
   // Status ring.
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = sc;
+  // A quiet track remains visible behind each state, including dashed stale/blocked rings.
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = hexA(sc, 0.18);
+  ctx.beginPath();
+  ctx.arc(x, y, NODE_R + 7, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = n.active || n.status === "BLOCKED" || n.status === "FAILED" ? 2.5 : 1.6;
+  ctx.strokeStyle = hexA(sc, faded ? 0.65 : n.status === "IDLE" ? 0.55 : 0.95);
   ctx.setLineDash(faded ? [3, 3] : n.status === "BLOCKED" ? [6, 3.5] : []);
   ctx.beginPath();
-  ctx.arc(x, y, NODE_R + 6, 0, Math.PI * 2);
+  ctx.arc(x, y, NODE_R + 7, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
   if (n.active && s.t !== null) {
     // A short bright arc orbiting the ring: "reported in progress", not data flow.
     const a = s.t / 900 + n.phase * 6.28;
     ctx.beginPath();
-    ctx.arc(x, y, NODE_R + 6, a, a + 0.9);
-    ctx.lineWidth = 3.8;
-    ctx.strokeStyle = "#ffffff";
+    ctx.arc(x, y, NODE_R + 7, a, a + 0.55);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#c9dcff";
     ctx.globalAlpha = s.alpha * 0.85;
     ctx.stroke();
     ctx.globalAlpha = s.alpha;
@@ -109,24 +115,26 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
 
   // Body: lit from the upper left, rim-light on the edge.
   const g = ctx.createRadialGradient(x - NODE_R * 0.35, y - NODE_R * 0.45, 2, x, y, NODE_R * 1.15);
-  g.addColorStop(0, hexA(color, lit ? 0.7 : 0.58));
-  g.addColorStop(0.55, hexA(color, 0.2));
+  g.addColorStop(0, hexA(color, lit ? 0.44 : 0.28));
+  g.addColorStop(0.55, hexA(color, 0.09));
   g.addColorStop(1, "#0d121b");
   bodyPath(ctx, n, NODE_R);
+  ctx.fillStyle = "#111a29";
+  ctx.fill();
   ctx.fillStyle = g;
   ctx.fill();
-  ctx.lineWidth = 2.4;
-  ctx.strokeStyle = color;
+  ctx.lineWidth = lit ? 2 : 1.5;
+  ctx.strokeStyle = hexA(color, lit ? 1 : 0.85);
   ctx.stroke();
   bodyPath(ctx, n, NODE_R - 3);
   ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
   ctx.stroke();
 
   // Glyph: status mark inside the body (never colour alone).
   ctx.fillStyle = "#f4f7fb";
   ctx.strokeStyle = "#f4f7fb";
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.2;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   if (n.status === "FAILED") {
@@ -180,66 +188,61 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
     drawTag(ctx, s.flash.caption, x, y - NODE_R - 22 / s.zoom, s.flash.color, s.zoom);
   }
 
-  // Labels (level of detail by zoom): task title first, then "Provider · model".
-  ctx.globalAlpha = s.alpha * (faded ? 0.8 : 1);
-  const fs = labelFont(s.zoom);
-  const label = s.label === undefined ? layoutLabels([n], s.zoom, s.selected || s.hovered ? n.id : null).get(n.id) : s.label;
-  if (label) {
-    const { x: lx, y: ly, lines } = label;
-    const maxW = labelTextWidth(s.zoom);
-    ctx.font = `600 ${fs}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-    const title = fitText(ctx, n.task ?? n.providerName, maxW);
-    const w1 = ctx.measureText(title).width;
-    const subFont = fs * 0.85;
-    let provider = "", model = "", wProvider = 0, wModel = 0, gap = 0;
-    if (lines >= 2) {
-      ctx.font = `700 ${subFont}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-      provider = n.providerName;
-      wProvider = ctx.measureText(provider).width;
-      gap = subFont * 0.6;
-      ctx.font = `500 ${subFont}px ui-monospace, Menlo, monospace`;
-      model = fitText(ctx, n.model ?? "model not reported", Math.max(40, maxW - wProvider - gap));
-      wModel = ctx.measureText(model).width;
-    }
-    const pillW = Math.max(w1, wProvider + gap + wModel) + fs * 1.1;
-    ctx.fillStyle = "rgba(8,11,18,0.74)";
-    roundRect(ctx, lx - pillW / 2, ly - 3, pillW, label.height + 2, fs * 0.55);
-    ctx.fill();
-    ctx.textBaseline = "top";
-    ctx.textAlign = "center";
-    ctx.font = `600 ${fs}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = "#eef2f9";
-    ctx.fillText(title, lx, ly);
-    if (lines >= 2) {
-      const startX = lx - (wProvider + gap + wModel) / 2;
-      ctx.textAlign = "left";
-      ctx.font = `700 ${subFont}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-      ctx.fillStyle = color;
-      ctx.fillText(provider, startX, ly + fs * 1.4);
-      ctx.font = `500 ${subFont}px ui-monospace, Menlo, monospace`;
-      ctx.fillStyle = "#aab4c8";
-      ctx.fillText(model, startX + wProvider + gap, ly + fs * 1.4);
-      ctx.textAlign = "center";
-    }
+  // A small pin mark remains visible without competing with the status glyph.
+  if (n.pinned) {
+    const px = x + NODE_R * 0.86, py = y - NODE_R * 0.86;
+    ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "#18283c"; ctx.fill();
+    ctx.strokeStyle = "#b9d3f5"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px - 2, py - 2); ctx.lineTo(px + 2, py - 2);
+    ctx.moveTo(px, py - 2); ctx.lineTo(px, py + 3); ctx.stroke();
   }
+
+  // Labels stay still while the body sways. Real measured text determines the occupied rectangle.
+  ctx.globalAlpha = s.alpha * (faded ? 0.8 : 1);
+  const label = s.label === undefined ? layoutLabels([n], s.zoom, lit ? n.id : null, ctx).get(n.id) : s.label;
+  if (label) {
+    if (label.y < y || Math.abs(label.x - x) > 2) {
+      // A quiet tether keeps a displaced label associated with its own agent.
+      const above = label.y < y;
+      const edgeY = above ? label.y + label.height : label.y;
+      ctx.beginPath(); ctx.moveTo(x, y + (above ? -1 : 1) * (NODE_R + 10));
+      ctx.lineTo(label.x, edgeY); ctx.lineWidth = 0.7 * label.unit;
+      ctx.strokeStyle = hexA(color, 0.25); ctx.stroke();
+    }
+    drawNodeLabel(ctx, label, color, lit);
+  }
+
   ctx.restore();
 }
 
-// Bounded shared cache: no measureText calls per animated frame for unchanged labels.
+// Bounded caches avoid shaping/measuring the same text on every animation frame.
 const textCache = new Map<string, string>();
+const widthCache = new Map<string, number>();
+export function textWidth(ctx: CanvasRenderingContext2D, text: string): number {
+  const key = `${ctx.font}|${text}`;
+  const cached = widthCache.get(key);
+  if (cached !== undefined) return cached;
+  const width = ctx.measureText(text).width;
+  if (widthCache.size >= 2048) widthCache.clear();
+  widthCache.set(key, width);
+  return width;
+}
 export function fitText(ctx: CanvasRenderingContext2D, text: string, width: number): string {
   const key = `${ctx.font}|${width}|${text}`;
   const cached = textCache.get(key);
   if (cached !== undefined) return cached;
   let result = text;
-  if (ctx.measureText(text).width > width) {
-    let lo = 0, hi = text.length;
+  if (textWidth(ctx, text) > width) {
+    // Slice code points, never split a surrogate pair in a task title.
+    const chars = Array.from(text);
+    let lo = 0, hi = chars.length;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      if (ctx.measureText(text.slice(0, mid) + "…").width <= width) lo = mid;
+      if (textWidth(ctx, chars.slice(0, mid).join("") + "…") <= width) lo = mid;
       else hi = mid - 1;
     }
-    result = text.slice(0, lo) + "…";
+    result = chars.slice(0, lo).join("") + "…";
   }
   if (textCache.size >= 2048) textCache.clear();
   textCache.set(key, result);
@@ -257,10 +260,10 @@ export function containsNode(n: GNode, x: number, y: number): boolean {
 
 export function drawTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string, zoom: number): void {
   const unit = 1 / Math.max(0.1, Math.min(6, zoom));
-  ctx.font = `700 ${9 * unit}px ui-sans-serif, system-ui, sans-serif`;
-  const w = ctx.measureText(text).width + 10 * unit;
+  ctx.font = `700 ${11 * unit}px ui-sans-serif, system-ui, sans-serif`;
+  const w = textWidth(ctx, text) + 16 * unit;
   ctx.fillStyle = "rgba(14,18,26,0.92)";
-  roundRect(ctx, x - w / 2, y - 8 * unit, w, 16 * unit, 7 * unit);
+  roundRect(ctx, x - w / 2, y - 11 * unit, w, 22 * unit, 7 * unit);
   ctx.fill();
   ctx.lineWidth = unit;
   ctx.strokeStyle = color;
@@ -286,43 +289,85 @@ export function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-export interface LabelPlacement { x: number; y: number; width: number; height: number; lines: number }
-
-/** Primary label size in WORLD units so it lands at a readable SCREEN size (13px, easing down when zoomed out). */
-export function labelFont(zoom: number): number {
-  const z = Math.max(0.2, zoom);
-  const px = z >= 0.8 ? 13 : z >= 0.5 ? 12 : 11;
-  return px / z;
+export interface LabelPlacement {
+  x: number; y: number; width: number; height: number; lines: number;
+  title: string[]; subtitle: string; font: number; unit: number;
 }
-/** Text and collision envelopes share screen-space dimensions at every zoom. */
-function labelTextWidth(zoom: number): number {
-  return 168 / Math.max(0.2, zoom);
+const SANS = "ui-sans-serif, system-ui, -apple-system, sans-serif";
+
+/** World size of a readable screen-space title. Zooming out simplifies detail before hiding it. */
+export function labelFont(zoom: number): number {
+  return (zoom >= 0.8 ? 14 : zoom >= 0.5 ? 12.5 : 11.5) / Math.max(0.2, zoom);
 }
 const BODY_CLEAR = NODE_R + 14;
 
-/** Selected/hovered agents get first choice, followed by agents needing attention. Labels
- * simplify before being culled; the DOM roster always retains every full task and model. */
-export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null): Map<string, LabelPlacement> {
+function labelContent(n: GNode, zoom: number, focus: boolean, count: number, detail: boolean, ctx?: CanvasRenderingContext2D) {
+  const unit = 1 / Math.max(0.2, zoom), font = labelFont(zoom);
+  const maxWidth = (focus ? 224 : count <= 5 ? 204 : 168) * unit;
+  const raw = n.task ?? n.label ?? n.providerName;
+  if (ctx) ctx.font = `600 ${font}px ${SANS}`;
+  const measure = (text: string) => ctx ? textWidth(ctx, text) : Array.from(text).length * font * 0.58;
+  const fit = (text: string) => ctx ? fitText(ctx, text, maxWidth) : text.length * font * 0.58 <= maxWidth ? text : text.slice(0, Math.max(1, Math.floor(maxWidth / (font * 0.58)) - 1)) + "…";
+  const title: string[] = [];
+  // Two title lines give small networks useful task names, without crowding dense overviews.
+  if (detail && (focus || count <= 5) && measure(raw) > maxWidth) {
+    let split = raw.lastIndexOf(" ", fit(raw).length - 1);
+    if (split < 1) split = Math.max(1, fit(raw).length - 1);
+    title.push(fit(raw.slice(0, split)), fit(raw.slice(split).trim()));
+  } else title.push(fit(raw));
+  let width = Math.max(...title.map(measure));
+  let subtitle = "";
+  if (detail) {
+    if (ctx) ctx.font = `500 ${10.5 * unit}px ${SANS}`;
+    const rawSub = `${n.providerName} · ${n.model ?? "model not reported"}`;
+    subtitle = ctx ? fitText(ctx, rawSub, maxWidth) : rawSub.slice(0, Math.floor(maxWidth / (6 * unit)));
+    width = Math.max(width, ctx ? textWidth(ctx, subtitle) : subtitle.length * 6 * unit);
+  }
+  return { title, subtitle, font, unit, width: Math.min(maxWidth, width) + 16 * unit,
+    height: title.length * font * 1.25 + (subtitle ? 16 * unit : 0) + 8 * unit,
+    lines: title.length + Number(Boolean(subtitle)) };
+}
+
+function drawNodeLabel(ctx: CanvasRenderingContext2D, l: LabelPlacement, color: string, lit: boolean): void {
+  const { x, y, width, height, font, unit, title, subtitle } = l;
+  ctx.fillStyle = lit ? "rgba(12,20,33,0.96)" : "rgba(8,13,22,0.72)";
+  roundRect(ctx, x - width / 2, y, width, height, 6 * unit); ctx.fill();
+  if (lit) { ctx.strokeStyle = hexA(color, 0.32); ctx.lineWidth = unit; ctx.stroke(); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.font = `600 ${font}px ${SANS}`; ctx.fillStyle = "#edf2fa";
+  title.forEach((text, i) => ctx.fillText(text, x, y + 4 * unit + i * font * 1.25));
+  if (subtitle) {
+    ctx.font = `500 ${10.5 * unit}px ${SANS}`; ctx.fillStyle = color;
+    ctx.fillText(subtitle, x, y + 6 * unit + title.length * font * 1.25);
+  }
+}
+
+/** Attention and focus get first choice. Try below/above, simplify, then cull.
+ * Layout uses simulation anchors: ambient sway must never jiggle text or change its placement. */
+export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null, ctx?: CanvasRenderingContext2D): Map<string, LabelPlacement> {
   const placed = new Map<string, LabelPlacement>();
-  const fs = labelFont(zoom);
   const priority = (n: GNode) => n.id === focus ? 4 : n.status === "FAILED" || n.status === "BLOCKED" ? 3 : n.active ? 2 : 1;
   const ordered = [...nodes].sort((a, b) => priority(b) - priority(a) || a.id.localeCompare(b.id));
-  const bodies = nodes.map(n => ({ id: n.id, ...nodePosition(n) }));
-  const width = labelTextWidth(zoom) + fs * 1.1;
-  const gap = NODE_R + 13 + 6 / Math.max(0.2, zoom);
+  const bodies = nodes.map(n => ({ id: n.id, x: n.x ?? 0, y: n.y ?? 0 }));
+  const gap = NODE_R + 14 + 5 / Math.max(0.2, zoom);
   for (const n of ordered) {
     if (zoom <= 0.3 && n.id !== focus) continue;
-    const p = nodePosition(n);
-    const maxLines = zoom > 0.7 || n.id === focus ? 2 : 1;
+    const x = n.x ?? 0, ny = n.y ?? 0;
+    const details = zoom > 0.7 || n.id === focus ? [true, false] : [false];
     let found = false;
-    for (let lines = maxLines; lines >= 1 && !found; lines--) {
-      const height = fs * (lines === 2 ? 2.5 : 1.3) + 4;
-      for (const y of [p.y + gap, p.y - gap - height]) {
-        const rect = { x: p.x, y, width, height, lines };
-        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - rect.x) < width / 2 + BODY_CLEAR && b.y + BODY_CLEAR > y - 3 && b.y - BODY_CLEAR < y + height)) continue;
-        if ([...placed.values()].some(q => Math.abs(q.x - rect.x) < (q.width + width) / 2 + 4 / zoom && q.y + q.height + 3 > y - 3 && y + height + 3 > q.y - 3)) continue;
-        placed.set(n.id, rect); found = true; break;
+    for (const detail of details) {
+      const content = labelContent(n, zoom, n.id === focus, nodes.length, detail, ctx);
+      const { width, height } = content;
+      const candidates = [0, -0.35, 0.35].flatMap(shift => [
+        { x: x + width * shift, y: ny + gap },
+        { x: x + width * shift, y: ny - gap - height },
+      ]);
+      for (const p of candidates) {
+        if (bodies.some(b => b.id !== n.id && Math.abs(b.x - p.x) < width / 2 + BODY_CLEAR && b.y + BODY_CLEAR > p.y - 3 && b.y - BODY_CLEAR < p.y + height)) continue;
+        if ([...placed.values()].some(q => Math.abs(q.x - p.x) < (q.width + width) / 2 + 4 / zoom && q.y + q.height + 3 > p.y - 3 && p.y + height + 3 > q.y - 3)) continue;
+        placed.set(n.id, { ...p, ...content }); found = true; break;
       }
+      if (found) break;
     }
   }
   return placed;

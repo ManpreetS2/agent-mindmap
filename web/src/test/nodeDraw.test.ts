@@ -22,11 +22,11 @@ const node = (over: Partial<GNode> = {}): GNode => ({
 const st = { t: 1000, selected: false, alpha: 1, hovered: false, flash: null, zoom: 1 };
 
 describe("drawNode", () => {
-  it.each([0.1, 0.6, 1, 1.8, 6])("keeps captions at nine screen pixels at zoom %s", zoom => {
+  it.each([0.1, 0.6, 1, 1.8, 6])("keeps captions at eleven screen pixels at zoom %s", zoom => {
     const { c, calls } = ctx();
     drawTag(c, "RESUMED", 0, 0, "#fff", zoom);
     const font = calls.find(v => v.startsWith("set:font="))!;
-    expect(Number(font.match(/700 ([\d.]+)px/)![1]) * zoom).toBeCloseTo(9);
+    expect(Number(font.match(/700 ([\d.]+)px/)![1]) * zoom).toBeCloseTo(11);
     for (const [x, y] of [[150, 0], [0, 150], [100, 100], [-100, 100]]) {
       const s = node({ x: 0, y: 0 }), t = node({ x, y });
       const w = 100 / zoom, h = 16 / zoom;
@@ -40,10 +40,10 @@ describe("drawNode", () => {
   });
   it("culls crowded labels at 85px spacing and never masks neighbouring bodies", () => {
     const nodes = Array.from({ length: 30 }, (_, i) => node({ id: String(i), x: (i % 5) * 85, y: Math.floor(i / 5) * 85 }));
-    const labels = layoutLabels(nodes, 1.5, "12");
+    const labels = layoutLabels(nodes, 1.5, "2");
     expect(labels.size).toBeGreaterThan(0);
     expect(labels.size).toBeLessThan(30);
-    expect(labels.has("12")).toBe(true);
+    expect(labels.has("2")).toBe(true);
     for (const [id, l] of labels) for (const n of nodes) {
       if (id === n.id) continue;
       expect(Math.abs(n.x! - l.x) >= l.width / 2 + NODE_R + 14 || n.y! + NODE_R + 14 <= l.y - 3 || n.y! - NODE_R - 14 >= l.y + l.height).toBe(true);
@@ -57,8 +57,8 @@ describe("drawNode", () => {
       const labels = [...layoutLabels(nodes, zoom).values()];
       expect(labels.length).toBeGreaterThan(0);
       for (const l of labels) {
-        expect(l.width * zoom).toBeGreaterThan(168);
-        expect(l.width * zoom).toBeLessThan(184);
+        expect(l.width * zoom).toBeGreaterThan(60);
+        expect(l.width * zoom).toBeLessThanOrEqual(184);
       }
       for (let i = 0; i < labels.length; i++) for (const b of labels.slice(i + 1)) {
         const a = labels[i];
@@ -136,7 +136,7 @@ describe("drawNode", () => {
     expect(containsNode(circle, -3 - (NODE_R + 8), -2)).toBe(false); // just outside ring + gutter
     const hex = node({ provider: "codex", x: 0, y: 0, active: false });
     expect(containsNode(hex, 0, 21)).toBe(true);
-    expect(containsNode(hex, 19, 19)).toBe(false);
+    expect(containsNode(hex, NODE_R, NODE_R)).toBe(false);
     hex.x = 100;
     expect(containsNode(hex, 0, 0)).toBe(false);
     expect(containsNode(hex, 100, 0)).toBe(true);
@@ -152,6 +152,28 @@ describe("drawNode", () => {
     const calls = measureText.mock.calls.length;
     expect(fitText(c, text, 154)).toBe(clipped);
     expect(measureText).toHaveBeenCalledTimes(calls);
+  });
+
+  it("wraps small-network titles and measures unchanged animated labels only once", () => {
+    const measureText = vi.fn((text: string) => ({ width: Array.from(text).length * 7 }));
+    const c = { font: "", measureText } as unknown as CanvasRenderingContext2D;
+    const n = node({ task: "Inspect the delegate arrival collision regression", model: "graph-test-model" });
+    const first = layoutLabels([n], 1.03, null, c).get(n.id)!;
+    expect(first.title).toHaveLength(2);
+    expect(first.subtitle).toContain("Claude");
+    expect(first.font * 1.03).toBeCloseTo(14);
+    const calls = measureText.mock.calls.length;
+    expect(calls).toBeGreaterThan(0);
+    n.ox = 2.4; n.oy = -1.8;
+    expect(layoutLabels([n], 1.03, null, c).get(n.id)).toEqual(first);
+    expect(measureText).toHaveBeenCalledTimes(calls);
+  });
+
+  it("truncates Unicode titles without splitting surrogate pairs", () => {
+    const measureText = (text: string) => ({ width: Array.from(text).length * 7 });
+    const c = { font: "unicode-test", measureText } as unknown as CanvasRenderingContext2D;
+    const result = fitText(c, "🧪🧪🧪🧪🧪🧪🧪🧪", 30);
+    expect(result).toBe("🧪🧪🧪…");
   });
 
   it("helpers", () => {

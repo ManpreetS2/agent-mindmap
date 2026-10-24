@@ -17,14 +17,14 @@ import {
   type GLink,
   type GNode,
 } from "../utils/networkModel";
-import { NODE_R, STATUS_COLOR, bodyPath, drawNode, hexA, linkCaptionPosition, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
+import { NODE_R, STATUS_COLOR, bodyPath, drawNode, layoutLabels, type LabelPlacement } from "../utils/nodeDraw";
+import { drawNetworkLink } from "../utils/networkEdges";
 import { AgentRoster } from "./AgentRoster";
 import "../styles/networkCanvas.css";
 
 const FLASH_MS = 2400;
 const FRESH_LINK_COLOR = "#8fb4ff";
 const replaceCanvas = () => "replace" as const;
-const afterCanvas = () => "after" as const;
 const noLabel = () => "";
 const particleColor = () => "#e8f0ff";
 
@@ -121,8 +121,8 @@ export function AgentNetwork({
     }
   }, []);
   const { w, h } = useSize(hostRef, beforeResize);
-  const live = useRef({ selected: selectedNodeId, hovered: hoveredId, motionOn, fresh });
-  live.current = { selected: selectedNodeId, hovered: hoveredId, motionOn, fresh };
+  const live = useRef({ selected: selectedNodeId, hovered: hoveredId, motionOn, fresh, simulated: activity.meta.t3?.mode === "demo" });
+  live.current = { selected: selectedNodeId, hovered: hoveredId, motionOn, fresh, simulated: activity.meta.t3?.mode === "demo" };
 
   // --- sync model with each snapshot (layout effect: before paint, runs once per snapshot) ---
   useLayoutEffect(() => {
@@ -195,9 +195,12 @@ export function AgentNetwork({
   }, [model]);
 
   const labelLayout = useRef<Map<string, LabelPlacement> | null>(null);
+  const labelKey = useRef("");
+  const labelChecked = useRef(false);
+  const frameTime = useRef(0);
   const anyActive = useMemo(() => data.nodes.some((n) => n.active), [data, redraw]); // eslint-disable-line react-hooks/exhaustive-deps
   const stepFrame = useCallback(() => {
-    labelLayout.current = null;
+    labelChecked.current = false;
     const fg = fgRef.current;
     // The library may have auto-scaled while applying graphData. Restore before painting.
     const initialized = fg?.d3Force("link")?.links() === model.data.links;
@@ -210,6 +213,7 @@ export function AgentNetwork({
     const zoomCap = maxFitZoom(model.data.nodes.length);
     if (fg && !fitted.current && !touched.current && fg.zoom() > zoomCap) fg.zoom(zoomCap, 0);
     const time = ambientClock.step(performance.now(), live.current.motionOn);
+    frameTime.current = time;
     if (live.current.motionOn) stepAmbient(model.node.values(), time);
     for (const id of queuedParticles.current) {
       const link = model.data.links.find(l => l.id === id);
@@ -287,14 +291,22 @@ export function AgentNetwork({
       const now = performance.now();
       const f = flashes.current.get(n.id);
       if (f && now - f.start > FLASH_MS) flashes.current.delete(n.id);
+      if (!labelChecked.current || !labelLayout.current) {
+        const key = `${model.revision}|${scale}|${focusId}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
+        if (key !== labelKey.current || !labelLayout.current) {
+          labelKey.current = key;
+          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx);
+        }
+        labelChecked.current = true;
+      }
       drawNode(ctx, n, {
-        t: live.current.motionOn ? now : null,
+        t: live.current.motionOn ? frameTime.current : null,
         selected: live.current.selected === n.id,
         hovered: live.current.hovered === n.id,
-        alpha: !focusId || n.id === focusId || neighbors.has(n.id) ? 1 : 0.22,
-        flash: f && now - f.start <= FLASH_MS ? { caption: f.caption, age: now - f.start, color: f.color } : null,
+        alpha: !focusId || n.id === focusId || neighbors.has(n.id) || (f && now - f.start <= FLASH_MS) ? 1 : 0.24,
+        flash: f && now - f.start <= FLASH_MS ? { caption: live.current.simulated ? `DEMO · ${f.caption}` : f.caption, age: now - f.start, color: f.color } : null,
         zoom: scale,
-        label: (labelLayout.current ??= layoutLabels(model.data.nodes, scale, live.current.hovered ?? live.current.selected)).get(n.id) ?? null,
+        label: labelLayout.current.get(n.id) ?? null,
       });
     },
     // `redraw` forces a new identity => canvas repaint when facts change in place.
@@ -325,43 +337,13 @@ export function AgentNetwork({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [focusId, fresh],
   );
-  const arrowLength = useCallback(() => 7 / Math.max(0.2, fgRef.current?.zoom() ?? 1), []);
-  const arrowPos = useCallback((l: GLink) => {
-    const s = l.source as GNode;
-    const t = l.target as GNode;
-    if (typeof s !== "object" || typeof t !== "object") return 0.8;
-    const d = Math.hypot((t.x ?? 0) - (s.x ?? 0), (t.y ?? 0) - (s.y ?? 0)) || 1;
-    return Math.max(0.5, 1 - (NODE_R + 9) / d);
-  }, []);
-
-  // Fresh-link emphasis: glow + "NEW" tag while the highlight lasts (also the reduced-motion cue).
   const linkCanvas = useCallback(
-    (l: GLink, ctx: CanvasRenderingContext2D, scale: number) => {
-      if (!live.current.fresh.has(l.id)) return;
-      const s = l.source as GNode;
-      const t = l.target as GNode;
-      if (typeof s !== "object" || typeof t !== "object") return;
-      ctx.save();
-      ctx.strokeStyle = hexA(FRESH_LINK_COLOR, 0.35);
-      ctx.lineWidth = 5 / scale;
-      ctx.beginPath();
-      ctx.moveTo(s.x ?? 0, s.y ?? 0);
-      ctx.lineTo(t.x ?? 0, t.y ?? 0);
-      ctx.stroke();
-      const fs = 9 / scale;
-      ctx.font = `700 ${fs}px ui-sans-serif, system-ui, sans-serif`;
-      const label = live.current.fresh.get(l.id) === "new-delegation" ? "NEW DELEGATION" : "Newly observed";
-      const tw = ctx.measureText(label).width + 8 / scale;
-      const { x: mx, y: my } = linkCaptionPosition(s, t, tw, fs * 1.8, scale);
-      ctx.fillStyle = "rgba(14,18,26,0.92)";
-      ctx.fillRect(mx - tw / 2, my - fs * 0.9, tw, fs * 1.8);
-      ctx.fillStyle = FRESH_LINK_COLOR;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, mx, my);
-      ctx.restore();
-    },
-    [fresh],
+    (l: GLink, ctx: CanvasRenderingContext2D, scale: number) => drawNetworkLink(ctx, l, scale, {
+      focused: linkIncident(l), dimmed: focusId !== null && !linkIncident(l),
+      observation: live.current.fresh.get(l.id), simulated: live.current.simulated,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusId, fresh],
   );
 
   const onDragEnd = useCallback(
@@ -429,14 +411,13 @@ export function AgentNetwork({
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkCurvature={0}
-          linkDirectionalArrowLength={arrowLength}
-          linkDirectionalArrowRelPos={arrowPos}
+          linkDirectionalArrowLength={0}
           linkDirectionalArrowColor={linkColor}
           linkDirectionalParticles={noContinuousParticles}
           linkDirectionalParticleSpeed={0.011}
           linkDirectionalParticleWidth={4.5}
           linkDirectionalParticleColor={particleColor}
-          linkCanvasObjectMode={afterCanvas}
+          linkCanvasObjectMode={replaceCanvas}
           linkCanvasObject={linkCanvas}
           d3AlphaMin={0.0002}
           onRenderFramePre={stepFrame}

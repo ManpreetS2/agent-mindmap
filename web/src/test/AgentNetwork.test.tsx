@@ -250,10 +250,8 @@ describe("AgentNetwork", () => {
 
   it("arrows point parent → child and edges are directional but not animated", () => {
     render(<AgentNetwork {...base} activity={t3Activity(nodes, [["a", "b"]])} />);
-    for (const zoom of [0.35, 1, 2.4]) {
-      fgMock.methods.zoom.mockReturnValue(zoom);
-      expect(props().linkDirectionalArrowLength() * zoom).toBeCloseTo(7);
-    }
+    expect(props().linkDirectionalArrowLength).toBe(0); // clipped arrows are custom-painted once
+    expect(props().linkCanvasObjectMode()).toBe("replace");
     const link = gdata().links[0];
     expect([link.source, link.target]).toEqual(["a", "b"]);
     expect(props().linkDirectionalParticles()).toBe(0);
