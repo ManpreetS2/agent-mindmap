@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from ingest.t3 import T3Projection, read_demo
+from tools import machine_identity as mi
 from tools import publish_observability as pub
 
 NOW = datetime(2026, 10, 23, 20, 0, tzinfo=UTC)
@@ -48,7 +49,10 @@ def world(tmp_path, monkeypatch):
     state = tmp_path / "state"
     src = tmp_path / "activity.json"
     src.write_text(json.dumps(snapshot()))
-    return type("W", (), {"bare": bare, "state": state, "src": src, "tmp": tmp_path})
+    config = tmp_path / "config"                      # never the real ~/.config
+    monkeypatch.setenv("AGENT_MINDMAP_CONFIG_DIR", str(config))
+    mi.init_identity("Test Mac", "publisher")
+    return type("W", (), {"bare": bare, "state": state, "src": src, "tmp": tmp_path, "config": config})
 
 
 def run(world, now=NOW, **kw):
