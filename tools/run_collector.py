@@ -15,7 +15,20 @@ import urllib.request
 from pathlib import Path
 
 PORT = 8799
-T3_URL = "http://127.0.0.1:3773/mcp"
+DEFAULT_T3_URL = "http://127.0.0.1:3773/mcp"
+
+
+def _t3_url(raw: str | None) -> str:
+    """The T3 MCP URL differs per install; an env override is accepted only for a loopback http URL."""
+    from urllib.parse import urlparse
+    if raw:
+        u = urlparse(raw)
+        if u.scheme == "http" and u.hostname in {"127.0.0.1", "localhost", "::1"} and not u.username and not u.password:
+            return raw
+    return DEFAULT_T3_URL
+
+
+T3_URL = _t3_url(os.environ.get("AGENT_MINDMAP_T3_URL"))
 STATE = Path(os.environ.get("AGENT_MINDMAP_COLLECTOR_STATE") or Path.home() / ".local" / "state" / "agent-mindmap-collector")
 EX_RETRY = 75           # EX_TEMPFAIL: launchd retries after ThrottleInterval
 LOG_LIMIT = 5_000_000

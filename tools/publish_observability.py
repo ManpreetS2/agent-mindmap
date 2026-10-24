@@ -20,6 +20,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
+from tools import machine_identity as mi
+from tools import publisher_ownership as own
 from tools.export_observability import ROOT, make_feed, write_private
 
 DESTINATION = "ManpreetS2/agent-observability-private"
@@ -49,6 +51,14 @@ NO_REDIRECT = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandl
 
 class PublishError(RuntimeError):
     """A condition we expected and can describe without leaking anything."""
+
+
+class OwnershipRefusal(PublishError):
+    """This Mac must not write the feed (reader role, someone else owns it, malformed owner record...)."""
+
+    def __init__(self, decision: own.Decision):
+        super().__init__(decision.reason)
+        self.decision = decision
 
 
 class CollectorUnavailable(PublishError):
@@ -98,7 +108,7 @@ def verified_destination(repo: str, info: dict) -> bool:
 def comparable(feed: dict) -> dict:
     """What matters for 'did anything change': drop clocks, and the freshness derived from them."""
     c = json.loads(json.dumps(feed))
-    for key in ("exported_at", "observed_at", "trusted_until", "freshness"):
+    for key in ("exported_at", "observed_at", "trusted_until", "freshness", "publisher"):  # lease churn is not a change
         c.pop(key, None)
     return c
 
@@ -117,8 +127,11 @@ def should_publish(previous: dict | None, current: dict, *, now: datetime) -> bo
         prev = datetime.fromisoformat(old)
         if prev.utcoffset() is None:
             return True
-        return (now - prev).total_seconds() >= HEARTBEAT_SEC
-    except ValueError:
+        age = (now - prev).total_seconds()
+        if age < -60:  # a stamp from the future (clock skew or a crafted feed) must never suppress the heartbeat
+            return True
+        return age >= HEARTBEAT_SEC
+    except (ValueError, OverflowError):
         return True
 
 
@@ -274,7 +287,7 @@ def due(state: dict, now: datetime) -> str | None:
     def age(key: str) -> float | None:
         try:
             return (now - datetime.fromisoformat(state[key])).total_seconds()
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, OverflowError):
             return None
     since_success = age("last_success_at")
     if since_success is not None and 0 <= since_success < MIN_INTERVAL_SEC:  # a future stamp is ignored, not obeyed
@@ -288,8 +301,27 @@ def due(state: dict, now: datetime) -> str | None:
     return None
 
 
-def push_snapshot(repo: str, env: dict, feed: dict, body: str, summary: str, now: datetime, attempts: int = 2) -> str:
-    """Fresh shallow clone each attempt; on a rejected push (someone else updated it) re-clone and retry."""
+def load_previous(checkout: Path) -> dict | None:
+    existing = checkout / "latest.json"
+    if existing.is_symlink():
+        raise PublishError("Refusing a symlinked remote feed file")
+    if not existing.exists():
+        return None
+    try:
+        previous = json.loads(existing.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeError, OSError):
+        raise PublishError("Remote feed is malformed: investigate before writing") from None
+    if not isinstance(previous, dict):
+        raise PublishError("Remote feed is malformed: investigate before writing")
+    return previous
+
+
+def push_files(repo: str, env: dict, plan, *, attempts: int = 2,
+               message: str = "chore: update private read-only T3 activity snapshot") -> str:
+    """Fresh shallow clone each attempt. `plan(previous_feed_or_None)` runs on THAT clone and returns either the files to
+    write ({name: text}, allowlisted) or a string meaning 'nothing to do'; it may raise to refuse. On a rejected push
+    (someone else updated the feed) the next attempt re-clones and re-runs `plan`, so every decision is made against
+    the newest remote state."""
     original_umask = os.umask(0o077)
     try:
         for attempt in range(1, attempts + 1):
@@ -297,31 +329,24 @@ def push_snapshot(repo: str, env: dict, feed: dict, body: str, summary: str, now
                 checkout = Path(tmp) / "feed"
                 cmd(["git", *GIT_SAFE, "clone", "--quiet", "--depth", "1", "--template=",
                      f"https://github.com/{repo}.git", str(checkout)], env=env, what="clone")
-                previous = None
-                existing = checkout / "latest.json"
-                if existing.is_symlink():
-                    raise PublishError("Refusing a symlinked remote feed file")
-                if existing.exists():
-                    try:
-                        previous = json.loads(existing.read_text(encoding="utf-8"))
-                    except (ValueError, UnicodeError, OSError):
-                        raise PublishError("Remote feed is malformed: investigate before writing") from None
-                if not should_publish(previous, feed, now=now):
-                    return "NO CHANGE: equivalent to the last upload and the heartbeat is not due; nothing pushed"
-                for name, content in (("latest.json", body), ("summary.md", summary)):
+                files = plan(load_previous(checkout))
+                if isinstance(files, str):
+                    return files
+                if not files or not set(files) <= set(ALLOWED_FILES):
+                    raise PublishError("Planned files are outside the two-file allowlist")
+                for name, content in files.items():
                     target = checkout / name
                     if target.is_symlink():
                         raise PublishError("Refusing to overwrite a symlink")
                     target.write_text(content, encoding="utf-8")
-                cmd(["git", *GIT_SAFE, "add", "--", *ALLOWED_FILES], cwd=checkout, env=env, what="stage")
+                cmd(["git", *GIT_SAFE, "add", "--", *files], cwd=checkout, env=env, what="stage")
                 staged = set(cmd(["git", *GIT_SAFE, "diff", "--cached", "--name-only"], cwd=checkout, env=env,
                                  what="inspect").splitlines())
                 if not staged or not staged <= set(ALLOWED_FILES):
                     raise PublishError("Staged files are outside the two-file allowlist")
                 cmd(["git", *GIT_SAFE, "-c", "user.name=Agent Mindmap",
                      "-c", "user.email=agent-mindmap@users.noreply.github.com", "commit", "--quiet", "--no-verify",
-                     "-m", "chore: update private read-only T3 activity snapshot"],
-                    cwd=checkout, env=env, what="commit")
+                     "-m", message], cwd=checkout, env=env, what="commit")
                 try:
                     cmd(["git", *GIT_SAFE, "push", "--quiet", "origin", "HEAD:refs/heads/main"],
                         cwd=checkout, env=env, what="push")
@@ -334,8 +359,32 @@ def push_snapshot(repo: str, env: dict, feed: dict, body: str, summary: str, now
         os.umask(original_umask)
 
 
+def push_snapshot(repo: str, env: dict, feed: dict, body: str, summary: str, now: datetime, attempts: int = 2, *,
+                  identity: mi.MachineIdentity | None = None, local_epoch: int | None = None,
+                  outcome: dict | None = None) -> str:
+    """Publish the snapshot only if, on the fresh clone, ownership says this Mac may (see tools.publisher_ownership)."""
+    outcome = outcome if outcome is not None else {}
+
+    def plan(previous: dict | None):
+        decision = own.decide(previous, identity, now, local_epoch=local_epoch)
+        outcome["decision"] = decision
+        if decision.action != "publish":
+            raise OwnershipRefusal(decision)
+        outcome["epoch"] = decision.epoch
+        if not should_publish(previous, feed, now=now):
+            return "NO CHANGE: equivalent to the last upload and the heartbeat is not due; nothing pushed"
+        signed = {**feed, "publisher": own.publisher_object(identity, decision.epoch, now)}
+        text = json.dumps(signed, indent=2, ensure_ascii=False) + "\n"
+        if scan_for_sensitive(text):
+            raise PublishError("Sensitive-looking content in the owner record; nothing published")
+        return {"latest.json": text, "summary.md": summary}
+
+    return push_files(repo, env, plan, attempts=attempts)
+
+
 def publish(input_path: Path | None, repo: str, *, for_real: bool, collector_url: str | None = None,
-            state_dir: Path = STATE_DIR, now: datetime | None = None, review_dir: Path | None = None) -> str:
+            state_dir: Path = STATE_DIR, now: datetime | None = None, review_dir: Path | None = None,
+            config_dir: Path | None = None) -> str:
     now = now or datetime.now(UTC)
     try:
         source = read_source(input_path, collector_url)
@@ -353,6 +402,13 @@ def publish(input_path: Path | None, repo: str, *, for_real: bool, collector_url
             write_private(review_dir, "summary.md", summary)
         return f"LOCAL CHECK OK: {review}; sensitive scan clean; nothing uploaded"
 
+    try:
+        identity = mi.load_identity(config_dir)
+    except mi.IdentityError as exc:
+        raise PublishError(str(exc)) from None
+    if identity is None or identity.role != "publisher":
+        return ("SKIPPED: this Mac is not a publisher (role "
+                f"{identity.role if identity else 'unset'}); it never writes the feed")
     env = secure_env()
     with Lock(state_dir):
         state = load_state(state_dir)
@@ -360,22 +416,29 @@ def publish(input_path: Path | None, repo: str, *, for_real: bool, collector_url
         if wait:
             return f"SKIPPED: {wait}"
         state["last_attempt_at"] = now.isoformat()
+        outcome: dict = {}
         try:
             info = json.loads(cmd(["gh", "repo", "view", repo, "--json", "nameWithOwner,visibility,isFork"],
                                   env=env, what="destination check"))
             if not verified_destination(repo, info):
                 raise PublishError("Destination is not the approved PRIVATE repository")
-            result = push_snapshot(repo, env, feed, body, summary, now)
-        except (PublishError, ValueError) as exc:
+            result = push_snapshot(repo, env, feed, body, summary, now, identity=identity,
+                                   local_epoch=own.local_epoch(state), outcome=outcome)
+        except (PublishError, ValueError, OverflowError) as exc:
+            if isinstance(exc, OwnershipRefusal) and exc.decision.superseded_by:
+                own.record_superseded(state, exc.decision.superseded_by, now)
             state["consecutive_failures"] = failure_count(state) + 1
             state["last_error"] = str(exc)[:160]
             save_state(state_dir, state)
             raise
         state["consecutive_failures"] = 0
         state["last_error"] = None
+        if outcome.get("epoch"):
+            own.record_owner(state, outcome["epoch"], now)
         if result == "PUBLISHED":
             state["last_success_at"] = now.isoformat()
             state["last_observed_at"] = feed["observed_at"]
+            state["last_trusted_until"] = feed["trusted_until"]
         save_state(state_dir, state)
         return f"{result}: {review}"
 
@@ -400,7 +463,7 @@ def main() -> int:
         print(publish(args.input, args.repo, for_real=args.for_real, collector_url=args.collector_url,
                       state_dir=args.state_dir, review_dir=args.review_dir))
         return 0
-    except (PublishError, ValueError, OSError) as exc:
+    except (PublishError, ValueError, OverflowError, OSError) as exc:
         print(f"Private publisher stopped: {str(exc)[:180]}")
         return 1
 
