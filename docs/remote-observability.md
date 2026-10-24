@@ -83,7 +83,7 @@ the destination must be exactly that repo and PRIVATE; demo, empty or invalid so
 independent secret/path scan blocks the upload; the staged files must be inside the two-file allowlist; remote
 symlinks or malformed feeds abort; no git hooks or templates run; a rejected push re-clones and retries once;
 one publisher at a time (flock); at least 3 min between uploads; exponential backoff after failures; an unchanged
-snapshot is not committed again (a 15 min heartbeat re-stamps it); if the collector disappears after a success,
+snapshot is not committed again (a 9 min heartbeat re-stamps it; readers must distrust the feed after `trusted_until`, 15 min past the observation); if the collector disappears after a success,
 an explicit `connection: unavailable` feed with no sessions is published once (UNKNOWN, never idle).
 Diagnostics (`last_success_at`, `last_error`, failure count) live in `~/.local/state/agent-mindmap-publisher/state.json`
 and never contain feed content.
@@ -112,3 +112,6 @@ Not public. Options in order of preference: (1) ask ChatGPT, which reads the pri
 authenticated remote access to T3 itself; (3) `ssh -L 8799:127.0.0.1:8799 <your-mac>` from another machine. Never
 tunnel or expose port 3773 (the MCP endpoint) or 8799 publicly, and do not copy the collector's activity.json into
 any Pages build.
+
+The private repository's default branch must be `main` (the publisher always pushes `main`). The 9-minute heartbeat
+stays below the 15-minute trust window, so an idle but healthy Mac never looks stale.

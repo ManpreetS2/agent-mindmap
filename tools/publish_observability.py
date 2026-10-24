@@ -24,7 +24,7 @@ from tools.export_observability import ROOT, make_feed, write_private
 
 DESTINATION = "ManpreetS2/agent-observability-private"
 ALLOWED_FILES = ("latest.json", "summary.md")
-HEARTBEAT_SEC = 15 * 60       # an unchanged feed is re-stamped this often so readers can tell it is alive
+HEARTBEAT_SEC = 9 * 60        # an unchanged feed is re-stamped this often (must stay well under the 15 min trust window)
 MIN_INTERVAL_SEC = 3 * 60     # never publish more often than this, whatever changed
 BACKOFF_SEC = (60, 180, 600, 1800)
 STATE_DIR = Path.home() / ".local" / "state" / "agent-mindmap-publisher"
@@ -32,11 +32,19 @@ MAX_SOURCE_BYTES = 2_000_000
 
 # Anything that looks like a credential, key, or local path must never leave the machine.
 SENSITIVE = re.compile(
-    r"(?i)(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}"
+    r"(?i)((?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}|(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}"
     r"|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|bearer\s+[A-Za-z0-9._~+/=-]{8,}"
     r"|authorization\s*[:=]|(?:api[_-]?key|secret|password|passwd|token)\s*[:=]\s*[A-Za-z0-9._~+/=-]{16,}"
     r"|/Users/[^/\s]+|/home/[^/\s]+|[A-Za-z]:\\Users\\|\.t3[\\/]|\.config[\\/]|\.ssh[\\/])"
 )
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+NO_REDIRECT = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
 
 
 class PublishError(RuntimeError):
@@ -51,7 +59,8 @@ def secure_env() -> dict[str, str]:
     """Use the owner's normal gh login, never a worker's overriding token/config."""
     env = dict(os.environ)
     for key in ("GH_TOKEN", "GITHUB_TOKEN", "GH_CONFIG_DIR", "GH_ENTERPRISE_TOKEN", "GIT_DIR", "GIT_WORK_TREE",
-                "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"):
+                "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_PARAMETERS", "GIT_SSH_COMMAND", "GIT_SSH",
+                "GIT_ASKPASS", "SSH_ASKPASS", "GH_HOST", "GH_REPO"):
         env.pop(key, None)
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_CONFIG_NOSYSTEM"] = "1"
@@ -63,6 +72,8 @@ def cmd(args: list[str], *, env: dict[str, str], cwd: Path | None = None, what: 
         result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, check=False, timeout=90)
     except subprocess.TimeoutExpired:
         raise PublishError(f"{what} timed out") from None
+    except OSError:
+        raise PublishError(f"{what} could not run ({args[0]} missing or not executable)") from None
     if result.returncode != 0:
         # Output can contain remote metadata; never echo it.
         raise PublishError(f"{what} failed (exit {result.returncode})")
@@ -130,7 +141,7 @@ def read_source(input_path: Path | None, collector_url: str | None) -> dict:
             raise PublishError("The collector must be a loopback http URL")
         try:
             req = urllib.request.Request(collector_url, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=10) as response:  # loopback only, checked above
+            with NO_REDIRECT.open(req, timeout=10) as response:  # loopback only, checked above, never redirected
                 raw = response.read(MAX_SOURCE_BYTES + 1)
         except OSError:
             raise CollectorUnavailable("Local collector is not reachable") from None
@@ -227,6 +238,12 @@ def save_state(state_dir: Path, state: dict) -> None:
             os.unlink(temp)
 
 
+def failure_count(state: dict) -> int:
+    """A corrupt counter counts as zero, so one good run repairs it."""
+    value = state.get("consecutive_failures")
+    return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 1000 else 0
+
+
 def due(state: dict, now: datetime) -> str | None:
     """Why a run must wait (rate limit, failure backoff), or None."""
     def age(key: str) -> float | None:
@@ -235,11 +252,11 @@ def due(state: dict, now: datetime) -> str | None:
         except (KeyError, ValueError, TypeError):
             return None
     since_success = age("last_success_at")
-    if since_success is not None and since_success < MIN_INTERVAL_SEC:
+    if since_success is not None and 0 <= since_success < MIN_INTERVAL_SEC:  # a future stamp is ignored, not obeyed
         return f"published {since_success:.0f}s ago; minimum interval is {MIN_INTERVAL_SEC}s"
-    failures = int(state.get("consecutive_failures") or 0)
+    failures = failure_count(state)
     since_attempt = age("last_attempt_at")
-    if failures and since_attempt is not None:
+    if failures and since_attempt is not None and since_attempt >= 0:
         wait = BACKOFF_SEC[min(failures - 1, len(BACKOFF_SEC) - 1)]
         if since_attempt < wait:
             return f"backing off after {failures} failure(s); next try in {wait - since_attempt:.0f}s"
@@ -262,7 +279,7 @@ def push_snapshot(repo: str, env: dict, feed: dict, body: str, summary: str, now
                 if existing.exists():
                     try:
                         previous = json.loads(existing.read_text(encoding="utf-8"))
-                    except (ValueError, UnicodeError):
+                    except (ValueError, UnicodeError, OSError):
                         raise PublishError("Remote feed is malformed: investigate before writing") from None
                 if not should_publish(previous, feed, now=now):
                     return "NO CHANGE: equivalent to the last upload and the heartbeat is not due; nothing pushed"
@@ -325,7 +342,7 @@ def publish(input_path: Path | None, repo: str, *, for_real: bool, collector_url
                 raise PublishError("Destination is not the approved PRIVATE repository")
             result = push_snapshot(repo, env, feed, body, summary, now)
         except (PublishError, ValueError) as exc:
-            state["consecutive_failures"] = int(state.get("consecutive_failures") or 0) + 1
+            state["consecutive_failures"] = failure_count(state) + 1
             state["last_error"] = str(exc)[:160]
             save_state(state_dir, state)
             raise

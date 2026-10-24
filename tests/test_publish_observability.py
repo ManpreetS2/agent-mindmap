@@ -295,3 +295,8 @@ def test_enable_requires_explicit_approval_flag(monkeypatch):
     with pytest.raises(SystemExit):
         ld.main()
     assert calls == []
+
+
+def test_heartbeat_stays_inside_the_trust_window():
+    from tools.export_observability import TRUST_WINDOW_SEC
+    assert pub.HEARTBEAT_SEC + 240 < TRUST_WINDOW_SEC  # worst case: due just after a 240 s launchd tick

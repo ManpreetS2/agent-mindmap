@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 QUOTA_POOLS = ("claude-1", "claude-2", "cursor-premium", "devin-free", "codex")
 QUOTA_FILE = Path.home() / ".config" / "agent-mindmap" / "quota-snapshots.json"
 QUOTA_MAX_AGE_SEC = 24 * 3600
-TRUST_WINDOW_SEC = 20 * 60  # a reader must treat the feed as stale once exported_at is older than this
+TRUST_WINDOW_SEC = 15 * 60  # a reader must treat the feed as stale this long after the OBSERVATION (not the export)
 VALID_STATES = {"IDLE", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE", "UNKNOWN", "FAILED", "STALE"}
 
 
@@ -34,7 +34,7 @@ def load_quota_pools(path: Path | None = QUOTA_FILE, *, now: datetime | None = N
     try:
         raw = json.loads(Path(path).read_text(encoding="utf-8")) if path else {}
         entries = raw.get("pools") if isinstance(raw, dict) else None
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return pools
     if not isinstance(entries, dict):
         return pools
@@ -76,9 +76,14 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
     if generated is None:
         raise ValueError("Invalid observation timestamp")
     current = now or datetime.now(UTC)
-    age = max(0, (current - datetime.fromisoformat(generated)).total_seconds())
+    age = (current - datetime.fromisoformat(generated)).total_seconds()
+    if age < -60:
+        raise ValueError("Observation timestamp is in the future; refusing to call it fresh")
+    age = max(0, age)
     connected = t3.get("connection") == "connected"
     freshness = "fresh" if connected and age <= 120 else "stale"
+    observed_dt = datetime.fromisoformat(generated)
+    trusted_until = observed_dt + timedelta(seconds=TRUST_WINDOW_SEC) if freshness == "fresh" else current
 
     sessions = []
     for node in activity.get("nodes", [])[:500]:
@@ -98,7 +103,7 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
             "pull_request": "UNKNOWN",
             "status": node["status"] if node.get("status") in VALID_STATES else "UNKNOWN",
             "last_activity_at": timestamp(node.get("last_activity_ts")),
-            "stale": bool(session.get("stale")) or not connected,
+            "stale": bool(session.get("stale")) or freshness == "stale",
         })
     sessions.sort(key=lambda s: s["id"])
     known = {s["id"] for s in sessions}
@@ -114,7 +119,7 @@ def make_feed(activity: dict, *, now: datetime | None = None, quota_pools: dict 
         "exported_at": current.isoformat(),
         "freshness": freshness,
         "connection": "connected" if connected else "unavailable",
-        "trusted_until": (current + timedelta(seconds=TRUST_WINDOW_SEC)).isoformat(),
+        "trusted_until": trusted_until.isoformat(),
         "reader_guidance": "Compare the current time with exported_at: past trusted_until, treat every session as "
                            "UNVERIFIED. Absence of a session is not evidence of idleness.",
         "quota": {

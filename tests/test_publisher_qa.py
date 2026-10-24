@@ -1,4 +1,4 @@
-"""Independent QA probes for the private publisher. xfail(strict) = confirmed defect; remove the mark when fixed."""
+"""Independent QA probes for the private publisher (originally strict-xfail defects; all fixed)."""
 import json
 import subprocess
 from datetime import timedelta
@@ -10,14 +10,8 @@ from tools import publish_observability as pub
 from tools.export_observability import make_feed
 
 
-def defect(reason):
-    return pytest.mark.xfail(strict=True, reason=reason)
-
-
-@defect("QA-1: second-scan `sk-` pattern matches inside ordinary words (task-queue, risk-assessment): wedges publishing")
 @pytest.mark.parametrize("branch", ["feature/task-queue-redesign-v2", "Risk-assessment-framework-update"])
 def test_ordinary_branch_names_do_not_block_publishing(branch):
-    raw = snapshot()
     from ingest.t3 import T3Projection, read_demo
     data = read_demo()
     for t in data["threads"]:
@@ -27,38 +21,32 @@ def test_ordinary_branch_names_do_not_block_publishing(branch):
     pub.build(src, NOW)
 
 
-@defect("QA-2: future observed_at is clamped to age 0 and reported fresh")
 def test_future_observation_is_not_fresh():
-    feed, _ = make_feed(snapshot(now=NOW + timedelta(days=3)), now=NOW)
-    assert feed["freshness"] != "fresh"
+    with pytest.raises(ValueError, match="future"):
+        make_feed(snapshot(now=NOW + timedelta(days=3)), now=NOW)
 
 
-@defect("QA-3: trusted_until is exported+20min even when the observation is already stale/old")
 def test_trusted_until_is_bounded_by_observation_age():
     feed, _ = make_feed(snapshot(now=NOW - timedelta(minutes=10)), now=NOW)
     assert feed["freshness"] == "stale"
     assert feed["trusted_until"] <= NOW.isoformat()
 
 
-@defect("QA-4: when the feed is stale (connected but old data) sessions still say stale=false with live-looking status")
 def test_stale_feed_marks_every_session_stale():
     feed, _ = make_feed(snapshot(now=NOW - timedelta(minutes=10)), now=NOW)
     assert feed["freshness"] == "stale"
     assert all(s["stale"] for s in feed["sessions"])
 
 
-@defect("QA-5: corrupt non-numeric consecutive_failures in state.json raises forever (never self-heals)")
 @pytest.mark.parametrize("bad", ["abc", [1], float("nan")])
 def test_corrupt_failure_counter_does_not_wedge(bad):
     pub.due({"consecutive_failures": bad}, NOW)
 
 
-@defect("QA-6: last_success_at in the future (clock stepped back / bad state) blocks publishing until that time")
 def test_future_last_success_does_not_block_forever():
     assert pub.due({"last_success_at": (NOW + timedelta(days=30)).isoformat()}, NOW) is None
 
 
-@defect("QA-7: missing `gh` binary is an uncaught FileNotFoundError: no failure/backoff recorded in state")
 def test_missing_gh_is_recorded_as_a_failure(world, monkeypatch):
     monkeypatch.setenv("PATH", "/nonexistent")
     with pytest.raises((pub.PublishError, OSError)):
@@ -84,7 +72,6 @@ def test_default_branch_other_than_main_is_not_silently_ignored(world):
     assert "latest.json" not in head, "feed is on `main` but repo default branch (master) shows nothing: doc this"
 
 
-@defect("QA-8: remote latest.json being a directory raises IsADirectoryError (push_snapshot:264), not PublishError; no backoff recorded")
 def test_remote_latest_json_as_directory_is_a_clean_failure(world):
     run(world)
     clone = world.tmp / "c"
