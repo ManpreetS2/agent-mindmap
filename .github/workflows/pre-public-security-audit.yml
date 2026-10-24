@@ -69,11 +69,30 @@ jobs:
               location = finding.get("StartLine", "?")
               commit = str(finding.get("Commit", "unknown"))[:12]
               print(f"  Finding location (NO SECRET): file={file} line={location} commit={commit} rule={finding.get('RuleID')}")
-          if findings:
-              print("NOT SAFE TO MAKE PUBLIC until these findings are investigated and any exposed credentials revoked.")
+          # Exact reviewed findings only: three deliberately synthetic redaction-test
+          # values, and a 40-hex Git commit hash mistakenly flagged in a QA report.
+          # Pin commit, path, line, AND detection rule. Any other match is a blocker.
+          reviewed = {
+              ("63cd72cec485", "tests/test_t3_hardening.py", 38, "gitlab-pat"),
+              ("63cd72cec485", "tests/test_t3_hardening.py", 32, "slack-bot-token"),
+              ("63cd72cec485", "tests/test_t3_hardening.py", 33, "slack-app-token"),
+              ("3939d3520c44", "qa-mm009/REPORT.md", 107, "generic-api-key"),
+          }
+          unreviewed = [
+              f for f in findings if (
+                  str(f.get("Commit", ""))[:12],
+                  str(f.get("File", "")),
+                  int(f.get("StartLine", 0)),
+                  str(f.get("RuleID", "")),
+              ) not in reviewed
+          ]
+          print(f"Reviewed synthetic fixture / commit SHA findings: {len(findings) - len(unreviewed)}")
+          print(f"Unreviewed findings: {len(unreviewed)}")
+          if unreviewed or len(findings) != 4:
+              print("BLOCKED: investigate unmatched findings before making the repo public.")
               raise SystemExit(1)
-          if os.environ["STATUS"] == "23":
-              print("Unexpected scanner mismatch; fail closed.")
+          if os.environ["STATUS"] != "23":
+              print("Unexpected scanner status; fail closed.")
               raise SystemExit(2)
-          print("No Gitleaks pattern matches in reachable Git history.")
+          print("Passed: all detected patterns are the four previously reviewed false positives.")
           PY
