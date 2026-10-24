@@ -567,6 +567,10 @@ class MindmapHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/observability.json":
+            self._send_observability()
+            return
+
         if path != "/" and ".." in path:
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
@@ -587,6 +591,28 @@ class MindmapHandler(BaseHTTPRequestHandler):
         elif file_path.suffix == ".json":
             content_type = "application/json; charset=utf-8"
         self._send_bytes(HTTPStatus.OK, data, content_type=content_type)
+
+    def _send_observability(self) -> None:
+        """Machine / collector / feed / quota state next to /activity.json. 404 for sources with nothing to report."""
+        from tools.observability_doc import build_observability
+
+        body = self.daemon.activity_body()
+        if body is None and self.daemon.activity_path.is_file():
+            body = self.daemon.activity_path.read_bytes()
+        try:
+            activity = json.loads(body) if body else None
+            doc = build_observability(activity, self.daemon.health().to_json())
+        except (ValueError, OSError):
+            doc = None
+        if doc is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self._send_bytes(
+            HTTPStatus.OK,
+            json.dumps(doc).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+            extra_headers={"Cache-Control": "no-store"},
+        )
 
     def do_POST(self) -> None:  # noqa: N802
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)

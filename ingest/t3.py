@@ -393,6 +393,7 @@ async def collect(session: Any, cache: dict | None = None) -> dict:
             {
                 "providerInstanceId": p.get("providerInstanceId"),
                 "driverKind": p.get("driverKind"),
+                "displayName": p.get("displayName") if isinstance(p.get("displayName"), str) else None,
             }
             for p in providers
         ],
@@ -419,6 +420,9 @@ class T3Projection:
         providers = {
             p.get("providerInstanceId"): p.get("driverKind") for p in raw["providers"]
         }
+        display_names = {
+            p.get("providerInstanceId"): safe_text(p.get("displayName"), 40) for p in raw["providers"]
+        }
         # Thread IDs reach node IDs, source URLs and the browser: drop any that are not plain IDs
         # or that look like credentials (real IDs are UUIDs / `thread:...` forms).
         rows = {
@@ -438,6 +442,13 @@ class T3Projection:
                 and (age > self.stale_after or age < -60)
             )
             driver = providers.get(t.get("providerInstanceId"))
+            # Which T3 provider instance ran the thread: the only honest way to tell two Claude memberships apart.
+            instance = safe_ident(t.get("providerInstanceId"))
+            account = (
+                {"id": instance, "label": display_names.get(t.get("providerInstanceId")) or instance}
+                if instance and len(instance) <= 64 and re.fullmatch(r"[A-Za-z0-9_.-]+", instance)
+                else None
+            )
             provider = {"codex": "Codex", "claudeAgent": "Claude Code"}.get(
                 driver, safe_ident(driver)
             )
@@ -459,6 +470,7 @@ class T3Projection:
                     "thread_id": thread_id,
                     "project": safe_text(t.get("projectTitle")) or "Unknown project",
                     "provider": provider,
+                    "account": account,
                     "model": safe_text(t.get("model")),
                     "reported_status": reported,
                     "branch": safe_text(t.get("branch")),
