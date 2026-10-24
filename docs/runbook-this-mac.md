@@ -39,3 +39,9 @@ The page loads `/activity.json` and `/observability.json` (machine, collector, f
 ## 6. One-time owner actions still open
 - `gh auth refresh -h github.com -s workflow`, then `git apply docs/evidence/pages-observability-demo.patch` (workflow edits need the `workflow` scope).
 - T3 OAuth login (3), Claude status-line approvals (3), publisher claim (4), LaunchAgent activation (4).
+
+## Status of this Mac as of Mission 003 (measured, not assumed)
+- `python -m tools.bootstrap_mac install --label "Mac B"` was run: anonymous identity `mac-0ba5d007` (role **reader**), state dirs, and stable runtime release built; plists are *staged* in `~/.local/share/agent-mindmap-runtime/staged`, **not** loaded. Re-running changes nothing. No LaunchAgent exists.
+- `python -m tools.machine_doctor`: 15 PASS, 4 WARN, 0 FAIL. Open WARNs: T3 OAuth login not done; collector not running; feed has no owner record (written by the other Mac); stale feed.
+- Quota: Codex is **VERIFIED** (read-only `account/rateLimits/read`; readings expire after 15 min and then show STALE); Cursor = plan only (UNSUPPORTED usage); Claude 1/2 = UNKNOWN until the status-line taps are approved; Devin = UNKNOWN (manual only).
+- Dashboard verified in Chromium at 1440/768/390 for the demo (DEMO banner, no VERIFIED anywhere) and for the live-labelled view over this Mac's real observability document (agents in that run were the synthetic fixture, because no T3 login exists yet).
