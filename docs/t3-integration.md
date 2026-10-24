@@ -129,3 +129,12 @@ The T3 view is a canvas network rendered with `react-force-graph-2d` (MIT; d3-fo
 ## Demo vs live labelling
 
 Any `meta.t3.mode === "demo"` snapshot — the static fixture and the deterministic replay — is synthetic: the legend says "Simulated delegation", the inspector says "Simulated activity time/status" and tags the agent SIMULATED, backend event text starts with "Simulated…" (replay: "SIMULATED replay …"), and a banner states "DEMO — SYNTHETIC FIXTURE DATA" (static) or "DEMO REPLAY — SIMULATED ACTIVITY". Only live mode uses "Verified delegation" / "Last verified activity" / "T3 subagent lineage". Titles, project names, branches and model labels that look like credentials **or filesystem paths** (home, worktree, temp, UNC/drive paths, including percent-encoded and slash-lookalike forms) are replaced with `[redacted]` / `[redacted path]` before they reach the browser; public http(s) URLs are not treated as paths.
+
+## Application shell (header, roster, inspector, list, states)
+
+- **Header:** compact bar with a *source chip* (`live` green, `demo`/`replay` amber, `unavailable` amber-red, ledger blue; each with a tooltip), agent counts by state and **delegations**. "Handoffs" is a ledger-only concept (task hand-offs between bots) that T3 never produces, so it is shown only for ledger data; T3 data shows parent → child *delegations* (lineage, not messages). Demo/replay data keeps a slim persistent amber strip; an unreachable T3 adds a red/amber "T3 UNAVAILABLE" strip while the last snapshot stays visible and marked stale.
+- **Layout:** the network gets the viewport. The legacy timeline + filters are an overlay drawer for T3 sessions (graph and camera never resize when it opens; filters show only the relevant *Notes* type and *Agent* chips) and stay open for the ledger view.
+- **Roster:** state chips (All / Attention / Working / Settled), text filter (`/` focuses it, expanding a collapsed rail), compact rows (dense one-line titles above 8 agents; lineage text on the focused row, always in `aria-description`), collapse-to-rail with status dots. Tablets and phones start as a rail unless the user has chosen (`mindmapRosterCollapsed` records only explicit choices).
+- **Inspector / list:** unchanged data, clearer hierarchy; list view uses agent/relationship vocabulary for T3, honest empty states, and scrolls wide tables inside their card on phones.
+- **States:** one calm centred panel for loading (source-neutral wording), "no activity data" and load failures, each with a working Retry.
+
