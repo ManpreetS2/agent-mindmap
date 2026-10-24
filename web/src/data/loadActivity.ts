@@ -1,7 +1,7 @@
 import type { Activity } from "@shared/types";
 import { LEDGER_ERROR_PATH } from "../utils/viewState";
 
-const ACTIVITY_URL = "/activity.json";
+const ACTIVITY_URL = `${import.meta.env.BASE_URL}activity.json`;
 
 export class LedgerLoadError extends Error {
   readonly path = LEDGER_ERROR_PATH;
