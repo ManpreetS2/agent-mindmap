@@ -171,3 +171,23 @@ describe("states", () => {
     expect(retried).toBe(1);
   });
 });
+
+describe("timeline filters are source-aware", () => {
+  it("T3 sessions: only relevant event types and 'Agent' wording", () => {
+    renderMindmap(<MindmapView activity={t3Activity(nodes, [], "live")} initialListView={false} />);
+    fireEvent.click(screen.getByRole("button", { name: /Activity timeline/ }));
+    const filters = screen.getByLabelText("Timeline filters");
+    expect(within(filters).getByRole("button", { name: "Notes" })).toBeInTheDocument();
+    for (const ledgerOnly of ["Handoffs", "Verdicts", "PRs", "Merged", "CI", "Unparsed", "Blockers"]) {
+      expect(within(filters).queryByRole("button", { name: ledgerOnly })).not.toBeInTheDocument();
+    }
+    expect(within(filters).getByText("Agent")).toBeInTheDocument();
+    expect(within(filters).queryByText("Bot")).not.toBeInTheDocument();
+  });
+  it("ledger view keeps every type chip and 'Bot'", () => {
+    renderMindmap(<MindmapView activity={legacy as Activity} />);
+    const filters = screen.getByLabelText("Timeline filters");
+    expect(within(filters).getByRole("button", { name: "Handoffs" })).toBeInTheDocument();
+    expect(within(filters).getByText("Bot")).toBeInTheDocument();
+  });
+});

@@ -21,6 +21,8 @@ interface TimelineFiltersProps {
   taskIds: string[];
   filters: TimelineFilterState;
   onChange: (next: TimelineFilterState) => void;
+  /** T3 sessions: only status notes exist, agents are not "bots", and ledger-only types are hidden. */
+  sessions?: boolean;
 }
 
 function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
@@ -35,7 +37,9 @@ export function TimelineFilters({
   taskIds,
   filters,
   onChange,
+  sessions = false,
 }: TimelineFiltersProps) {
+  const typeChips = sessions ? TYPE_GROUP_CHIPS.filter((c) => c.id === "notes") : TYPE_GROUP_CHIPS;
   const toggleGroup = (group: EventTypeGroup) => {
     onChange({
       ...filters,
@@ -59,7 +63,7 @@ export function TimelineFilters({
     filters.taskIds.size > 0;
 
   return (
-    <div className="timeline-filters" aria-label="Timeline filters">
+    <div className={`timeline-filters${sessions ? " timeline-filters--sessions" : ""}`} aria-label="Timeline filters">
       <div className="timeline-filters__row">
         <span className="timeline-filters__heading">Type</span>
         <button
@@ -70,7 +74,7 @@ export function TimelineFilters({
         >
           All
         </button>
-        {TYPE_GROUP_CHIPS.map((chip) => (
+        {typeChips.map((chip) => (
           <button
             key={chip.id}
             type="button"
@@ -83,7 +87,7 @@ export function TimelineFilters({
         ))}
       </div>
       <div className="timeline-filters__row">
-        <span className="timeline-filters__heading">Bot</span>
+        <span className="timeline-filters__heading">{sessions ? "Agent" : "Bot"}</span>
         {nodes.map((n) => (
           <button
             key={n.id}

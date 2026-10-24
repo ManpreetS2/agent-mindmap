@@ -446,6 +446,7 @@ export function MindmapView({
                 taskIds={taskIdsForFilters}
                 filters={filters}
                 onChange={setFilters}
+                sessions={Boolean(activity.meta.t3)}
               />
             </div>
             <TimelineSwimlanes
