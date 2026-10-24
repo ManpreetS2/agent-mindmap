@@ -1,6 +1,19 @@
 # QA findings (Mission 003)
 
-## Current verification
+## Reconciliation against integrated PR #38 (2026-10-24)
+
+Baseline reviewed: `ee610d8` on `feat/pages-observability-preview`, preceding the exact-match Gitleaks workflow adjustment. The PR-triggered Python and web jobs completed successfully at this baseline. The following findings were verified by **reviewing both the production code and committed regression tests**, not by rerunning tests locally during this reconciliation:
+
+- **QA-013 — FIXED:** `evaluateObservability` downgrades forged `VERIFIED` demo readings and `QuotaPanel` removes verified display treatment; `qa-observability-adversarial.test.tsx` has an ordinary `it` regression.
+- **QA-014 — FIXED:** `recommendations.ts` rejects null percentages, missing/expired/future observation evidence, future collector polls and stale documents; six ordinary adversarial test cases remain.
+- **QA-015 — FIXED:** `observabilityTransport.ts` sanitizes received metadata using `sanitizeObservability` before the UI; three ordinary transport-to-DOM privacy regressions remain.
+- **QA-016 — FIXED:** `isObservabilityShape` validates every quota window before accepting an operational document; the null-window rejection regression remains.
+
+QA-001 through QA-012 were marked fixed in the integrated code's preceding handoff (and the QA suites exist), but **have not each been independently rerun in this review**. PR green CI supports the integrated baseline; no live T3 OAuth, real dual-Mac publisher race or public Pages deployment is inferred from these tests.
+
+The OPEN entries in discovery sections below refer to **historical, pre-fix worktree commits**. They are preserved as regression provenance, not current unresolved bugs.
+
+## Historical QA verification checkpoint (pre-integration)
 
 Product integration tested: `07e5b4d`; quota source `c4b95d4`; runtime branch `1449153`;
 UI scratch worktree `/tmp/qa-ui-m003` at `98eec80`.
@@ -21,7 +34,7 @@ UI scratch worktree `/tmp/qa-ui-m003` at `98eec80`.
 |---|---|---|---|
 | QA-003 | High | FIXED @ ea31d24 | Email display metadata survives private export |
 | QA-009 | High | FIXED @ ea31d24 | Private manual-source labels reach operational JSON |
-| QA-015 | High | OPEN @ 98eec80 | Private metadata passes transport and reaches DOM |
+| QA-015 | High | FIXED @ ee610d8 (code + regression inspected; CI green) | Private metadata passes transport and reaches DOM |
 | QA-002 | Medium | FIXED @ ea31d24 | VERIFIED accepts null observation/expiry |
 | QA-005 | Medium | FIXED @ ea31d24 | Remote feed is read without a size bound |
 | QA-007 | Medium | FIXED @ ea31d24 | Encoded credentials in supplied node IDs survive export |
@@ -29,9 +42,9 @@ UI scratch worktree `/tmp/qa-ui-m003` at `98eec80`.
 | QA-010 | Medium | FIXED @ ea31d24 | Five IDs bypass optional quota response validation |
 | QA-011 | Medium | FIXED @ ea31d24 | Stale local epoch adopts a reclaimed same-machine epoch |
 | QA-012 | Medium | FIXED @ ea31d24 | Doctor prints unsupported credential forms |
-| QA-013 | Medium | OPEN @ 98eec80 | Forged VERIFIED demo pool renders green VERIFIED state |
-| QA-014 | Medium | OPEN @ 98eec80 | Recommendations accept missing/future/stale evidence |
-| QA-016 | Medium | OPEN @ 98eec80 | Transport accepts null windows that rendering cannot handle |
+| QA-013 | Medium | FIXED @ ee610d8 (code + regression inspected; CI green) | Forged VERIFIED demo pool renders green VERIFIED state |
+| QA-014 | Medium | FIXED @ ee610d8 (code + regression inspected; CI green) | Recommendations accept missing/future/stale evidence |
+| QA-016 | Medium | FIXED @ ee610d8 (code + regression inspected; CI green) | Transport accepts null windows that rendering cannot handle |
 | QA-001 | Low | FIXED @ ea31d24 | Schema accepts duplicate quota IDs |
 | QA-004 | Medium | FIXED @ a0217a9 | All five malformed remote-shape regressions pass |
 | QA-006 | Medium | FIXED @ 07e5b4d | Future remote timestamp no longer suppresses heartbeat |
