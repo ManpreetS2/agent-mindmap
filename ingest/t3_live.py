@@ -77,6 +77,9 @@ class T3Daemon(LiveDaemon):
                     )
         except Exception:  # noqa: BLE001 — redact upstream error payloads
             activity = self._projection.snapshot(None, self.clock())
+        if activity["meta"]["t3"]["connection"] == "connected" and not self.demo and not self.replay:
+            with self._lock:
+                self._health.last_t3_poll = _iso_now(self.clock)
         comparable = {k: v for k, v in activity.items() if k != "generated_at"}
         fp = hashlib.sha256(json.dumps(comparable, sort_keys=True).encode()).hexdigest()
         if fp == self._activity_fp:

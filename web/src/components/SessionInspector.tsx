@@ -112,6 +112,11 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
       <dl className="inspector-facts">
         <Fact label="Provider" value={session.provider ?? "Not reported by T3"} missing={!session.provider} />
         <Fact label="Model" value={session.model ?? "Not reported by T3"} missing={!session.model} />
+        <Fact
+          label="Account"
+          value={session.account?.label ?? "account not reported"}
+          missing={!session.account}
+        />
         <Fact hero label="Current task" value={node.current_task ?? "Not reported"} missing={!node.current_task} />
         <Fact label="Project" value={session.project} />
         <Fact label="Branch" value={session.branch ?? "Not reported"} missing={!session.branch} />
@@ -136,33 +141,47 @@ export function SessionInspector({ node, activity, onClose, onSelectNode }: Prop
 
       <Section title={simulated ? "Relationships (simulated)" : "Verified relationships"}>
         {relationships.length === 0 ? (
-          <p className="detail-muted">No delegation lineage reported for this session.</p>
+          <p className="detail-muted" data-testid="inspector-no-lineage">
+            Lineage not reported — no delegation lineage reported for this session in this snapshot.
+          </p>
         ) : (
-          <ul className="inspector-list">
-            {relationships.map((r) => (
-              <li key={r.edge.id}>
-                <div>
-                  {r.direction === "parent" ? "Delegated by " : "Delegated to "}
-                  {r.other ? (
-                    <button type="button" className="inspector-link" onClick={() => onSelectNode?.(r.other!.id)}>
-                      {r.other.label}
-                    </button>
-                  ) : (
-                    <span className="detail-muted">a session not in this snapshot</span>
-                  )}
-                </div>
-                <div className="detail-meta">
-                  {simulated ? "Simulated delegation" : "T3 subagent lineage"} ·{" "}
-                  {r.evidence.length
-                    ? r.evidence.map((e) => `${e.raw} (${formatSourceTime(e.source_time)})`).join("; ")
-                    : "no evidence event in snapshot"}
-                </div>
-              </li>
-            ))}
+          <ul className="inspector-list" data-testid="inspector-lineage">
+            {relationships.map((r) => {
+              const evidenceTime = r.evidence[0]
+                ? formatSourceTime(r.evidence[0].source_time)
+                : null;
+              return (
+                <li key={r.edge.id}>
+                  <div>
+                    {r.direction === "parent" ? "Evidenced parent: " : "Evidenced child: "}
+                    {r.other ? (
+                      <button type="button" className="inspector-link" onClick={() => onSelectNode?.(r.other!.id)}>
+                        {r.other.label}
+                      </button>
+                    ) : (
+                      <span className="detail-muted">a session not in this snapshot</span>
+                    )}
+                    {evidenceTime && (
+                      <span className="detail-meta"> · evidence {evidenceTime}</span>
+                    )}
+                  </div>
+                  <div className="detail-meta">
+                    {r.direction === "parent" ? "Delegated by " : "Delegated to "}
+                    {r.other?.label ?? "unknown"}
+                    {" · "}
+                    {simulated ? "Simulated delegation" : "T3 subagent lineage"} ·{" "}
+                    {r.evidence.length
+                      ? r.evidence.map((e) => `${e.raw} (${formatSourceTime(e.source_time)})`).join("; ")
+                      : "no evidence event in snapshot"}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
         <p className="detail-muted inspector-caveat">
           A delegation edge shows lineage only. It does not show that messages were exchanged or that work is ongoing.
+          “Lineage not reported” means no edges were present; it is not the same as “no delegation happened”.
         </p>
       </Section>
 

@@ -1,0 +1,96 @@
+name: Agent Mindmap — safe GitHub Pages preview
+
+# Deploys ONLY synthetic demo data. Never upload local T3 snapshots or credentials here.
+on:
+  push:
+    branches:
+      - feat/pages-observability-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: agent-mindmap-pages
+  cancel-in-progress: true
+
+jobs:
+  publish-demo:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python test and schema dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Validate Python tests
+        run: python -m pytest -q
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci --prefix web
+      - name: Validate frontend tests
+        run: npm test --prefix web -- --maxWorkers=2 --minWorkers=1
+      - name: Build app for GitHub Pages subpath
+        run: npm run build --prefix web -- --base /agent-mindmap/
+      - name: Generate public-safe synthetic T3 activity fixture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from ingest.t3 import DEMO_REPLAY_EPOCH, T3Projection, read_demo
+
+          activity = T3Projection("pages-demo", demo=True).snapshot(
+              read_demo(), DEMO_REPLAY_EPOCH
+          )
+          if activity.get("meta", {}).get("t3", {}).get("mode") != "demo":
+              raise RuntimeError("Refusing to publish non-demo activity")
+          out = Path("web/dist/activity.json")
+          out.write_text(json.dumps(activity, ensure_ascii=False, indent=2) + "\n")
+          # Public Pages may contain only a committed synthetic observability fixture.
+          fixture = json.loads(Path("fixtures/observability/demo.json").read_text())
+          if fixture.get("mode") != "demo" or fixture.get("machine", {}).get("platform") != "synthetic":
+              raise RuntimeError("Refusing to publish a non-synthetic observability document")
+          if any(pool["status"] == "VERIFIED" for pool in fixture["quota"]["pools"]):
+              raise RuntimeError("Refusing to publish verified quota readings")
+          Path("web/dist/observability.json").write_text(
+              json.dumps(fixture, ensure_ascii=False, indent=2) + "\n"
+          )
+          Path("web/dist/.nojekyll").touch()
+          PY
+      - name: Verify artifact is demo-only
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("web/dist/activity.json").read_text())
+          assert p["meta"]["t3"]["mode"] == "demo"
+          assert p["meta"]["t3"]["connection"] == "connected"
+          assert all(n.get("session", {}).get("source") == "pages-demo" for n in p["nodes"])
+          o = json.loads(Path("web/dist/observability.json").read_text())
+          assert o["mode"] == "demo" and o["machine"]["platform"] == "synthetic"
+          assert all(q["status"] != "VERIFIED" for q in o["quota"]["pools"])
+          assert Path("web/dist/index.html").exists()
+          assert "/agent-mindmap/assets/" in Path("web/dist/index.html").read_text()
+          PY
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

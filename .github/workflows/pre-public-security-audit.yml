@@ -1,0 +1,104 @@
+name: Security — pre-public full-history secret audit
+
+on:
+  push:
+    branches: [feat/pages-observability-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  history-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout all reachable history and refs
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check full-history ref coverage
+        shell: bash
+        run: |
+          count="$(git for-each-ref --format='%(refname)' refs/remotes/origin refs/tags | wc -l | tr -d ' ')"
+          echo "Fetched remote refs and tags: $count"
+          test "$count" -ge 50 || { echo "::error::Full-history checkout did not fetch all expected branches"; exit 1; }
+      - name: Install pinned Gitleaks from official release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=8.30.1
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${version}"
+          curl --fail --location --silent --show-error --retry 3 \
+            -o "$RUNNER_TEMP/gitleaks.tar.gz" "$base/gitleaks_${version}_linux_x64.tar.gz"
+          curl --fail --location --silent --show-error --retry 3 \
+            -o "$RUNNER_TEMP/checksums.txt" "$base/gitleaks_${version}_checksums.txt"
+          cd "$RUNNER_TEMP"
+          grep " gitleaks_${version}_linux_x64.tar.gz" checksums.txt | \
+            sed "s/gitleaks_${version}_linux_x64.tar.gz/gitleaks.tar.gz/" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          chmod 755 gitleaks
+          ./gitleaks version
+      - name: Scan all reachable commits without printing any secret values
+        shell: bash
+        run: |
+          set -uo pipefail
+          report="$RUNNER_TEMP/gitleaks-report.json"
+          set +e
+          "$RUNNER_TEMP/gitleaks" git . --log-opts="--all" \
+            --report-format=json --report-path="$report" --exit-code=23 \
+            --no-banner > "$RUNNER_TEMP/scan-stdout.txt" \
+            2> "$RUNNER_TEMP/scan-stderr.txt"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 23 ]; then
+            echo "::error::Gitleaks scanner encountered a failure (details kept private)."
+            exit 2
+          fi
+          REPORT="$report" STATUS="$status" python - <<'PY'
+          import collections, json, os
+          from pathlib import Path
+          report = Path(os.environ["REPORT"])
+          findings = json.loads(report.read_text()) if report.exists() else []
+          counts = collections.Counter(str(item.get("RuleID", "unknown")) for item in findings)
+          print(f"Full-history audit: {len(findings)} potential secret exposures")
+          for rule, count in sorted(counts.items()):
+              print(f"  Rule category: {rule} — {count}")
+          for finding in findings[:50]:
+              file = str(finding.get("File", "unknown"))[:160].replace("\\n", " ")
+              location = finding.get("StartLine", "?")
+              commit = str(finding.get("Commit", "unknown"))[:12]
+              print(f"  Finding location (NO SECRET): file={file} line={location} commit={commit} rule={finding.get('RuleID')}")
+          # Exact reviewed findings only: deliberate synthetic redaction-test
+          # values, mock CLI output, and a commit SHA in a QA report.
+          # Pin commit, path, line, AND detection rule. Any other match is a blocker.
+          reviewed = {
+              ("63cd72cec485", "tests/test_t3_hardening.py", 38, "gitlab-pat"),
+              ("63cd72cec485", "tests/test_t3_hardening.py", 32, "slack-bot-token"),
+              ("63cd72cec485", "tests/test_t3_hardening.py", 33, "slack-app-token"),
+              ("3939d3520c44", "qa-mm009/REPORT.md", 107, "generic-api-key"),
+              # Reviewed 2026-10-24: simulated auth-status output from a fake
+              # command runner. This is test data, not a credential.
+              ("d50d337e3b85", "tests/test_machine_doctor.py", 36, "generic-api-key"),
+              # Reviewed 2026-10-24: a literal intentionally used to assert
+              # that the private publisher rejects sensitive-looking text.
+              ("bb8943888bf0", "tests/test_publish_observability.py", 155, "generic-api-key"),
+          }
+          unreviewed = [
+              f for f in findings if (
+                  str(f.get("Commit", ""))[:12],
+                  str(f.get("File", "")),
+                  int(f.get("StartLine", 0)),
+                  str(f.get("RuleID", "")),
+              ) not in reviewed
+          ]
+          print(f"Reviewed synthetic fixture / commit SHA findings: {len(findings) - len(unreviewed)}")
+          print(f"Unreviewed findings: {len(unreviewed)}")
+          if unreviewed or len(findings) != len(reviewed):
+              print("BLOCKED: investigate unmatched findings before making the repo public.")
+              raise SystemExit(1)
+          if os.environ["STATUS"] != "23":
+              print("Unexpected scanner status; fail closed.")
+              raise SystemExit(2)
+          print("Passed: all detected patterns match exactly the reviewed historical test/QA false positives.")
+          PY

@@ -24,6 +24,8 @@ export function matchesRosterQuery(node: Node, query: string): boolean {
     providerLabel(s?.provider),
     s?.provider,
     s?.model,
+    s?.account?.label,
+    s?.account?.id,
     node.current_task,
     node.status,
     node.status.replace("_", " "),

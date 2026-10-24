@@ -255,6 +255,19 @@
                 "null"
               ]
             },
+            "account": {
+              "description": "T3 provider instance the thread ran under (e.g. two separate Claude memberships). Optional; absent when T3 does not report it.",
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+                "label": { "type": "string", "maxLength": 40 }
+              }
+            },
             "model": {
               "type": [
                 "string",

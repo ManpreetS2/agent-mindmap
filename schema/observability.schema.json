@@ -1,0 +1,491 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-mindmap-observability/v1",
+  "title": "Operational observability document served at /observability.json",
+  "description": "Machine, collector, private-feed and per-account quota state for the command center. Contains no session content, no hostnames, usernames, paths or credentials.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generated_at",
+    "mode",
+    "machine",
+    "collector",
+    "feed",
+    "quota",
+    "notes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "agent-mindmap-observability/v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "enum": [
+        "live",
+        "demo"
+      ]
+    },
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "role",
+        "platform"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^mac-[0-9a-f]{8}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "role": {
+          "enum": [
+            "publisher",
+            "reader"
+          ]
+        },
+        "platform": {
+          "type": "string",
+          "maxLength": 40
+        }
+      }
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "last_t3_poll",
+        "stale_after_sec",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "connected",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "last_t3_poll": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "stale_after_sec": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "feed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "last_published_at",
+        "last_observed_at",
+        "trusted_until",
+        "owner",
+        "owned_by_this_machine",
+        "last_error"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown",
+            "unpublished",
+            "disabled"
+          ]
+        },
+        "last_published_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "last_observed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "trusted_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "owner": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "machine_id",
+            "label",
+            "epoch"
+          ],
+          "properties": {
+            "machine_id": {
+              "type": "string",
+              "pattern": "^mac-[0-9a-f]{8}$"
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "owned_by_this_machine": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pools",
+        "collected_at"
+      ],
+      "properties": {
+        "collected_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "pools": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/pool"
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "claude-1"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "claude-2"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "cursor-premium"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "devin-free"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "const": "codex"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Exactly five pools, each id once (five `contains` clauses over a five-item array)."
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "maxItems": 20
+    }
+  },
+  "definitions": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "window_minutes",
+        "used_pct",
+        "remaining_pct",
+        "resets_at"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "session",
+            "weekly",
+            "monthly",
+            "other"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "window_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "used_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "remaining_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "resets_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "provider",
+        "account_alias",
+        "plan",
+        "status",
+        "windows",
+        "source",
+        "observed_at",
+        "expires_at",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "claude-1",
+            "claude-2",
+            "cursor-premium",
+            "devin-free",
+            "codex"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "provider": {
+          "enum": [
+            "claude",
+            "cursor",
+            "devin",
+            "codex"
+          ]
+        },
+        "account_alias": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "plan": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "status": {
+          "enum": [
+            "VERIFIED",
+            "MANUAL",
+            "STALE",
+            "UNKNOWN",
+            "UNSUPPORTED",
+            "ERROR"
+          ]
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/window"
+          },
+          "maxItems": 6
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "method",
+            "supported_programmatically"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "codex-app-server",
+                "claude-statusline",
+                "cursor-cli",
+                "manual",
+                "t3-ui",
+                "none"
+              ]
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "supported_programmatically": {
+              "type": "boolean"
+            }
+          }
+        },
+        "observed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "VERIFIED",
+                  "MANUAL"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "observed_at": {
+                "type": "string"
+              },
+              "expires_at": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -102,6 +102,9 @@ class HealthState:
     last_gh_poll: str | None = None
     last_build: str | None = None
     ledger_last_entry_at: str | None = None
+    # Last poll in which T3 answered. The snapshot is only rewritten when its content changes, so its
+    # generated_at is the last CHANGE, not the last successful observation.
+    last_t3_poll: str | None = None
     errors: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
@@ -110,6 +113,7 @@ class HealthState:
             "last_gh_poll": self.last_gh_poll,
             "last_build": self.last_build,
             "ledger_last_entry_at": self.ledger_last_entry_at,
+            "last_t3_poll": self.last_t3_poll,
             "errors": list(self.errors),
         }
 
@@ -200,6 +204,7 @@ class LiveDaemon:
                 last_gh_poll=self._health.last_gh_poll,
                 last_build=self._health.last_build,
                 ledger_last_entry_at=self._health.ledger_last_entry_at,
+                last_t3_poll=self._health.last_t3_poll,
                 errors=list(self._health.errors),
             )
 
@@ -562,6 +567,10 @@ class MindmapHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/observability.json":
+            self._send_observability()
+            return
+
         if path != "/" and ".." in path:
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
@@ -582,6 +591,28 @@ class MindmapHandler(BaseHTTPRequestHandler):
         elif file_path.suffix == ".json":
             content_type = "application/json; charset=utf-8"
         self._send_bytes(HTTPStatus.OK, data, content_type=content_type)
+
+    def _send_observability(self) -> None:
+        """Machine / collector / feed / quota state next to /activity.json. 404 for sources with nothing to report."""
+        from tools.observability_doc import build_observability
+
+        body = self.daemon.activity_body()
+        if body is None and self.daemon.activity_path.is_file():
+            body = self.daemon.activity_path.read_bytes()
+        try:
+            activity = json.loads(body) if body else None
+            doc = build_observability(activity, self.daemon.health().to_json())
+        except (ValueError, OSError):
+            doc = None
+        if doc is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self._send_bytes(
+            HTTPStatus.OK,
+            json.dumps(doc).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+            extra_headers={"Cache-Control": "no-store"},
+        )
 
     def do_POST(self) -> None:  # noqa: N802
         self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)

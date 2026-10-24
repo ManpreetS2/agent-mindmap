@@ -115,6 +115,8 @@ export interface SessionMetadata {
   thread_id: string;
   project: string;
   provider: string | null;
+  /** T3 provider instance (distinguishes e.g. two Claude memberships). Optional: absent when not reported. */
+  account?: { id: string; label: string } | null;
   model: string | null;
   reported_status: string;
   branch: string | null;

@@ -14,7 +14,7 @@ export interface PollTransportOptions {
 const DEFAULT_POLL_MS = 10_000;
 
 export function createPollTransport(options: PollTransportOptions = {}): ActivityTransport {
-  const url = options.url ?? "/activity.json";
+  const url = options.url ?? `${import.meta.env.BASE_URL}activity.json`;
   const intervalMs = Math.max(1000, options.intervalMs ?? DEFAULT_POLL_MS);
   const fetchImpl = options.fetchImpl ?? fetch;
   let etag: string | null = null;
