@@ -308,8 +308,10 @@ def load_previous(checkout: Path) -> dict | None:
     if not existing.exists():
         return None
     try:
+        if existing.stat().st_size > MAX_SOURCE_BYTES:  # bound the read: never parse an arbitrarily large remote file
+            raise PublishError("Remote feed is unexpectedly large: investigate before writing")
         previous = json.loads(existing.read_text(encoding="utf-8"))
-    except (ValueError, UnicodeError, OSError):
+    except (ValueError, UnicodeError, OSError, RecursionError):
         raise PublishError("Remote feed is malformed: investigate before writing") from None
     if not isinstance(previous, dict):
         raise PublishError("Remote feed is malformed: investigate before writing")

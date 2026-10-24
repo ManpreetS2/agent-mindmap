@@ -137,7 +137,6 @@ def test_permissions_and_allowlisted_fields_with_spaces(tmp_path):
     assert 'CANARY' not in p.read_text() and 'qa@example.invalid' not in p.read_text()
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='QA-008: malformed reset becomes unbounded VERIFIED window')
 @pytest.mark.parametrize('collector', ['codex', 'claude'])
 @pytest.mark.parametrize('bad', ['not-an-epoch', -1, float('nan'), True])
 def test_malformed_provider_reset_cannot_become_verified(collector, bad):
@@ -151,13 +150,15 @@ def test_malformed_provider_reset_cannot_become_verified(collector, bad):
     assert r is None or N.evaluate(alias, r, NOW)['status'] != 'VERIFIED'
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='QA-009: quota free-text leaks private strings to observability')
 @pytest.mark.parametrize('private', ['/Users/qa/private', 'qa@example.invalid', 'Bearer syntheticcredential123'])
 def test_manual_source_never_reaches_public_observability(tmp_path, private):
+    """QA-009 (fixed): a path/email/credential-shaped manual --source is rejected outright; nothing is stored or served."""
     doc = pytest.importorskip('tools.observability_doc')
-    manual.set_window('devin-free', 'weekly', 23, None, private, NOW.isoformat(), state_dir=tmp_path, now=NOW)
+    with pytest.raises(manual.QuotaError):
+        manual.set_window('devin-free', 'weekly', 23, None, private, NOW.isoformat(), state_dir=tmp_path, now=NOW)
     result = doc.build_observability({'meta': {'t3': {'mode': 'live'}}}, {}, now=NOW, quota_dir=tmp_path)
     assert private not in json.dumps(result)
+    assert all(p['status'] == 'UNKNOWN' for p in result['quota']['pools'] if p['id'] == 'devin-free')
 
 
 def test_feed_adapter_and_summary_cover_all_status_shapes(tmp_path):

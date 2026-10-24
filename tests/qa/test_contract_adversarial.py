@@ -40,7 +40,6 @@ def test_six_pools_rejected(doc, validator):
     assert not validator.is_valid(doc)
 
 
-@pytest.mark.xfail(strict=True, reason='QA-001: duplicate pool IDs accepted by schema', raises=AssertionError)
 def test_duplicate_ids_rejected(doc, validator):
     doc['quota']['pools'][1]['id'] = doc['quota']['pools'][0]['id']
     assert not validator.is_valid(doc)
@@ -58,7 +57,6 @@ def test_verified_missing_expiry_field_rejected(doc, validator):
     assert not validator.is_valid(doc)
 
 
-@pytest.mark.xfail(strict=True, reason='QA-002: VERIFIED permits null evidence timestamps', raises=AssertionError)
 @pytest.mark.parametrize('key', ['expires_at', 'observed_at'])
 def test_verified_null_evidence_rejected(doc, validator, key):
     doc['quota']['pools'][0][key] = None

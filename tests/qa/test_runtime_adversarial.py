@@ -110,7 +110,6 @@ def test_push_rejection_redecides_ownership_against_real_remote(world, tmp_path,
     assert pub.load_state(a.state)['ownership']['state'] == 'superseded'
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='QA-011: older local epoch can publish after same identity reclaims')
 def test_resurrected_generation_of_same_machine_is_fenced(world, tmp_path):
     a = machine(tmp_path, 'Mac A')
     go(world, a)
@@ -165,7 +164,6 @@ def test_doctor_render_and_json_redact_common_private_strings(private):
     assert private not in json.dumps(check.as_dict())
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='QA-012: doctor sanitizer misses common credential forms')
 @pytest.mark.parametrize('private', ['password=syntheticsecret', 'xoxb-1234567890-abcdefghijk',
                                     'Authorization: Basic dXNlcjpwYXNzd29yZA=='])
 def test_doctor_does_not_print_other_credential_forms(private):

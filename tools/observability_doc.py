@@ -30,6 +30,23 @@ _POOLS = {
 UNKNOWN_MACHINE = {"id": "mac-00000000", "label": "Unregistered", "role": "reader"}
 
 
+_POOL_VALIDATOR = None
+
+
+def _pool_valid(pool: Any) -> bool:
+    """A pool is trusted only if it satisfies the published contract (required evidence, enums, ranges)."""
+    global _POOL_VALIDATOR
+    try:
+        if _POOL_VALIDATOR is None:
+            from jsonschema import Draft7Validator
+
+            schema = json.loads((ROOT / "schema" / "observability.schema.json").read_text(encoding="utf-8"))
+            _POOL_VALIDATOR = Draft7Validator({"$ref": "#/definitions/pool", "definitions": schema["definitions"]})
+        return not any(True for _ in _POOL_VALIDATOR.iter_errors(pool))
+    except Exception:  # noqa: BLE001 - unverifiable means untrusted
+        return False
+
+
 def unknown_pools(reason: str) -> list[dict]:
     out = []
     for pid in POOL_IDS:
@@ -117,7 +134,7 @@ def _quota(now: datetime, quota_dir: Path | None, notes: list[str]) -> tuple[lis
         from tools.quota.api import pools  # owned by the quota engineer
 
         got = pools(now=now, state_dir=quota_dir)
-        if isinstance(got, list) and [p.get("id") for p in got] == list(POOL_IDS):
+        if isinstance(got, list) and [p.get("id") for p in got] == list(POOL_IDS) and all(_pool_valid(p) for p in got):
             seen = [p["observed_at"] for p in got if p.get("observed_at")]
             return got, (max(seen) if seen else None)
         notes.append("Quota module returned an unexpected shape; all pools UNKNOWN")

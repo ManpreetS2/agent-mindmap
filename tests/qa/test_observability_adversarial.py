@@ -47,7 +47,6 @@ def test_crashing_diagnostics_degrade_without_exception_text(monkeypatch):
     assert '/Users/qa' not in json.dumps(doc)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='QA-010: five matching IDs bypass quota shape validation')
 def test_five_ids_without_evidence_degrade_to_valid_unknown(monkeypatch):
     quota = pytest.importorskip('tools.quota.api')
     monkeypatch.setattr(quota, 'pools', lambda **kw: [{'id': pid} for pid in obs.POOL_IDS])

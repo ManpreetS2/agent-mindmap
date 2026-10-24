@@ -51,7 +51,6 @@ def test_non_feed_json_remote_is_rejected(world, payload):
     assert pub.load_state(world.state)['consecutive_failures'] == 1
 
 
-@pytest.mark.xfail(strict=True, reason='QA-005: remote latest.json has no size bound', raises=AssertionError)
 def test_oversized_remote_feed_rejected(world):
     feed, _, _ = pub.build(snapshot(), NOW)
     if world.identity is not None:

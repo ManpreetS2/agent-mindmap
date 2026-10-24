@@ -18,7 +18,10 @@ def set_window(pool: str, wtype: str, used_pct, resets_at: str | None, source: s
     if pool not in POOL_ORDER:
         raise QuotaError("unknown pool")
     src = N.clean_text(source, 100)
-    if not src or src.startswith("["):
+    if source and source.strip() and src.startswith("["):
+        raise QuotaError("--source looks like a path, email or credential; describe the source in plain words "
+                         "(for example 'claude.ai usage page'). Nothing was stored")
+    if not src:
         raise QuotaError("--source is required and must describe where the number came from")
     observed = N.parse_ts(observed_at)
     if observed is None:

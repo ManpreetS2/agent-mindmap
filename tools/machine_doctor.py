@@ -32,9 +32,20 @@ EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 TOKEN = re.compile(r"(?i)(gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,}|sk-[A-Za-z0-9_-]{12,}|bearer\s+\S+)")
 
 
+# More credential forms that can ride inside remote free text (owner labels, error output).
+AUTH_HEADER = re.compile(r"(?i)authorization\s*[:=]\s*(?:basic|bearer|token)?\s*[^\s,;]+")
+SECRET_KV = re.compile(r"(?i)\b(?:pass(?:word|wd)?|pwd|secret|token|api[_-]?key|access[_-]?key|credential|cookie)\w*\s*[:=]\s*[^\s,;]+")
+SLACK = re.compile(r"(?i)xox[abprs]-[A-Za-z0-9-]{8,}")
+LONG_B64 = re.compile(r"[A-Za-z0-9+/]{20,}={0,2}")
+
+
 def redact(text: str) -> str:
     text = EMAIL.sub("<email>", text)
+    text = AUTH_HEADER.sub("<redacted>", text)
+    text = SECRET_KV.sub("<redacted>", text)
+    text = SLACK.sub("<redacted>", text)
     text = TOKEN.sub("<redacted>", text)
+    text = LONG_B64.sub(lambda m: "<redacted>" if any(c.isdigit() for c in m.group(0)) and any(c.isalpha() for c in m.group(0)) else m.group(0), text)
     home = str(Path.home())
     return text.replace(home, "~") if len(home) > 1 else text
 

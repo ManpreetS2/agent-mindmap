@@ -157,6 +157,12 @@ def decide(remote_feed: dict | None, identity: mi.MachineIdentity | None, now: d
         if local_epoch is not None and pub["epoch"] < local_epoch:
             return Decision("refuse", "Remote epoch is lower than this Mac's own record (feed rolled back); investigate",
                             "rollback")
+        if not claiming and local_epoch is not None and pub["epoch"] > local_epoch:
+            # Only a claim from THIS Mac raises its epoch, and that updates its local record. A higher remote epoch under
+            # my own id means another copy of this identity (a restored backup or a copied config) advanced it.
+            return Decision("refuse", "The feed carries a higher epoch under this machine id than this Mac recorded: another "
+                            "copy of this identity published (never copy machine.json between Macs); an operator must `claim`",
+                            "identity_conflict", superseded_by=owner_summary(pub))
         return Decision("publish", "This Mac owns the feed", "owner", epoch=pub["epoch"])
     if not claiming and local_epoch is not None and pub["epoch"] < local_epoch:
         return Decision("refuse", "Remote owner's epoch is lower than this Mac's own record (feed rolled back); investigate",

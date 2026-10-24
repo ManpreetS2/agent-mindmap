@@ -30,7 +30,8 @@ def extract(payload, alias: str, now: datetime) -> dict | None:
             continue
         used = N.pct(raw.get("used_percentage"))
         resets = N.epoch_to_dt(raw.get("resets_at"))
-        if used is None or (resets is not None and resets <= now):
+        invalid_reset = raw.get("resets_at") is not None and resets is None  # supplied but malformed
+        if used is None or invalid_reset or (resets is not None and resets <= now):
             continue  # malformed or already rolled over: absent, never guessed
         windows.append(N.make_window(wtype, label, mins, used, resets))
     if not windows:

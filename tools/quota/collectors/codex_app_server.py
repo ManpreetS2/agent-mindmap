@@ -42,6 +42,8 @@ def map_rate_limits(result: dict, now: datetime) -> dict:
         seen.add(key)
         reset_raw = raw.get("resetsAt")
         resets = N.epoch_to_dt(reset_raw)
+        if reset_raw is not None and resets is None:
+            continue  # a supplied-but-invalid reset is malformed data: drop the window (explicit null stays supported)
         windows.append(N.make_window(wtype, label, mins, used, resets))
     allowed = result.get("ordinaryUsageAllowed")
     allowed = allowed if isinstance(allowed, bool) else None  # null = unknown, never inferred

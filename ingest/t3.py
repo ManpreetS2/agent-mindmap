@@ -62,6 +62,7 @@ _SUSPICIOUS = re.compile(
     | \b[a-z][a-z0-9+.-]*://[^\s/@:]+:[^\s/@]+@
     | (?:token|secret|passw(?:or)?d|passwd|pwd|api[_-]?key|apikey|credential|private[_-]?key|cookie|session[_-]?id|access[_-]?key)[\w-]*\s*[:=]
     | [?&](?:token|key|secret|sig|signature|password|access_token|api_key)=
+    | [A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}
     """
 )
 _LONG_BLOB = re.compile(r"[A-Za-z0-9_+/=.-]{24,}")
@@ -256,7 +257,7 @@ def safe_ident(value: Any) -> str | None:
     if (
         isinstance(value, str)
         and _IDENT.fullmatch(value)
-        and not _looks_sensitive(value)
+        and not _sensitive_any(value)  # iterated percent-decoding: "password%3Dx" is a credential, not an id
         and not _pathlike_any(value)
     ):
         return value

@@ -129,9 +129,13 @@ def clean_plan(value) -> str | None:
 
 
 def clean_text(value, limit: int) -> str:
+    """Free text from a collector or the owner. Credential-, path- or email-shaped values are replaced entirely
+    (never partially scrubbed) by the same scanner the T3 adapter applies to session metadata."""
     if not isinstance(value, str):
         return ""
-    return " ".join("".join(c if c.isprintable() else " " for c in value).split())[:limit]
+    from ingest.t3 import safe_text
+
+    return safe_text(value, limit) or ""
 
 
 def placeholder(pool_id: str, status: str = "UNKNOWN", reason: str | None = "No reading yet") -> dict:

@@ -33,7 +33,6 @@ def test_sensitive_display_fields_never_leave_in_either_artifact(field, payload)
     assert payload not in body and payload not in summary
 
 
-@pytest.mark.xfail(strict=True, reason='QA-003: email display metadata is published verbatim', raises=AssertionError)
 @pytest.mark.parametrize('field', ['task', 'provider', 'model', 'project', 'branch'])
 def test_email_never_leaves_in_either_artifact(field):
     activity = snapshot()
@@ -78,7 +77,6 @@ def test_future_naive_invalid_observation_rejected(stamp):
         pub.build(activity, NOW)
 
 
-@pytest.mark.xfail(strict=True, reason='QA-007: safe_ident does not decode credential-shaped IDs', raises=AssertionError)
 @pytest.mark.parametrize('payload', ['password%3Dsyntheticsecret', 'token%253Dsyntheticsecret'])
 def test_encoded_credentials_in_ids_are_not_exported(payload):
     activity = snapshot()
