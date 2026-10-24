@@ -142,7 +142,7 @@ describe("AgentNetwork", () => {
     const ctx = new Proxy({ fillText, measureText: () => ({ width: 90 }), createRadialGradient: () => ({ addColorStop() {} }) }, {
       get: (obj, key) => obj[key as keyof typeof obj] ?? (() => {}),
     });
-    const draw = () => { fillText.mockClear(); props().nodeCanvasObject(gdata().nodes[0], ctx, 1); return fillText.mock.calls.map(c => c[0]); };
+    const draw = () => { fillText.mockClear(); props().onRenderFramePre(); props().nodeCanvasObject(gdata().nodes[0], ctx, 1); return fillText.mock.calls.map(c => c[0]); };
     expect(draw()).not.toContain(caption ?? "RESUMED"); // no first-load reaction
     const next = t3Activity([sessionNode("a", { status: to })], []);
     view.rerender(<AgentNetwork {...base} activity={next} />);

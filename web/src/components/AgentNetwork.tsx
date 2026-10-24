@@ -202,7 +202,7 @@ export function AgentNetwork({
       reactions: () => [...flashes.current].filter(([, f]) => performance.now() - f.start < FLASH_MS)
         .map(([id, f]) => ({ id, caption: f.caption })),
       observations: () => [...live.current.fresh].map(([id, kind]) => ({ id, kind })),
-      labels: () => [...(labelLayout.current ?? [])].map(([id, l]) => ({ id, x: l.x, y: l.y, width: l.width, height: l.height })),
+      labels: () => [...(labelLayout.current ?? [])].map(([id, l]) => ({ id, x: l.x, y: l.y, width: l.width, height: l.height, reaction: l.reaction?.caption })),
     };
     return () => { delete (window as unknown as Record<string, unknown>).__mindmap; };
   }, [model]);
@@ -310,10 +310,12 @@ export function AgentNetwork({
       if (f && now - f.start > FLASH_MS) flashes.current.delete(n.id);
       if (!labelChecked.current || !labelLayout.current) {
         const view = fgRef.current && readCamera(fgRef.current);
-        const key = `${model.revision}|${scale}|${focusId}|${view?.x},${view?.y}|${w},${h}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
+        const reactions = new Map([...flashes.current].filter(([, f]) => now - f.start <= FLASH_MS)
+          .map(([id, f]) => [id, { caption: live.current.simulated ? `DEMO · ${f.caption}` : f.caption, color: f.color }]));
+        const key = `${model.revision}|${scale}|${focusId}|${view?.x},${view?.y}|${w},${h}|${[...reactions].map(([id, f]) => `${id}:${f.caption}`).join(";")}|` + model.data.nodes.map(q => `${q.x},${q.y}`).join(";");
         if (key !== labelKey.current || !labelLayout.current) {
           labelKey.current = key;
-          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx, view ? labelViewport(view, w, h) : undefined);
+          labelLayout.current = layoutLabels(model.data.nodes, scale, focusId, ctx, view ? labelViewport(view, w, h) : undefined, reactions);
         }
         labelChecked.current = true;
       }
@@ -323,6 +325,7 @@ export function AgentNetwork({
         hovered: live.current.hovered === n.id,
         alpha: !focusId || n.id === focusId || neighbors.has(n.id) || (f && now - f.start <= FLASH_MS) ? 1 : 0.24,
         flash: f && now - f.start <= FLASH_MS ? { caption: live.current.simulated ? `DEMO · ${f.caption}` : f.caption, age: now - f.start, color: f.color } : null,
+        inlineReaction: true,
         zoom: scale,
         label: labelLayout.current.get(n.id) ?? null,
       });

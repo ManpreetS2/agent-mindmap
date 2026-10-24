@@ -72,6 +72,19 @@ describe("drawNode", () => {
     expect([...layoutLabels(nodes, 0.6, "c").keys()][0]).toBe("c");
     expect(layoutLabels([node()], 0.2, "a").has("a")).toBe(true);
   });
+  it("places 30 simultaneous burst captions without overlapping labels or each other", () => {
+    const nodes = Array.from({ length: 30 }, (_, i) => node({ id: String(i), x: (i % 6) * 150, y: Math.floor(i / 6) * 130 }));
+    const reactions = new Map(nodes.map(n => [n.id, { caption: "COMPLETED", color: "#34d399" }]));
+    const labels = layoutLabels(nodes, 1, null, undefined, undefined, reactions);
+    const placed = [...labels.values()];
+    expect(placed.length).toBeGreaterThan(0);
+    expect(placed.every(l => l.reaction?.caption === "COMPLETED")).toBe(true);
+    for (let i = 0; i < placed.length; i++) for (const b of placed.slice(i + 1)) {
+      const a = placed[i];
+      expect(Math.abs(a.x - b.x) >= (a.width + b.width) / 2 || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
+    }
+    expect(layoutLabels(nodes, 1).get("0")?.reaction).toBeUndefined();
+  });
   it("uses a circle for Claude and a six-sided polygon for Codex", () => {
     const arc = vi.fn(), lineTo = vi.fn(), moveTo = vi.fn();
     const c = { arc, lineTo, moveTo, beginPath() {}, closePath() {} } as unknown as CanvasRenderingContext2D;

@@ -33,6 +33,8 @@ export interface DrawState {
   hovered: boolean;
   /** Transient caption for an observed status change. */
   flash: { caption: string; age: number; color: string } | null;
+  /** The renderer places burst captions through the same collision layout as task labels. */
+  inlineReaction?: boolean;
   zoom: number;
   label?: LabelPlacement | null;
 }
@@ -185,7 +187,7 @@ export function drawNode(ctx: CanvasRenderingContext2D, n: GNode, s: DrawState):
     ctx.strokeStyle = hexA(s.flash.color, s.t === null ? 0.65 : 0.75 * (1 - k));
     ctx.stroke();
     ctx.globalAlpha = (s.t === null ? 1 : Math.min(1, 2.2 * (1 - k))) * s.alpha;
-    drawTag(ctx, s.flash.caption, x, y - NODE_R - 22 / s.zoom, s.flash.color, s.zoom);
+    if (!s.inlineReaction) drawTag(ctx, s.flash.caption, x, y - NODE_R - 22 / s.zoom, s.flash.color, s.zoom);
   }
 
   // A small pin mark remains visible without competing with the status glyph.
@@ -292,7 +294,9 @@ export function hexA(hex: string, a: number): string {
 export interface LabelPlacement {
   x: number; y: number; width: number; height: number; lines: number;
   title: string[]; subtitle: string; font: number; unit: number;
+  reaction?: ReactionLabel;
 }
+export interface ReactionLabel { caption: string; color: string }
 export interface LabelViewport { left: number; right: number; top: number; bottom: number }
 const SANS = "ui-sans-serif, system-ui, -apple-system, sans-serif";
 
@@ -302,7 +306,7 @@ export function labelFont(zoom: number): number {
 }
 const BODY_CLEAR = NODE_R + 14;
 
-function labelContent(n: GNode, zoom: number, focus: boolean, count: number, detail: boolean, ctx?: CanvasRenderingContext2D) {
+function labelContent(n: GNode, zoom: number, focus: boolean, count: number, detail: boolean, ctx?: CanvasRenderingContext2D, reaction?: ReactionLabel) {
   const unit = 1 / Math.max(0.2, zoom), font = labelFont(zoom);
   const maxWidth = (focus ? 224 : count <= 5 ? 204 : 168) * unit;
   const raw = n.task ?? n.label ?? n.providerName;
@@ -311,32 +315,43 @@ function labelContent(n: GNode, zoom: number, focus: boolean, count: number, det
   const fit = (text: string) => ctx ? fitText(ctx, text, maxWidth) : text.length * font * 0.58 <= maxWidth ? text : text.slice(0, Math.max(1, Math.floor(maxWidth / (font * 0.58)) - 1)) + "…";
   const title: string[] = [];
   // Two title lines give small networks useful task names, without crowding dense overviews.
-  if (detail && (focus || count <= 5) && measure(raw) > maxWidth) {
+  if (reaction && count > 12 && !focus) {
+    // Dense bursts briefly replace the task with its observed change. Status glyphs remain
+    // visible for every agent; focus retains the task, and all titles return after expiry.
+  } else if (detail && (focus || count <= 5) && measure(raw) > maxWidth) {
     let split = raw.lastIndexOf(" ", fit(raw).length - 1);
     if (split < 1) split = Math.max(1, fit(raw).length - 1);
     title.push(fit(raw.slice(0, split)), fit(raw.slice(split).trim()));
   } else title.push(fit(raw));
-  let width = Math.max(...title.map(measure));
+  let width = Math.max(0, ...title.map(measure));
   let subtitle = "";
-  if (detail) {
+  if (detail && !reaction) {
     if (ctx) ctx.font = `500 ${10.5 * unit}px ${SANS}`;
     const rawSub = `${n.providerName} · ${n.model ?? "model not reported"}`;
     subtitle = ctx ? fitText(ctx, rawSub, maxWidth) : rawSub.slice(0, Math.floor(maxWidth / (6 * unit)));
     width = Math.max(width, ctx ? textWidth(ctx, subtitle) : subtitle.length * 6 * unit);
   }
-  return { title, subtitle, font, unit, width: Math.min(maxWidth, width) + 16 * unit,
-    height: title.length * font * 1.25 + (subtitle ? 16 * unit : 0) + 8 * unit,
-    lines: title.length + Number(Boolean(subtitle)) };
+  if (reaction) {
+    if (ctx) ctx.font = `700 ${11 * unit}px ${SANS}`;
+    width = Math.max(width, ctx ? textWidth(ctx, reaction.caption) : reaction.caption.length * 6.5 * unit);
+  }
+  return { title, subtitle, font, unit, reaction, width: Math.min(maxWidth, width) + 16 * unit,
+    height: title.length * font * 1.25 + (subtitle ? 16 * unit : 0) + (reaction ? 17 * unit : 0) + 8 * unit,
+    lines: title.length + Number(Boolean(subtitle)) + Number(Boolean(reaction)) };
 }
 
 function drawNodeLabel(ctx: CanvasRenderingContext2D, l: LabelPlacement, color: string, lit: boolean): void {
-  const { x, y, width, height, font, unit, title, subtitle } = l;
+  const { x, y, width, height, font, unit, title, subtitle, reaction } = l;
   ctx.fillStyle = lit ? "rgba(12,20,33,0.96)" : "rgba(8,13,22,0.72)";
   roundRect(ctx, x - width / 2, y, width, height, 6 * unit); ctx.fill();
-  if (lit) { ctx.strokeStyle = hexA(color, 0.32); ctx.lineWidth = unit; ctx.stroke(); }
+  if (lit || reaction) { ctx.strokeStyle = hexA(reaction?.color ?? color, reaction ? 0.65 : 0.32); ctx.lineWidth = unit; ctx.stroke(); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
+  if (reaction) {
+    ctx.font = `700 ${11 * unit}px ${SANS}`; ctx.fillStyle = reaction.color;
+    ctx.fillText(reaction.caption, x, y + 6 * unit);
+  }
   ctx.font = `600 ${font}px ${SANS}`; ctx.fillStyle = "#edf2fa";
-  title.forEach((text, i) => ctx.fillText(text, x, y + 4 * unit + i * font * 1.25));
+  title.forEach((text, i) => ctx.fillText(text, x, y + 4 * unit + (reaction ? 17 * unit : 0) + i * font * 1.25));
   if (subtitle) {
     ctx.font = `500 ${10.5 * unit}px ${SANS}`; ctx.fillStyle = color;
     ctx.fillText(subtitle, x, y + 6 * unit + title.length * font * 1.25);
@@ -345,20 +360,20 @@ function drawNodeLabel(ctx: CanvasRenderingContext2D, l: LabelPlacement, color: 
 
 /** Attention and focus get first choice. Try below/above, simplify, then cull.
  * Layout uses simulation anchors: ambient sway must never jiggle text or change its placement. */
-export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null, ctx?: CanvasRenderingContext2D, viewport?: LabelViewport): Map<string, LabelPlacement> {
+export function layoutLabels(nodes: GNode[], zoom: number, focus: string | null = null, ctx?: CanvasRenderingContext2D, viewport?: LabelViewport, reactions?: ReadonlyMap<string, ReactionLabel>): Map<string, LabelPlacement> {
   const placed = new Map<string, LabelPlacement>();
-  const priority = (n: GNode) => n.id === focus ? 4 : n.status === "FAILED" || n.status === "BLOCKED" ? 3 : n.active ? 2 : 1;
+  const priority = (n: GNode) => n.id === focus ? 6 : reactions?.has(n.id) ? 4 + Number(n.status === "FAILED" || n.status === "BLOCKED") : n.status === "FAILED" || n.status === "BLOCKED" ? 3 : n.active ? 2 : 1;
   const ordered = [...nodes].sort((a, b) => priority(b) - priority(a) || a.id.localeCompare(b.id));
   const bodies = nodes.map(n => ({ id: n.id, x: n.x ?? 0, y: n.y ?? 0 }));
   const gap = NODE_R + 14 + 5 / Math.max(0.2, zoom);
   for (const n of ordered) {
-    if (zoom <= 0.3 && n.id !== focus) continue;
+    if (zoom <= 0.3 && n.id !== focus && !reactions?.has(n.id)) continue;
     const x = n.x ?? 0, ny = n.y ?? 0;
     if (viewport && (x + BODY_CLEAR < viewport.left || x - BODY_CLEAR > viewport.right || ny + BODY_CLEAR < viewport.top || ny - BODY_CLEAR > viewport.bottom)) continue;
     const details = zoom > 0.7 || n.id === focus ? [true, false] : [false];
     let found = false;
     for (const detail of details) {
-      const content = labelContent(n, zoom, n.id === focus, nodes.length, detail, ctx);
+      const content = labelContent(n, zoom, n.id === focus, nodes.length, detail, ctx, reactions?.get(n.id));
       const { width, height } = content;
       const candidates = [0, -0.35, 0.35].flatMap(shift => [
         { x: x + width * shift, y: ny + gap },
