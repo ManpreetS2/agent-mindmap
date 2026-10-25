@@ -1,8 +1,10 @@
 const LA_TZ = "America/Los_Angeles";
 
 export function formatSourceTime(iso: string): string {
+  if (!iso) return iso;
   try {
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleString("en-US", {
       timeZone: LA_TZ,
       month: "short",
