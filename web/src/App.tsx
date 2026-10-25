@@ -8,6 +8,7 @@ import { CommandCenterShell } from "./components/CommandCenterShell";
 import { MindmapView } from "./views/MindmapView";
 import { useActivityFeed } from "./hooks/useActivityFeed";
 import { useObservability } from "./hooks/useObservability";
+import { useAutomation } from "./hooks/useAutomation";
 
 const POLL_MS = Number(
   (import.meta as ImportMeta & { env?: { VITE_ACTIVITY_POLL_MS?: string } }).env
@@ -22,6 +23,7 @@ export function App() {
   const { activity, error, statusPulseNodeIds, reload } =
     useActivityFeed(transport);
   const observability = useObservability();
+  const automation = useAutomation();
 
   if (error instanceof LedgerLoadError) {
     return (
@@ -65,6 +67,7 @@ export function App() {
         onRefresh={reload}
         statusPulseNodeIds={statusPulseNodeIds}
         observability={observability}
+        automation={automation}
       />
     </CommandCenterShell>
   );
