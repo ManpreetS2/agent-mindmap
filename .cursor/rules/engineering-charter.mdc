@@ -1,0 +1,13 @@
+---
+description: Engineering charter and project pause state for agent-mindmap
+alwaysApply: true
+---
+
+This project is paused by the owner; read the PROJECT STATUS section of @project.md before acting.
+Follow the shared engineering standard in @docs/agents/charter.md and the order of operations in @docs/agents/workflow.md.
+`AGENTS.md` at the repository root carries the short rule digest and hard limits; both apply.
+
+Cursor / Grok notes:
+- Use for focused implementation and UI work. Keep edits inside the files the task names.
+- Do not start servers, collectors or background jobs, and do not touch ports 8787, 8799 or 8882.
+- Report evidence as VERIFIED / LIKELY / UNKNOWN. UI claims need a real browser check or must be marked UNVERIFIED.
