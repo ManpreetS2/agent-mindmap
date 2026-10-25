@@ -46,7 +46,7 @@ To repeat: from the repository root run the same prompt through `claude -p --too
 1. Change policy in `charter.md` or `workflow.md` first. They are the single source of truth.
 2. Update the `AGENTS.md` digest only if a rule that must always be in context changed. Keep it under ~12 KB and self-contained.
 3. Do not copy charter text into `CLAUDE.md`, the Cursor rule, or skills. They point; they do not restate.
-4. Run `python -m tools.check_agent_docs` (also part of `python -m pytest`). It checks required files, the `@AGENTS.md` import, size, links, frontmatter, and that no credential-shaped strings or absolute machine paths are present. It **cannot** prove a client loads the files.
+4. Run `python -m tools.check_agent_docs` (also part of `python -m pytest`). It checks required files, the `@AGENTS.md` import, size, links, frontmatter, and (heuristically) that no credential-shaped strings or common absolute machine-path shapes appear in the instruction files and `docs/handoffs/`. It **cannot** prove a client loads the files.
 5. Re-verify loading after upgrading a client or changing a file's name or location (procedure above). Record result and client version.
 6. Project state (pause, PR list, approval gates) belongs in `project.md` and `docs/handoffs/`, never in the charter.
 

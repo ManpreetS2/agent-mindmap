@@ -33,7 +33,10 @@ AGENTS_MUST_LINK = [
     "docs/agents/README.md",
     "project.md",
 ]
-MACHINE_PATH = re.compile(r"(?:/Users/|/home/[a-z]|[A-Za-z]:\\Users\\|/private/tmp/)")
+# Heuristic: catches common home/temp path shapes, not every possible machine-specific path.
+MACHINE_PATH = re.compile(
+    r"(?:/Users/|/home/[A-Za-z]|[A-Za-z]:[\\/]Users[\\/]|/private/tmp/|/var/folders/|/tmp/[A-Za-z])",
+)
 SECRET_SHAPES = [
     re.compile(p)
     for p in (
@@ -48,10 +51,12 @@ SECRET_SHAPES = [
 MD_LINK = re.compile(r"\]\(([^)\s]+)\)")
 AT_REF = re.compile(r"(?m)^\s*@([\w./-]+)\s*$")
 CURSOR_AT_REF = re.compile(r"@([\w][\w./-]*\.[A-Za-z]+)")
+CURSOR_MUST_REFERENCE = ["project.md", "docs/agents/charter.md", "docs/agents/workflow.md"]
 
 
 def _strip_fences(text: str) -> str:
-    return re.sub(r"```.*?```", "", text, flags=re.S)
+    """Drop fenced code and HTML comments: neither is an active import or link."""
+    return re.sub(r"<!--.*?-->", "", re.sub(r"```.*?```", "", text, flags=re.S), flags=re.S)
 
 
 def _frontmatter(text: str) -> dict[str, str] | None:
@@ -92,7 +97,11 @@ def check(root: Path) -> list[str]:
     fm = _frontmatter(rule)
     if fm is None or fm.get("alwaysApply") != "true" or not fm.get("description"):
         errors.append("Cursor rule needs frontmatter with alwaysApply: true and a description")
-    for ref in CURSOR_AT_REF.findall(rule):
+    refs = CURSOR_AT_REF.findall(rule)
+    for required in CURSOR_MUST_REFERENCE:
+        if required not in refs:
+            errors.append(f"Cursor rule must reference @{required}")
+    for ref in refs:
         if not (root / ref).exists():
             errors.append(f"Cursor rule references missing file: @{ref}")
 
@@ -115,6 +124,8 @@ def check(root: Path) -> list[str]:
                 if not (base / ref).exists():
                     errors.append(f"{rel}: broken @import {ref}")
 
+    for handoff in sorted((root / "docs/handoffs").glob("*.md")):
+        texts[handoff.relative_to(root).as_posix()] = handoff.read_text(encoding="utf-8")
     for rel, text in texts.items():
         if MACHINE_PATH.search(text):
             errors.append(f"{rel}: contains an absolute machine-specific path")

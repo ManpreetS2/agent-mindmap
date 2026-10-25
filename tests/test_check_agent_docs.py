@@ -89,6 +89,34 @@ def test_credential_shape_is_reported(tree: Path):
     assert any("credential-shaped" in e for e in chk.check(tree))
 
 
+def test_import_inside_html_comment_does_not_count(tree: Path):
+    (tree / "CLAUDE.md").write_text("<!--\n@AGENTS.md\n-->\n")
+    assert any("@AGENTS.md" in e for e in chk.check(tree))
+
+
+def test_cursor_rule_must_reference_canonical_docs(tree: Path):
+    path = tree / ".cursor/rules/engineering-charter.mdc"
+    text = path.read_text()
+    for ref in chk.CURSOR_MUST_REFERENCE:
+        text = text.replace("@" + ref, ref)
+    path.write_text(text)
+    errors = chk.check(tree)
+    assert all(any(f"@{ref}" in e for e in errors) for ref in chk.CURSOR_MUST_REFERENCE)
+
+
+@pytest.mark.parametrize("leak", ["C:/Users/alice/repo", "/home/Alice/repo", "/tmp/alice/repo", "/var/folders/ab/cd"])
+def test_more_machine_path_shapes_are_reported(tree: Path, leak: str):
+    path = tree / "docs/agents/charter.md"
+    path.write_text(path.read_text() + f"\nsee {leak}\n")
+    assert any("machine-specific" in e for e in chk.check(tree))
+
+
+def test_handoffs_are_scanned_for_hygiene(tree: Path):
+    path = next((tree / "docs/handoffs").glob("*chatgpt-lead.md"))
+    path.write_text(path.read_text() + "\nsee /" + "Users/someone/repo\n")
+    assert any("chatgpt-lead.md" in e and "machine-specific" in e for e in chk.check(tree))
+
+
 def test_main_exit_code(tree: Path, capsys):
     assert chk.main(["--root", str(tree)]) == 0
     (tree / "AGENTS.md").unlink()

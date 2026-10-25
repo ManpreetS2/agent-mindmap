@@ -8,7 +8,7 @@ First real use of [docs/agents/handoff-template.md](../agents/handoff-template.m
 ## 1. Integrated functionality (on `5581322`)
 - Read-only T3 Code agent/session monitoring with deterministic synthetic replay, quota cards, observability health, evidence-gated recommendations, multi-Mac publisher lease/epoch code — **LIKELY** (code present, PR CI green; built by workers, not re-audited here).
 - Public Pages demo is synthetic-only; workflow builds synthetic `activity.json` and `observability.json` — **LIKELY** (workflow success at this SHA; the hosted artifact was **not** inspected, so UNKNOWN).
-- Real T3 data, per-account Claude quota taps, and a single real private publisher — **UNKNOWN / not activated**. No T3 login, tap or publisher has been enabled (approval gates, section 6).
+- Real T3 data, per-account Claude quota taps, and a single real private publisher — **UNKNOWN**. Per the pause note and Mission 003 handoff, the newer Mac has no T3 login, quota tap or LaunchAgent enabled; what the older Mac's manual collector and legacy publisher are doing now was **not checked** and may still be running (approval gates, section 6).
 
 ## 2. Active PRs and dependencies
 | PR | Branch → base | Draft | Head | CI at that head |
