@@ -36,11 +36,17 @@ export function isActivityStale(
 }
 
 export function staleAgeLabel(generatedAt: string, nowMs = Date.now()): string {
-  const mins = Math.round((nowMs - new Date(generatedAt).getTime()) / 60_000);
-  if (mins < 60) return `${mins} minutes ago`;
+  const timestampMs = new Date(generatedAt).getTime();
+  if (Number.isNaN(timestampMs)) return "unknown age";
+  const ageMs = nowMs - timestampMs;
+  if (ageMs < 0) return "just now";
+
+  const mins = Math.round(ageMs / 60_000);
+  if (mins < 60) return `${mins} ${mins === 1 ? "minute" : "minutes"} ago`;
   const hours = Math.round(mins / 60);
-  if (hours < 48) return `${hours} hours ago`;
-  return `${Math.round(hours / 24)} days ago`;
+  if (hours < 48) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
 }
 
 export function partialGithubBanner(meta: ActivityMeta): string | null {
