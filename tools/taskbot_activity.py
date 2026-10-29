@@ -41,6 +41,7 @@ RUNNING_STALE_AFTER = timedelta(minutes=30)
 ERROR_EVENT_TYPES = ("agent_failed", "stuck", "preflight_blocked", "no_account", "infra_retry", "fix_limit")
 STATES = ("queued", "running", "blocked", "failed", "completed", "skipped", "unknown")
 RUN_START_MODEL = re.compile(r"^(?:job|investigation|CI fix|conflict fix) \(attempt \d+\) with (\S+) (\S+): ")
+GITHUB_SLUG = re.compile(r"[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}")
 GITHUB_URL = re.compile(r"^https://github\.com/[\w.-]+/[\w.-]+/(?:pull|issues)/\d+$")
 
 NOTES = [
@@ -179,7 +180,9 @@ def _task(t: dict, events: list[dict], runs: list[dict], now: datetime) -> dict:
     wait = _parse(t.get("wait_until"))
     return {
         "id": f"taskbot:{repo}#{number}",
-        "repo": safe_text(repo, 100),
+        # A GitHub owner/repo slug is shown as is: the generic credential heuristic in safe_text() mistakes a long
+        # mixed-case slug with a digit (ManpreetS2/agent-mindmap) for a token. Anything else still goes through it.
+        "repo": repo if isinstance(repo, str) and GITHUB_SLUG.fullmatch(repo) else safe_text(repo, 100),
         "issue": {
             "number": number,
             "title": safe_text(t["title"], 160),

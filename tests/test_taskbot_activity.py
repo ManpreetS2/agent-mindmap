@@ -230,6 +230,24 @@ def test_non_github_pr_urls_are_dropped(st):
     assert all(t["pull_request_url"] is None for t in build(st)["tasks"])
 
 
+def test_a_long_mixed_case_repo_name_is_not_mistaken_for_a_credential(st, monkeypatch):
+    """Real shape from the first Mac dry-run: owner/repo with 24+ characters, mixed case and a digit looked like a token
+    to the generic blob heuristic and was shown as "[redacted]"."""
+    repo = "ManpreetS2/agent-mindmap"
+    monkeypatch.setitem(globals(), "REPO", repo)
+    st.ticket(42, "queued", attempts=1, note="agent_cannot: the required web test suite still fails")
+    st.event(42, "run_start", 6, message="job (attempt 1) with gpt-6-luna low: Fix the example")
+    st.event(42, "run_end", 3, severity="warning", message="agent_cannot")
+    st.run_record(42, 6, outcome="agent_cannot")
+    t = only(build(st))
+    assert t["repo"] == repo and t["id"] == f"taskbot:{repo}#42"
+    assert t["issue"]["url"] == f"https://github.com/{repo}/issues/42"
+    # An attempt that ended agent_cannot and was re-queued is a queued job with a finished attempt, not a completed one.
+    assert t["state"] == "queued" and t["pull_request_url"] is None
+    assert t["current_run"]["outcome"] == "agent_cannot" and t["current_run"]["ended_at"] is not None
+    assert t["assignment"]["model"] == "gpt-6-luna" and t["assignment"]["source"] == "run_record"
+
+
 def test_dry_run_is_completed_without_a_pr(st):
     st.ticket(1, "dry_run_done", pr_url=f"https://github.com/{REPO}/pull/9")
     t = only(build(st))
