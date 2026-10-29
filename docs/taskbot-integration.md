@@ -40,7 +40,22 @@ In the Agent Control repo: `python3.12 tests/demo_pilot_lifecycle.py <new dir>` 
 real taskbot run with only GitHub and the model faked. Point `AGENT_MINDMAP_TASKBOT_STATE` at a stage (a symlink you
 swap works, the path is re-read on every request).
 
+## Verified against real runs
+
+Read from the Mac's own `state/` directory (opened `mode=ro`; file hashes unchanged), through `/automation.json` and the
+rendered Ops drawer, 2026-10-28:
+
+- Issue #42, first attempt (dry run): `agent_cannot`, shown as **queued** with the finished attempt, not as completed.
+- Same issue, real run `taskbot-20261028-222745-dcfab5`: `personal` / `gpt-6-luna` / `low`, shown as **completed** with
+  the draft PR #43 link and the basis "awaiting human review, not merged". The earlier attempt's `run_end` (warning) and
+  usage events stay in `recent_events` (the six newest).
+- No agents, edges or delegations appear anywhere; the panel states that an issue-to-PR link is bookkeeping.
+
+Finding from this check: a long mixed-case `owner/repo` was shown as `[redacted]` by the generic credential heuristic;
+slugs are now shown as is (regression test uses the real repo name).
+
 ## Not verified
 
-Real runs: no real taskbot job has executed, so only fixture and mock-driven databases have been read. The WSL machine's
-state directory was not accessible. Real T3 sessions: this Mac has no T3 login.
+Run `taskbot-20261025-002425-97b8d9` (draft PR #41) predates this check and its original records could not be
+recovered; nothing here claims to display it. The WSL machine's state directory was not accessible. Real T3 sessions:
+this Mac has no T3 login.
