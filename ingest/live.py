@@ -571,6 +571,10 @@ class MindmapHandler(BaseHTTPRequestHandler):
             self._send_observability()
             return
 
+        if path == "/automation.json":
+            self._send_automation()
+            return
+
         if path != "/" and ".." in path:
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
@@ -602,6 +606,27 @@ class MindmapHandler(BaseHTTPRequestHandler):
         try:
             activity = json.loads(body) if body else None
             doc = build_observability(activity, self.daemon.health().to_json())
+        except (ValueError, OSError):
+            doc = None
+        if doc is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self._send_bytes(
+            HTTPStatus.OK,
+            json.dumps(doc).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+            extra_headers={"Cache-Control": "no-store"},
+        )
+
+    def _send_automation(self) -> None:
+        """Taskbot job records (read-only, opt-in via AGENT_MINDMAP_TASKBOT_STATE). 404 when not configured."""
+        from tools.taskbot_activity import automation_for_activity
+
+        body = self.daemon.activity_body()
+        if body is None and self.daemon.activity_path.is_file():
+            body = self.daemon.activity_path.read_bytes()
+        try:
+            doc = automation_for_activity(json.loads(body) if body else None)
         except (ValueError, OSError):
             doc = None
         if doc is None:

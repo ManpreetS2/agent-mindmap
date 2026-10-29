@@ -59,6 +59,8 @@ import { SourceHealthBar } from "../components/SourceHealthBar";
 import { QuotaPanel } from "../components/QuotaPanel";
 import { WorkloadRecommendations } from "../components/WorkloadRecommendations";
 import type { ObservabilityState } from "../hooks/useObservability";
+import { AutomationPanel } from "../components/AutomationPanel";
+import type { AutomationState } from "../hooks/useAutomation";
 
 export interface MindmapViewProps {
   activity: Activity;
@@ -74,6 +76,8 @@ export interface MindmapViewProps {
    * Defaults to absent when omitted (unit tests that only pass activity).
    */
   observability?: ObservabilityState;
+  /** Taskbot job records (read-only). Absent when the server is not connected to Agent Control. */
+  automation?: AutomationState;
 }
 
 const SOURCE_HINTS: Record<string, string> = {
@@ -91,6 +95,7 @@ export function MindmapView({
   initialListView,
   statusPulseNodeIds,
   observability = { status: "absent" },
+  automation = { status: "absent" },
 }: MindmapViewProps) {
   const defaultList = useResponsiveListDefault();
   const [listView, setListView] = useState(initialListView ?? defaultList);
@@ -402,10 +407,11 @@ export function MindmapView({
           onClick={() => setOpsOpen((o) => !o)}
         >
           <span aria-hidden="true">{opsOpen ? "▾" : "▸"}</span>
-          <span>Ops · quota &amp; workload</span>
+          <span>Ops · automation, quota &amp; workload</span>
           <span className="timeline-toggle__hint">{opsOpen ? "Hide" : "Show"}</span>
         </button>
         <div id="ops-drawer-panel" className="ops-drawer__body" hidden={!opsOpen}>
+          <AutomationPanel state={automation} nowMs={nowMs} />
           <QuotaPanel state={observability} nowMs={nowMs} />
           <WorkloadRecommendations
             activity={activity}

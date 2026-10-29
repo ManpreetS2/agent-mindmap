@@ -1,0 +1,364 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-mindmap-automation/v1",
+  "title": "Taskbot automation activity served at /automation.json",
+  "description": "Read-only view of Agent Control taskbot job records (tickets, runs, events). Tasks are NOT T3 sessions and an issue-to-PR link is not model delegation. Contains no prompts, raw logs, hostnames, usernames, paths or credentials.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generated_at",
+    "mode",
+    "source",
+    "tasks",
+    "notes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "agent-mindmap-automation/v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "enum": [
+        "live",
+        "demo"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "status",
+        "last_event_at",
+        "reason"
+      ],
+      "properties": {
+        "kind": {
+          "const": "agent-control-taskbot"
+        },
+        "status": {
+          "enum": [
+            "connected",
+            "absent",
+            "unreadable",
+            "unsupported_schema"
+          ]
+        },
+        "last_event_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "repo",
+          "issue",
+          "state",
+          "state_basis",
+          "state_observed_at",
+          "attempts",
+          "assignment",
+          "pull_request_url",
+          "current_run",
+          "next_attempt_after",
+          "error_evidence",
+          "recent_events"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^taskbot:[\\w.-]+/[\\w.-]+#\\d+$",
+            "maxLength": 160
+          },
+          "repo": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "issue": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "number",
+              "title",
+              "url"
+            ],
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 160
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^https://github\\.com/[\\w.-]+/[\\w.-]+/issues/\\d+$"
+              }
+            }
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "blocked",
+              "failed",
+              "completed",
+              "skipped",
+              "unknown"
+            ]
+          },
+          "state_basis": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "state_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "assignment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "account",
+              "model",
+              "effort",
+              "known",
+              "source"
+            ],
+            "properties": {
+              "account": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "effort": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 40
+              },
+              "known": {
+                "type": "boolean"
+              },
+              "source": {
+                "enum": [
+                  "run_record",
+                  "event_message",
+                  "none"
+                ]
+              }
+            }
+          },
+          "pull_request_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^https://github\\.com/[\\w.-]+/[\\w.-]+/pull/\\d+$"
+          },
+          "current_run": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "run_id",
+              "started_at",
+              "ended_at",
+              "outcome",
+              "duration_sec"
+            ],
+            "properties": {
+              "run_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "started_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "ended_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "outcome": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "duration_sec": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          },
+          "next_attempt_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "error_evidence": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "time",
+              "severity",
+              "summary"
+            ],
+            "properties": {
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "time": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "severity": {
+                "enum": [
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              },
+              "summary": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200
+              }
+            }
+          },
+          "recent_events": {
+            "type": "array",
+            "maxItems": 6,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "time",
+                "type",
+                "severity",
+                "run_id"
+              ],
+              "properties": {
+                "time": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 120
+                },
+                "severity": {
+                  "enum": [
+                    "info",
+                    "warning",
+                    "error"
+                  ]
+                },
+                "run_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 120
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 240
+      }
+    }
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "schema": "agent-mindmap-automation/v1",
+  "generated_at": "2026-10-24T07:00:00Z",
+  "mode": "demo",
+  "source": {
+    "kind": "agent-control-taskbot",
+    "status": "connected",
+    "last_event_at": "2026-10-24T06:59:40Z",
+    "reason": null
+  },
+  "tasks": [
+    {
+      "id": "taskbot:example/demo-app#11",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 11,
+        "title": "Fix date label on the example list",
+        "url": "https://github.com/example/demo-app/issues/11"
+      },
+      "state": "running",
+      "state_basis": "run_start without run_end; last event 20s ago",
+      "state_observed_at": "2026-10-24T06:59:40Z",
+      "attempts": 0,
+      "assignment": {
+        "account": "demo-account",
+        "model": "example-model",
+        "effort": "low",
+        "known": true,
+        "source": "run_record"
+      },
+      "pull_request_url": null,
+      "current_run": {
+        "run_id": "taskbot-demo-run-11",
+        "started_at": "2026-10-24T06:58:00Z",
+        "ended_at": null,
+        "outcome": null,
+        "duration_sec": null
+      },
+      "next_attempt_after": null,
+      "error_evidence": null,
+      "recent_events": [
+        {
+          "time": "2026-10-24T06:58:00Z",
+          "type": "run_start",
+          "severity": "info",
+          "run_id": "taskbot-demo-run-11"
+        }
+      ]
+    },
+    {
+      "id": "taskbot:example/demo-app#12",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 12,
+        "title": "Add tests for the example formatter",
+        "url": "https://github.com/example/demo-app/issues/12"
+      },
+      "state": "queued",
+      "state_basis": "ticket status 'queued'",
+      "state_observed_at": "2026-10-24T06:50:00Z",
+      "attempts": 0,
+      "assignment": {
+        "account": null,
+        "model": null,
+        "effort": null,
+        "known": false,
+        "source": "none"
+      },
+      "pull_request_url": null,
+      "current_run": null,
+      "next_attempt_after": null,
+      "error_evidence": null,
+      "recent_events": []
+    },
+    {
+      "id": "taskbot:example/demo-app#13",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 13,
+        "title": "Update example README wording",
+        "url": "https://github.com/example/demo-app/issues/13"
+      },
+      "state": "blocked",
+      "state_basis": "waiting for quota: no usable account",
+      "state_observed_at": "2026-10-24T06:55:00Z",
+      "attempts": 0,
+      "assignment": {
+        "account": null,
+        "model": null,
+        "effort": null,
+        "known": false,
+        "source": "none"
+      },
+      "pull_request_url": null,
+      "current_run": null,
+      "next_attempt_after": "2026-10-24T08:00:00Z",
+      "error_evidence": {
+        "type": "no_account",
+        "time": "2026-10-24T06:55:00Z",
+        "severity": "warning",
+        "summary": "no usable account; waiting for quota"
+      },
+      "recent_events": [
+        {
+          "time": "2026-10-24T06:55:00Z",
+          "type": "no_account",
+          "severity": "warning",
+          "run_id": null
+        }
+      ]
+    },
+    {
+      "id": "taskbot:example/demo-app#9",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 9,
+        "title": "Rename an example helper",
+        "url": "https://github.com/example/demo-app/issues/9"
+      },
+      "state": "failed",
+      "state_basis": "taskbot gave up after its attempt limit",
+      "state_observed_at": "2026-10-24T06:20:00Z",
+      "attempts": 2,
+      "assignment": {
+        "account": "demo-account",
+        "model": "example-model",
+        "effort": "low",
+        "known": true,
+        "source": "run_record"
+      },
+      "pull_request_url": null,
+      "current_run": {
+        "run_id": "taskbot-demo-run-9",
+        "started_at": "2026-10-24T06:10:00Z",
+        "ended_at": "2026-10-24T06:20:00Z",
+        "outcome": "verify_failed",
+        "duration_sec": 600
+      },
+      "next_attempt_after": null,
+      "error_evidence": {
+        "type": "agent_failed",
+        "time": "2026-10-24T06:20:00Z",
+        "severity": "error",
+        "summary": "gave up after 2 attempts. Last: verify_failed"
+      },
+      "recent_events": [
+        {
+          "time": "2026-10-24T06:20:00Z",
+          "type": "agent_failed",
+          "severity": "error",
+          "run_id": "taskbot-demo-run-9"
+        }
+      ]
+    },
+    {
+      "id": "taskbot:example/demo-app#7",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 7,
+        "title": "Fix typo in example docs",
+        "url": "https://github.com/example/demo-app/issues/7"
+      },
+      "state": "completed",
+      "state_basis": "taskbot opened a draft PR; awaiting human review, not merged",
+      "state_observed_at": "2026-10-24T05:30:00Z",
+      "attempts": 1,
+      "assignment": {
+        "account": "demo-account",
+        "model": "example-model",
+        "effort": "low",
+        "known": true,
+        "source": "run_record"
+      },
+      "pull_request_url": "https://github.com/example/demo-app/pull/21",
+      "current_run": {
+        "run_id": "taskbot-demo-run-7",
+        "started_at": "2026-10-24T05:20:00Z",
+        "ended_at": "2026-10-24T05:30:00Z",
+        "outcome": "pr_opened",
+        "duration_sec": 600
+      },
+      "next_attempt_after": null,
+      "error_evidence": null,
+      "recent_events": [
+        {
+          "time": "2026-10-24T05:30:00Z",
+          "type": "run_end",
+          "severity": "info",
+          "run_id": "taskbot-demo-run-7"
+        },
+        {
+          "time": "2026-10-24T05:29:40Z",
+          "type": "pr_opened",
+          "severity": "info",
+          "run_id": "taskbot-demo-run-7"
+        }
+      ]
+    },
+    {
+      "id": "taskbot:example/demo-app#5",
+      "repo": "example/demo-app",
+      "issue": {
+        "number": 5,
+        "title": "Clean up an example config",
+        "url": "https://github.com/example/demo-app/issues/5"
+      },
+      "state": "unknown",
+      "state_basis": "ticket says 'running' but there is no run_end and no event for 95 min; the job may have crashed or the machine slept",
+      "state_observed_at": "2026-10-24T05:25:00Z",
+      "attempts": 0,
+      "assignment": {
+        "account": "demo-account",
+        "model": "example-model",
+        "effort": "low",
+        "known": true,
+        "source": "run_record"
+      },
+      "pull_request_url": null,
+      "current_run": {
+        "run_id": "taskbot-demo-run-5",
+        "started_at": "2026-10-24T05:25:00Z",
+        "ended_at": null,
+        "outcome": null,
+        "duration_sec": null
+      },
+      "next_attempt_after": null,
+      "error_evidence": null,
+      "recent_events": []
+    }
+  ],
+  "notes": [
+    "SYNTHETIC FIXTURE: example tasks, not real taskbot activity.",
+    "Taskbot tasks are Agent Control job records, not T3 sessions; nothing here is a T3 session.",
+    "An issue-to-PR link is taskbot's own bookkeeping. It does not show that one model delegated to another."
+  ]
+}
